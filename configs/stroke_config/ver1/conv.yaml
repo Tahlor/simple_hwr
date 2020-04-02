@@ -1,0 +1,150 @@
+## TO DO IMMEDIATELY:
+# DEBUG TEST/TRAIN LOSS
+# RELATIVE COORDS CONFIG
+
+# Load model
+TESTING: false # this is for debugging, do it on a small dataset
+load_path: false # ./results/baseline/20190622_155031-lr_0.001_bs_16_warp_False_arch_basic_encoder/baseline_model.pt # or false
+test_only: false # Do not train
+offline_pred: false
+logging: info
+gpu_if_available: true
+
+# General
+output_folder: ./results
+epochs_to_run: 1000
+update_freq: 100 # print out updates, update graphs etc. after this many updates
+save_freq: 1     # save the model every X epochs
+use_visdom: true
+debug: off
+
+# Training data
+#dataset_folder: online_coordinate_data/8_stroke_vSmall_16
+#dataset_folder: online_coordinate_data/8_stroke_vFull
+data_root_fsl: ../hw_data/strokes
+data_root_local: data
+dataset_folder: online_coordinate_data/MAX_stroke_vFull
+dataset_folder: online_coordinate_data/MAX_stroke_vTEST_AUGMENTFull
+dataset_folder: online_coordinate_data/MAX_stroke_vlargeTrnSetFull
+
+# WARP
+warp: true
+
+# LR schedule
+learning_rate: 1e-3          # LR
+scheduler_step: 15         # Every X steps, multiply LR by gamma
+scheduler_gamma: .95          # LR decay rate
+
+## Loss options:
+  # Based on width of image, determine how many outputs there should be
+    # batches make predictions square, ONLY evaluate based on the expected GT desired_num_of_strokes
+  # DTW - have as many GTs as you want; bound alignments somehow?
+  # (Old option: resample the GTs after the prediction is known)
+  # (Future option: with attention, have the GTs to be just be sampled regularly)
+
+test_size: null
+train_size: null
+batch_size: 32
+
+## GTs
+# All options include:
+  # x pos, y pos
+  # sos - 'is start of stroke' (1's for yes, 0's for no)
+  # sos_interp - 'is start of stroke' interpolated
+  # sos_interp_dist - 'is start of stroke' interpolated
+  # stroke_number - 'is start of stroke' interpolated
+  # eos - 'is start of stroke' interpolated
+
+# interpolated_sos: interpolated # normal: use 1's for starts; interpolated: start is a "0" and increases from there based on distance of stroke
+gt_format: # if relative etc., specify that here; e.g., opts:rel
+  - x
+  - y
+  - stroke_number
+  - eos
+
+# NOT IMPLEMENTED
+gt_opts:
+  - null
+  - null
+  - null
+  - null
+
+# stroke_number is the cumsum of sos; gt_format, gt_opts, pred_opts: "sos", "cumsum", "cumsum" = "start_stroke", "null", "cumsum"
+# E.g. cumsum will predict RELATIVE positions; if "null" is specified for gt, it will compare to absolute values
+pred_opts: # if relative etc., specify that here; e.g., opts:rel opts:cumsum etc.
+  - cumsum
+  - null
+  - cumsum
+  - null
+
+## Loss function
+# l1, dtw, ssl, cross_entropy
+# can also add activation functions here NOT IMPLEMENTED
+# LOSS FNs WITH THE SAME NAME WILL BE CONSIDERED THE SAME!
+loss_fns:
+  - name: l1_with_stroke_numbers
+    coef: 1
+    gts:
+      - x
+      - y
+      - stroke_number
+    subcoef: 1,1,.1
+  - name: cross_entropy
+    coef: 1
+    gts:
+      - eos
+    activation: sigmoid
+
+loss_fns2:
+  - name: dtw
+    coef: 1
+    gts:
+      - x
+      - y
+      - stroke_number
+    subcoef: 1,1,.1
+    dtw_mapping_basis:
+      - x
+      - y
+  - name: cross_entropy
+    coef: .1
+    gts:
+      - eos
+    activation: sigmoid
+
+# Always report these, but don't include in backpropagation
+#loss_fns_to_report:
+#  - name: l2_coords
+#    gts:
+#      - x
+#      - y
+#  - name: l1_coords
+#    gts:
+#      - x
+#      - y
+
+convolve_func: conv_window # or conv_weight, conv_window, cumsum
+cumsum_window_size: 21 # only for the conv_window and conv_weight
+
+first_loss_epochs: 2
+training_nn_loss: false # calculate nearest neighbor loss on every training instance; <- this is basically just DTW loss, without the time constraint? really only useful for offline images with pixels etc.
+# test_nn_loss: true # calculate nearest neighbor loss on every test instance
+
+## CNN
+cnn_type: default64 # default64; CNN output width similar to input width; default: CNN output is like 1/4 the input width
+
+# CoordConv
+  # x-scaled from -1 to 1
+  # x-scaled to be same scale as y
+coordconv: true
+coordconv_method: y_abs
+coordconv_0_center: false
+
+# Visdom
+visdom_port: 9001
+
+## Default
+# L1, DTW, SSL etc.
+## Try Barron loss
+## Try SoftDTW
+## Need to compare NN loss probably

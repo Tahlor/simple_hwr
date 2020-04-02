@@ -1,0 +1,55 @@
+TESTING: false
+SMALL_TRAINING: false
+plot_freq: 50
+images_to_load: null
+load_path: false
+test_only: false
+experiment: baseline
+name_deprecated: true_baseline
+output_folder: ./results
+epochs_to_run: 200
+save_freq: 1
+use_visdom: true
+debug: false
+training_jsons:
+- munit/online_munit_v75_7400.json
+- munit/online_munit_v81_200.json
+- combinedImages/v_1280.json
+training_root: data
+training_shuffle: true
+training_warp: false
+training_blur: false
+training_random_distortions: false
+online_augmentation: true
+writer_id_pickles:
+- prepare_IAM_Lines/writer_IDs.pickle
+- prepare_online_data/writer_IDs.pickle
+validation_jsons:
+- prepare_IAM_Lines/gts/lines/txt/val1.json
+- prepare_IAM_Lines/gts/lines/txt/val2.json
+testing_jsons:
+- prepare_IAM_Lines/gts/lines/txt/test.json
+testing_root: data
+testing_shuffle: false
+testing_warp: false
+testing_blur: false
+testing_random_distortions: false
+output_predictions: false
+style_encoder: false
+batch_size: 16
+input_height: 60
+cnn_out_size: 1024
+num_of_channels: 1
+rnn_dimension: 512
+recognizer_dropout: 0.5
+writer_dropout: 0.4
+writer_rnn_dimension: 128
+writer_rnn_output_size: 256
+mlp_layers:
+- 64
+- embedding
+- 64
+embedding_size: 32
+learning_rate: 0.0002
+scheduler_step: 10
+scheduler_gamma: 0.95

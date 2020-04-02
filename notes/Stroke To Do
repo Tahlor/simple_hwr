@@ -1,0 +1,44 @@
+from robust_loss_pytorch import AdaptiveLossFunction
+
+# pip install git+https://github.com/jonbarron/robust_loss_pytorch
+
+# Loss functions:
+    # Predicted points - nearest neighbor to rendered drawing
+    # Allow reverse strokes?
+    # Small penalty for matching neighboring point
+
+# Attention
+# Make a link from script directory to result directory
+
+## Augmentation:
+    ## Random Warp Grid
+    ## Translation?
+
+## Find the Indian datasets
+## Calculate a direction/angle
+## Make variable width
+## BEZIER CURVES
+## Normalize time WRT ink distance
+
+## New Data
+# Devnagari
+# http://mile.ee.iisc.ernet.in/hpl/DevnagariCharacters/Online/hpl-devnagari-iso-char-online-train-1.0.rar
+# http://mile.ee.iisc.ernet.in/hpl/DevnagariCharacters/Online/hpl-devnagari-iso-char-online-test-1.0.rar
+# http://mile.ee.iisc.ernet.in/hpl/DevnagariCharacters/Online/hpl-devnagari-iso-char-online-1.0.rar
+#
+# Telugu
+# http://lipitk.sourceforge.net/datasets/teluguchardata.htm
+# http://mile.ee.iisc.ernet.in/hpl/TelugCharacters/Online/hpl-telugu-iso-char-test-online-1.0.rar
+# http://mile.ee.iisc.ernet.in/hpl/TelugCharacters/Online/hpl-telugu-iso-char-train-online-1.0.rar
+# http://mile.ee.iisc.ernet.in/hpl/TelugCharacters/Online/hpl-telugu-iso-char-online-1.0.rar
+#
+# Tamil
+# http://lipitk.sourceforge.net/datasets/tamilchardata.htm
+#
+# http://mile.ee.iisc.ernet.in/hpl/TamilCharacters/Online/hpl-tamil-iso-char-online-1.0.tar.gz
+# http://mile.ee.iisc.ernet.in/hpl/TamilCharacters/Online/hpl-tamil-iso-char-train-online-1.0.tar.gz
+# http://mile.ee.iisc.ernet.in/hpl/TamilCharacters/Online/hpl-tamil-iso-char-test-online-1.0.tar.gz
+#
+# http://mile.ee.iisc.ernet.in/hpl/TamilCharacters/Offline/hpl-tamil-iso-char-offline-1.0.tar.gz
+# http://mile.ee.iisc.ernet.in/hpl/TamilCharacters/Offline/hpl-tamil-iso-char-train-offline-1.0.tar.gz
+# http://mile.ee.iisc.ernet.in/hpl/TamilCharacters/Offline/hpl-tamil-iso-char-test-offline-1.0.tar.gz

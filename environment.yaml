@@ -1,0 +1,51 @@
+#name: hwr
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - opencv>=3.4.2
+  - pandas>=0.24.2
+  - pip>=19.0.3
+  - python>=3.7.3
+  - scipy>=1.2.1
+  - visdom
+  - pyyaml
+  - matplotlib
+  - cython
+  - nose
+  - jupyter
+  - numba
+  #- scikit-learn
+  #- scikit-image
+  - pip:
+    - easydict
+    - jsonpatch
+    - biopython==1.73
+    - editdistance==0.5.3
+    - gputil==1.4.0
+    - pillow-simd>=6.0.0
+    - protobuf==3.7.1
+    - six==1.12.0
+    - tqdm
+    - tensorboardx==1.6
+    - torch>=1.2.0
+    - torchfile==0.1.0
+    - torchvision==0.2.2.post3
+    - wget
+    - git+https://github.com/Tahlor/robust_loss_pytorch
+    - git+https://github.com/tahlor/pydtw
+
+#prefix: /panfs/pan.fsl.byu.edu/scr/grp/fslg_hwr/env/hwr
+
+# conda env create -f environment.yaml --name munit2
+# conda env create -f environment.yaml --prefix ../env/hwr5
+
+#git clone https://github.com/mblondel/soft-dtw.git
+#     - git+https://github.com/mblondel/soft-dtw
+#cd soft-dtw
+#make cython
+#python setup.py build
+#python setup.py install
+
+

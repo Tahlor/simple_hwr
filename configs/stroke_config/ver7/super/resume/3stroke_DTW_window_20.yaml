@@ -1,0 +1,111 @@
+TESTING: false
+load_path: ./results/stroke_config/ver7/super/20200325_124748-3stroke_DTW_window_20/3stroke_DTW_window_20_model.pt
+load_optimizer: true
+reset_LR: false
+results_dir_override: null
+test_only: false
+offline_pred: false
+logging: info
+gpu_if_available: true
+output_folder: ./results
+epochs_to_run: 1000
+update_freq: 100
+save_freq: 1
+use_visdom: false
+debug: false
+data_root_fsl: ../hw_data/strokes
+data_root_local: data
+dataset_folder: online_coordinate_data/MAX_stroke_vlargeTrnSetFull
+warp: true
+learning_rate: 0.000001
+scheduler_step: 1
+scheduler_gamma: 0.95
+test_size: null
+train_size: null
+batch_size: 32
+gt_format:
+- x
+- y
+- stroke_number
+gt_opts:
+- null
+- null
+- null
+pred_opts:
+- cumsum
+- null
+- sigmoid
+convolve_func: cumsum
+cumsum_window_size: 21
+first_loss_epochs: 1
+training_nn_loss: false
+cnn_type: default64
+coordconv: true
+coordconv_method: y_abs
+coordconv_0_center: false
+visdom_port: 9001
+name: 3stroke_DTW_window_20
+SMALL_TRAINING: false
+save_count: 0
+coord_conv: false
+test_nn_loss: true
+test_nn_loss_freq: 1
+start_of_stroke_method: normal
+interpolated_sos: normal
+model_name: normal
+experiment: stroke_config/ver7/super
+full_specs: 20200325_124748-3stroke_DTW_window_20
+results_dir: ./results/stroke_config/ver7/super/20200325_124748-3stroke_DTW_window_20
+output_predictions: false
+log_dir: ./results/stroke_config/ver7/super/20200325_124748-3stroke_DTW_window_20
+data_root: ../hw_data/strokes
+pred_format:
+- x
+- y
+- stroke_number
+vocab_size: 3
+loss_fns:
+- !!python/object/new:easydict.EasyDict
+  state:
+    name: dtw
+    coef: 1
+    gts: &id001
+    - x
+    - y
+    dtw_mapping_basis: &id002
+    - 0
+    - 1
+    cross_entropy_indices: &id003
+    - 2
+    relativefy_cross_entropy_gt: true
+    l1_center_of_mass: true
+    window_size: 20
+    barron: false
+    loss_indices: &id004
+    - 0
+    - 1
+    monitor_only: false
+  dictitems:
+    name: dtw
+    coef: 1
+    gts: *id001
+    dtw_mapping_basis: *id002
+    cross_entropy_indices: *id003
+    relativefy_cross_entropy_gt: true
+    l1_center_of_mass: true
+    window_size: 20
+    barron: false
+    loss_indices: *id004
+    monitor_only: false
+loss_fns2: null
+pred_relativefy:
+- 0
+device: cuda
+n_train_instances: 249405
+n_test_instances: 501
+n_test_points: 256450
+global_counter: 296172
+starting_epoch: 19
+current_epoch: 19
+main_model_path: ./results/stroke_config/ver7/super/20200325_124748-3stroke_DTW_window_20/3stroke_DTW_window_20_model.pt
+

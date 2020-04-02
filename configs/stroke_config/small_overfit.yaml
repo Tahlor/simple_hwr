@@ -1,0 +1,54 @@
+# Load model
+TESTING: true # this is for debugging, do it on a small dataset
+load_path: false # ./results/baseline/20190622_155031-lr_0.001_bs_16_warp_False_arch_basic_encoder/baseline_model.pt # or false
+test_only: false # Do not train
+offline_pred: false
+
+# General
+output_folder: ./results
+epochs_to_run: 200
+update_freq: 1000 # print out updates, update graphs etc. after this many updates
+save_freq: 1     # save the model every X epochs
+use_visdom: true
+debug: off
+
+# Training data
+#dataset_folder: online_coordinate_data/8_stroke_vSmall_16
+#dataset_folder: online_coordinate_data/8_stroke_vFull
+data_root_fsl: ../hw_data/strokes
+data_root_local: .
+dataset_folder: online_coordinate_data/MAX_stroke_vFull
+
+
+# LR schedule
+learning_rate: 1e-3          # LR
+scheduler_step: 10         # Every X steps, multiply LR by gamma
+scheduler_gamma: .95          # LR decay rate
+
+## Loss options:
+  # Based on width of image, determine how many outputs there should be
+    # batches make predictions square, ONLY evaluate based on the expected GT desired_num_of_strokes
+  # DTW - have as many GTs as you want; bound alignments somehow?
+  # (Old option: resample the GTs after the prediction is known)
+  # (Future option: with attention, have the GTs to be just be sampled regularly)
+
+test_size: 2000
+train_size: null
+batch_size: 16
+x_relative_positions: False
+vocab_size: 4
+
+## Loss function
+loss_fn: l1
+loss_fn2: dtw
+first_loss_epochs: 5
+
+# CoordConv
+  # x-scaled from -1 to 1
+  # x-scaled to be same scale as y
+coordconv: true
+coordconv_method: y_abs
+coordconv_0_center: false
+
+# Relative X coordinates - NOT IMPLEMENTED ON CONFIG SIDE YET!
+relative_x: false # true, false, both; predict both
