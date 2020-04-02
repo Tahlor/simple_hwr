@@ -42,6 +42,7 @@ cdef double euclidean_distance(double[::1] a, double[::1] b):
         d += tmp * tmp
     return sqrt(d)
 
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def check_constraint(a_shape, b_shape, constraint=0, warn=True):
@@ -51,6 +52,7 @@ def check_constraint(a_shape, b_shape, constraint=0, warn=True):
             warnings.warn("Constraint {} too small for sequences length {} and {}; using {}".format(constraint, a_shape, b_shape, min_size))
         constraint = min_size
     return constraint
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -142,6 +144,7 @@ cdef double[:, ::1] create_cost_mat_2d(double[:, ::1] a, double[:, ::1] b, int c
                 d_min(cost_mat[i - 1, j], cost_mat[i, j - 1], cost_mat[i - 1, j - 1])
     return cost_mat[1:, 1:]
 
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef double[:, ::1] _refill_cost_matrix(double[:, ::1] a, double[:, ::1] b, double[:, ::1] cost_mat, int start_a, int end_a, int start_b, int end_b, int constraint, str metric):
@@ -169,7 +172,7 @@ cdef double[:, ::1] _refill_cost_matrix(double[:, ::1] a, double[:, ::1] b, doub
 
     for i in range(start_a + 1, end_a + 1):
         for j in range(max(start_b + 1, i - constraint), min(end_b + 1, i + constraint + 1)):
-            cost_mat[i, j] = metric(a[i - 1], b[j - 1]) + \
+            cost_mat[i, j] = dist_func(a[i - 1], b[j - 1]) + \
                             d_min(cost_mat[i - 1, j], cost_mat[i, j - 1], cost_mat[i - 1, j - 1])
 
     return cost_mat[1:, 1:]
@@ -222,6 +225,7 @@ def dtw2d_with_backward(
             metric="euclidean"):
     cost_mat, cost, align_a, align_b = __dtw2d_with_backward(a, b, b2, b.shape[0], metric)
     return cost_mat, cost, align_a, align_b
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)

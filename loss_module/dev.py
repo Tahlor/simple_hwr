@@ -34,14 +34,7 @@ np.set_printoptions(precision=1)
 from forbiddenfruit import curse
 
 def push_back(self, a):
-    self.append(a)
-
-
-# list.push_back = push_back
-
-def push_back(self, a):
     self.insert(0, a)
-
 
 curse(list, "push_back", push_back)
 
@@ -199,9 +192,9 @@ def get_worst_match(gt, preds, a, b, sos):
     """ Return the stroke number with the worst match
     """
     error = abs(gt[a] - preds[b]) ** 2
-    print("error", error)
-    for x in np.split(gt, sos)[1:]:
-        print(x)
+    # print("error", error)
+    # for x in np.split(gt, sos)[1:]:
+    #     print(x)
 
     strokes = np.split(error, sos)[1:]
 
@@ -225,12 +218,12 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=0):
     # traceback(mat, x1.shape[0], x2.shape[0])
     # create_cost_mat_2d
     # constrained_dtw2d
-
-    cost_mat, costr, a, b = dtw.constrained_dtw2d(np.ascontiguousarray(gt[:, :2]), np.ascontiguousarray(preds[:, :2]),
+    _gt, _preds = np.ascontiguousarray(gt[:, :2]), np.ascontiguousarray(preds[:, :2])
+    cost_mat, costr, a, b = dtw.constrained_dtw2d(_gt,_preds,
                                                   constraint=constraint)
-    print(a)
-    print(b)
-    print("cost", costr)
+    # print(a)
+    # print(b)
+    # print("full cost: ", costr)
     sos = get_sos_args(gt[:, 2], stroke_numbers=False)
 
     # Consider sampling from among the worst matches
@@ -245,14 +238,14 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=0):
     end_idx_buffer = gt.shape[0] if worst_match_idx + 1 >= sos.size or end_idx + buffer >= gt.size else end_idx + buffer # too many strokes OR too many stroke points
 
     # Reverse the line
-    _start_idx = start_idx if start_idx != 0 else None
-    new_gt = gt[end_idx-1:_start_idx:-1, :2]
+    _start_idx = start_idx-1 if start_idx > 0 else None
+    _reversed = np.ascontiguousarray(_gt[end_idx-1:_start_idx:-1, :2])
+    _new_gt = _gt.copy() # optimization: make a copy with the dataloader
+    _new_gt[start_idx:end_idx] = _reversed
 
     # Old Cost
     if end_idx_buffer < gt.shape[0]:
-        print("not last stroke")
         alignment_end_idx = np.argmax(a == end_idx_buffer)  # first GT point
-
         old_cost = cost_mat[a[alignment_end_idx], b[alignment_end_idx]]  # where we will start the traceback later
 
         # The indices in the preds that DTW with the GTs
@@ -266,32 +259,35 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=0):
 
     # Refill - end is with buffer
 
-    print(np.array(cost_mat))
     # PREDS AND GTS MUST BE SAME LENGTH TO BE CONSISTENT; need to recalculate distance to end_idx buffer
-    cost_mat = dtw.refill_cost_matrix(a, b, cost_mat.base, start_idx, end_idx_buffer, start_idx, end_idx_buffer, constraint=constraint, metric="euclidean")
-    print(cost_mat)
+    #print(np.asarray(cost_mat))
+    cost_mat = dtw.refill_cost_matrix(_new_gt, _preds, cost_mat.base, start_idx, end_idx_buffer, start_idx, end_idx_buffer, constraint=constraint, metric="euclidean")
+
     # Truncate the cost matrix to be to the designated start and end
-    print(start_idx_buffer,end_idx_buffer,pred_start_buffer,pred_end_buffer)
+    #print(start_idx_buffer,end_idx_buffer,pred_start_buffer,pred_end_buffer)
     cost_mat_truncated = cost_mat[start_idx_buffer:end_idx_buffer,pred_start_buffer:pred_end_buffer] # the first point in the pred]
-    print(cost_mat_truncated)
+    #print(np.asarray(cost_mat_truncated))
 
-    print("old cost: ", old_cost)
-    print("cost: ", cost_mat_truncated[-1,-1])
+    #print("old cost (partial): ", old_cost)
+    #print("cost (partial): ", cost_mat_truncated[-1,-1])
 
-    if cost_mat[-1,-1] < old_cost:
+    if cost_mat_truncated[-1,-1] < old_cost:
         print("BETTER MATCH!!!")
-        # Optimize later
+        # Optimize later - don't need to retrace entire matrix, just the recalc + buffer
         a,b,cost = traceback(cost_mat, cost_mat.shape[0], cost_mat.shape[1])
-        print("new")
-        print(a)
-        print(b)
+        # print("new")
+        # print(a)
+        # print(b)
+        return a,b,_new_gt, {"swaps": None, "reverse": (slice(start_idx, end_idx), slice(end_idx-1,_start_idx))}
+    else:
+        return a,b,None, None
 
     # Traceback - all the way to before the buffer
         # Finds new path
         # if better, replace path through window+buffer of original DTW
     # OVERWRITE ORIGINAL STROKE
     # OVERWRITE CURRENT STROKE
-    # CYTHON
+    # IF SWAPPING STROKES, NEED TO SWAP SOS TOO; SHOULD NOT SWAP SOS FOR REVERSING
 
 ## Test cases:
     # last stroke
@@ -359,13 +355,19 @@ def test():
             [28, 29, 0, 31],
             [24, 25, 0, 35]]
 
-    preds_first_last = np.asarray(preds_first_last).astype(np.float64)
-    preds_last = np.asarray(preds_last).astype(np.float64)
-    preds_middle = np.asarray(preds_middle).astype(np.float64)
-    preds = np.asarray(preds).astype(np.float64)
+    test_cases = {}
+    test_cases["preds_first_last"] = {"preds":np.asarray(preds_first_last).astype(np.float64),
+                           "final_cost": 0}
+    test_cases["preds_last"] = {"preds":np.asarray(preds_last).astype(np.float64),
+                           "final_cost": 0}
+    test_cases["preds_middle"] = {"preds":np.asarray(preds_middle).astype(np.float64),
+                           "final_cost": 0}
+    test_cases["preds"] = {"preds":np.asarray(preds).astype(np.float64),
+                           "final_cost": 0}
 
-    for pred in preds_first_last, preds_last, preds_middle, preds:
-        adaptive_dtw(pred, gt, constraint=5, buffer=0)
+    for key, pred in test_cases.items():
+        print(f"TESTING {key}")
+        adaptive_dtw(pred["preds"], gt, constraint=5, buffer=0)
 
 if __name__=='__main__':
     test()

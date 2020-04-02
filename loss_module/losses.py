@@ -12,6 +12,7 @@ import logging
 from hwr_utils.stroke_dataset import create_gts
 from hwr_utils.utils import to_numpy
 from hwr_utils.stroke_recovery import relativefy_torch, swap_to_minimize_l1, get_number_of_stroke_pts_from_gt
+from loss_module.dev import adaptive_dtw
 import sys
 sys.path.append("..")
 #pip install git+https://github.com/tahlor/pydtw
@@ -158,7 +159,7 @@ class DTWLoss(CustomLoss):
         else:
             self._dtw_alg = ""
 
-        if "training_dataset" in kwargs:
+        if "training_dataset" in kwargs and kwargs["training_dataset"] is not None:
             logger.info("Training dataset provided to loss function...GT adaptation possible")
             self.training_dataset = kwargs["training_dataset"]
 
@@ -186,21 +187,23 @@ class DTWLoss(CustomLoss):
             targ = targs[i]
             # This can be extended to do DTW with just a small buffer
             adjusted_targ = swap_to_minimize_l1(pred, targ.detach().numpy().astype("float64"), stroke_numbers=True, center_of_mass=self.center_of_mass)
-            a, b = self.dtw_single((item["preds_numpy"][i], adjusted_targ), dtw_mapping_basis=self.dtw_mapping_basis, window_size=self.window_size)
-            adjusted_targ = tensor(adjusted_targ)
-            # LEN X VOCAB
-            if self.method == "normal":
-                pred = preds[i][a, :][:, self.loss_indices]
-                targ = adjusted_targ[b, :][:, self.loss_indices]
+            a,b,_gt, adaptive_instr_dict = adaptive_dtw(adjusted_targ, item["preds_numpy"][i], constraint=self.window_size, buffer=20)
 
+            ## Reverse the original GT
+            if adaptive_instr_dict:
+                reverse_slice = adaptive_instr_dict["reverse"][1]
+                normal_slice = adaptive_instr_dict["reverse"][0]
+                #print(self.training_dataset, item["gt_idx"], normal_slice, reverse_slice)
+                self.training_dataset[item["gt_idx"]][normal_slice,:2] = self.training_dataset[item["gt_idx"]][reverse_slice,:2]
+                _gt = Tensor(_gt)
             else:
-                raise NotImplemented
+                _gt = targ
 
-            ## !!! DELETE THIS
-            if self.barron:
-                loss += (self.barron(pred - targ) * self.subcoef).sum()  # AVERAGE pointwise loss for 1 image
-            elif True:
-                loss += (abs(pred - targ) * self.subcoef).sum()  # AVERAGE pointwise loss for 1 image
+            adjusted_targ = tensor(adjusted_targ)
+            pred = preds[i][a, :][:, self.loss_indices]
+            targ = _gt[b, :][:, :2]
+
+            loss += (abs(pred - targ) * self.subcoef).sum()  # AVERAGE pointwise loss for 1 image
 
             if self.cross_entropy_indices:
                 pred2 = preds[i][a, :][:, self.cross_entropy_indices]
@@ -210,6 +213,7 @@ class DTWLoss(CustomLoss):
                 if self.relativefy:
                     targ2 = relativefy_torch(targ2, default_value=1)  # default=1 ensures first point is a 1 (SOS);
                 loss += BCEWithLogitsLoss(pred2, targ2).sum() * .1  # AVERAGE pointwise loss for 1 image
+
         return loss  # , to_value(loss)
 
 

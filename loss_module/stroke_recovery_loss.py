@@ -53,7 +53,7 @@ class StrokeLoss:
         self.stats = loss_stats
         self.master_loss_defintion = {} # everything in the master_loss_defition will be evaluated
         self.coefs = []
-        self.training_dataset = None
+        self.training_dataset = training_dataset
 
     def get_loss_fn(self, loss):
         """ Return the right loss function given a loss definition dictionary
