@@ -117,7 +117,6 @@ loss_fns2:
     cross_entropy_indices: # SIGMOID TAKEN DURING LOSS
       - stroke_number
     relativefy_cross_entropy_gt: true #
-    l1_center_of_mass: true
     window_size: 40
     barron: false
 

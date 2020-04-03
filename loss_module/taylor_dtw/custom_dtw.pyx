@@ -215,6 +215,11 @@ cdef traceback(double[:, ::1] cost_mat, int ilen, int jlen):
         b.push_back(j)
     return a, b, cost
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def traceback2(np.ndarray[np.float64_t, ndim=2, mode="c"] cost_mat, ilen, jlen):
+    return traceback(cost_mat, ilen, jlen)
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
