@@ -195,9 +195,9 @@ class DTWLoss(CustomLoss):
             dist, cost, a2, b2 = constrained_dtw2d2(np.ascontiguousarray(item["preds_numpy"][i][:,:2]),
                                                     np.ascontiguousarray(item["gt_numpy"][i][:,:2]),
                                                     constraint=self.window_size)
-            print(f"new1 {i}", a)
-            print(f"new2 {i}", b)
-            print(f"old {i}", a3)
+            # print(f"new1 {i}", a)
+            # print(f"new2 {i}", b)
+            # print(f"old {i}", a3)
             assert all([_a == _b for _a, _b in zip(a, a3)])
             assert all([_a == _b for _a, _b in zip(a2, a3)])
             assert all([_a == _b for _a, _b in zip(b2, b3)])
