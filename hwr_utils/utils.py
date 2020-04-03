@@ -794,10 +794,10 @@ def new_scheduler(optimizer, batch_size, last_epoch=-1):
 def load_model_strokes(config, load_optimizer=True):
     # User can specify folder or .pt file; other files are assumed to be in the same folder
     if os.path.isfile(config["load_path"]):
-        old_state = torch.load(config["load_path"])
+        old_state = torch.load(config["load_path"], ) # map_location=torch.device(config.device)
         path, child = os.path.split(config["load_path"])
     else:
-        old_state = torch.load(os.path.join(config["load_path"], "baseline_model.pt"))
+        old_state = torch.load(os.path.join(config["load_path"], "baseline_model.pt"), ) # map_location=torch.device(config.device)
         path = config["load_path"]
     logger.info(f"Loading MODEL from {path}")
 

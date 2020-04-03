@@ -284,9 +284,9 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=0):
         # print("new")
         # print(a)
         # print(b)
-        return a,b,_new_gt, {"swaps": None, "reverse": (slice(start_idx, end_idx), slice(end_idx-1,_start_idx, -1))}
+        return b,a,_new_gt, {"swaps": None, "reverse": (slice(start_idx, end_idx), slice(end_idx-1,_start_idx, -1))}
     else:
-        return a,b,None, None
+        return b,a, None, None
 
     # Traceback - all the way to before the buffer
         # Finds new path
