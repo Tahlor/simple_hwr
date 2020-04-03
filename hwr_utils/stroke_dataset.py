@@ -716,7 +716,7 @@ def collate_stroke(batch, device="cpu"):
     dim1 = max([b['line_img'].shape[1] for b in batch]) # width
     dim2 = batch[0]['line_img'].shape[2] # channel
 
-    all_labels = []
+    all_labels_numpy = []
     label_lengths = []
     start_points = []
 
@@ -735,7 +735,7 @@ def collate_stroke(batch, device="cpu"):
         label_lengths.append(len(l))
         ## ALL LABELS - list of desired_num_of_strokes batch size; arrays LENGTH, VOCAB SIZE
         labels[i,:len(l), :] = l
-        all_labels.append(torch.from_numpy(l.astype(TYPE)).to(device))
+        all_labels_numpy.append(l)
         start_points.append(torch.from_numpy(batch[i]['start_points'].astype(TYPE)).to(device))
 
     label_lengths = np.asarray(label_lengths)
@@ -749,8 +749,9 @@ def collate_stroke(batch, device="cpu"):
     return_d = {
         "line_imgs": line_imgs,
         "gt": labels, # Numpy Array, with padding
-        "gt_list": all_labels, # List of numpy arrays
+        "gt_list": [torch.from_numpy(l.astype(TYPE)).to(device) for l in all_labels_numpy], # List of numpy arrays
         "gt_reverse_strokes": [torch.from_numpy(b["gt_reverse_strokes"].astype(TYPE)).to(device) for b in batch],
+        "gt_numpy": all_labels_numpy,
         "start_points": start_points,  # List of numpy arrays
         "gt_format": [batch[0]["gt_format"]]*batch_size,
         "label_lengths": label_lengths,

@@ -186,20 +186,21 @@ class DTWLoss(CustomLoss):
             pred = item["preds_numpy"][i]
             targ = targs[i]
             # This can be extended to do DTW with just a small buffer
-            adjusted_targ = swap_to_minimize_l1(pred, targ.detach().numpy().astype("float64"), stroke_numbers=True, center_of_mass=self.center_of_mass)
-            a,b,_gt, adaptive_instr_dict = adaptive_dtw(adjusted_targ, item["preds_numpy"][i], constraint=self.window_size, buffer=20)
+            _targ = item["gt_numpy"][i]
+            a,b,_gt, adaptive_instr_dict = adaptive_dtw(item["preds_numpy"][i], _targ, constraint=self.window_size, buffer=20)
 
             ## Reverse the original GT
             if adaptive_instr_dict:
                 reverse_slice = adaptive_instr_dict["reverse"][1]
                 normal_slice = adaptive_instr_dict["reverse"][0]
                 #print(self.training_dataset, item["gt_idx"], normal_slice, reverse_slice)
-                self.training_dataset[item["gt_idx"]][normal_slice,:2] = self.training_dataset[item["gt_idx"]][reverse_slice,:2]
+                original_gt = self.training_dataset[item["gt_idx"][i]]["gt"]
+                print(normal_slice, reverse_slice)
+                #original_gt[normal_slice,:2] = original_gt[reverse_slice,:2]
                 _gt = Tensor(_gt)
             else:
                 _gt = targ
 
-            adjusted_targ = tensor(adjusted_targ)
             pred = preds[i][a, :][:, self.loss_indices]
             targ = _gt[b, :][:, :2]
 

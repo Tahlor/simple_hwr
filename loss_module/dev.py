@@ -168,7 +168,7 @@ for i in range(1, cost_mat.shape[0]):
 """
 
 
-def refill_cost_matrix_dev(a, b, cost_mat, start_a, end_a, start_b, end_b, constraint, dist_func=euclidean_distance):
+def refill_cost_matrix_dev(a, b, cost_mat, start_a, end_a, start_b, end_b, constraint, metric=euclidean_distance):
     # Include some buffer beyond just the strokes being flipped
     # To get improvement, compare the cost at this point before and after
     # cost_mat = np.empty((a.shape[0] + 1, b.shape[0] + 1), dtype=np.float64)
@@ -179,9 +179,12 @@ def refill_cost_matrix_dev(a, b, cost_mat, start_a, end_a, start_b, end_b, const
     #     start_b = max(start_b - 1, 0)
     #     end_a = max(end_a - 1, 0)
     #     end_b = max(end_b - 1, 0)
-    cost_mat = cost_mat.base # get the original matrix back with the infs
+    dist_func = euclidean_distance
     for i in range(start_a + 1, end_a + 1):
         for j in range(max(start_b + 1, i - constraint), min(end_b + 1, i + constraint + 1)):
+            x = dist_func(a[i - 1], b[j - 1]) + \
+                            d_min(cost_mat[i - 1, j], cost_mat[i, j - 1], cost_mat[i - 1, j - 1])
+            print(x)
             cost_mat[i, j] = dist_func(a[i - 1], b[j - 1]) + \
                             d_min(cost_mat[i - 1, j], cost_mat[i, j - 1], cost_mat[i - 1, j - 1])
 
@@ -204,7 +207,7 @@ def get_worst_match(gt, preds, a, b, sos):
 
     x = [np.sum(x) for x in strokes]
 
-    print("average mismatch cost", x)
+    #print("average mismatch cost", x)
     return np.argmax(x)
 
 
@@ -261,7 +264,9 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=0):
 
     # PREDS AND GTS MUST BE SAME LENGTH TO BE CONSISTENT; need to recalculate distance to end_idx buffer
     #print(np.asarray(cost_mat))
-    cost_mat = dtw.refill_cost_matrix(_new_gt, _preds, cost_mat.base, start_idx, end_idx_buffer, start_idx, end_idx_buffer, constraint=constraint, metric="euclidean")
+    #cost_mat = dtw.refill_cost_matrix(_new_gt, _preds, cost_mat.base, start_idx, end_idx_buffer, start_idx, end_idx_buffer, constraint=constraint, metric="euclidean")
+    cost_mat = refill_cost_matrix_dev(_new_gt, _preds, cost_mat.base, start_idx, end_idx_buffer, start_idx,
+                                      end_idx_buffer, constraint=constraint, metric="euclidean")
 
     # Truncate the cost matrix to be to the designated start and end
     #print(start_idx_buffer,end_idx_buffer,pred_start_buffer,pred_end_buffer)
@@ -278,7 +283,7 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=0):
         # print("new")
         # print(a)
         # print(b)
-        return a,b,_new_gt, {"swaps": None, "reverse": (slice(start_idx, end_idx), slice(end_idx-1,_start_idx))}
+        return a,b,_new_gt, {"swaps": None, "reverse": (slice(start_idx, end_idx), slice(end_idx-1,_start_idx, -1))}
     else:
         return a,b,None, None
 
