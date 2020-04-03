@@ -217,7 +217,8 @@ def get_worst_match(gt, preds, a, b, sos):
 # These are all GT indices
 # First ROW/COL of cost matrix are NULL!
 
-def adaptive_dtw(preds, gt, constraint=5, buffer=0, reverse_on=True):
+def adaptive_dtw(preds, gt, constraint=5, buffer=0, testing=False):
+
     # traceback(mat, x1.shape[0], x2.shape[0])
     # create_cost_mat_2d
     # constrained_dtw2d
@@ -241,29 +242,31 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=0, reverse_on=True):
     end_idx_buffer = gt.shape[0] if end_idx + buffer >= gt.shape[0] else end_idx + buffer # too many strokes OR too many stroke points
 
     # Reverse the line
+    _new_gt = _gt.copy()  # optimization: make a copy with the dataloader
     _start_idx = start_idx-1 if start_idx > 0 else None
-    _reversed = np.ascontiguousarray(_gt[end_idx-1:_start_idx:-1, :2])
-    _new_gt = _gt.copy() # optimization: make a copy with the dataloader
-    _new_gt[start_idx:end_idx] = _reversed
+
+    if not testing:
+        _reversed = np.ascontiguousarray(_gt[end_idx-1:_start_idx:-1, :2])
+        _new_gt[start_idx:end_idx] = _reversed
 
     # Old Cost
     if end_idx_buffer < gt.shape[0]:
         alignment_end_idx = np.argmax(a == end_idx_buffer)  # first GT point
-        old_cost = cost_mat[a[alignment_end_idx], b[alignment_end_idx]]  # where we will start the traceback later
 
         # The indices in the preds that DTW with the GTs
         pred_start_buffer = b[np.argmax(a == start_idx_buffer)]
-        pred_end_buffer = b[np.argmax(a == end_idx_buffer)]
+        pred_end_buffer = b[alignment_end_idx]
+        #assert a[alignment_end_idx] == end_idx_buffer
+        old_cost = cost_mat[a[alignment_end_idx]+1, pred_end_buffer+1]  # where we will start the traceback later
 
     else: # last stroke
-        old_cost = cost_mat[a[-1], b[-1]]
-        pred_end_buffer = None
+        old_cost = cost_mat[-1,-1]
+        pred_end_buffer = preds.shape[0]
         pred_start_buffer = b[np.argmax(a == start_idx_buffer)]
 
     # Refill - end is with buffer
 
     # PREDS AND GTS MUST BE SAME LENGTH TO BE CONSISTENT; need to recalculate distance to end_idx buffer
-    #print(np.asarray(cost_mat))
     cost_mat = dtw.refill_cost_matrix(_new_gt, _preds, cost_mat.base, start_idx, end_idx_buffer, start_idx, end_idx_buffer, constraint=constraint, metric="euclidean")
     #print(cost_mat.base.shape, cost_mat.shape)
     # cost_mat = refill_cost_matrix_dev(_new_gt, _preds, cost_mat.base, start_idx, end_idx_buffer, start_idx,
@@ -271,16 +274,18 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=0, reverse_on=True):
 
     # Truncate the cost matrix to be to the designated start and end
     #print(start_idx_buffer,end_idx_buffer,pred_start_buffer,pred_end_buffer)
-    cost_mat_truncated = cost_mat[start_idx_buffer:end_idx_buffer,pred_start_buffer:pred_end_buffer] # the first point in the pred]
+    cost_mat_truncated = cost_mat[1:,1:][start_idx_buffer:end_idx_buffer+1,pred_start_buffer:pred_end_buffer+1] # the first point in the pred]
     #print(np.asarray(cost_mat_truncated))
 
     #print("old cost (partial): ", old_cost)
     #print("cost (partial): ", cost_mat_truncated[-1,-1])
-
-    if cost_mat_truncated[-1,-1]+.001 < old_cost and reverse_on:
+    #print(cost_mat_truncated[-1,-1], old_cost)
+    if testing:
+        assert cost_mat_truncated[-1,-1] == old_cost
+    if cost_mat_truncated[-1,-1]+.001 < old_cost and not testing:
         #print("BETTER MATCH!!!")
         # Optimize later - don't need to retrace entire matrix, just the recalc + buffer
-        a,b,cost = dtw.traceback2(np.ascontiguousarray(cost_mat.base))
+        a,b,cost = dtw.traceback2(np.ascontiguousarray(cost_mat))
         # print("new")
         # print(a)
         # print(b)
