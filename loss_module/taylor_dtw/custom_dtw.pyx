@@ -76,7 +76,7 @@ def constrained_dtw1d(np.ndarray[np.float64_t, ndim=1, mode="c"] a, np.ndarray[n
 cdef __dtw1d(np.ndarray[np.float64_t, ndim=1, mode="c"] a, np.ndarray[np.float64_t, ndim=1, mode="c"] b,
              int constraint):
     cdef double[:, ::1] cost_mat = create_cost_mat_1d(a, b, constraint)
-    align_a, align_b, cost = traceback(cost_mat, a.shape[0], b.shape[0])
+    align_a, align_b, cost = traceback(cost_mat)
     align_a.reverse()
     align_b.reverse()
     return cost_mat, cost, align_a, align_b
@@ -93,7 +93,7 @@ cdef double[:, ::1] create_cost_mat_1d(double[::1] a, double[::1]b, int constrai
         for j in range(max(1, i-constraint), min(cost_mat.shape[1], i+constraint+1)):
             cost_mat[i, j] = fabs(a[i - 1] - b[j - 1]) +\
                 d_min(cost_mat[i - 1, j], cost_mat[i, j - 1], cost_mat[i - 1, j - 1])
-    return cost_mat[1:, 1:]
+    return cost_mat #[1:, 1:]
 
 
 @cython.boundscheck(False)
@@ -125,7 +125,7 @@ cdef __dtw2d(np.ndarray[np.float64_t, ndim=2, mode="c"] a,
     else:
         raise ValueError("unrecognized metric")
     cdef double[:, ::1] cost_mat = create_cost_mat_2d(a, b, constraint, dist_func)
-    align_a, align_b, cost = traceback(cost_mat, a.shape[0], b.shape[0])
+    align_a, align_b, cost = traceback(cost_mat)
     align_a.reverse()
     align_b.reverse()
     return cost_mat, cost, align_a, align_b
@@ -142,7 +142,7 @@ cdef double[:, ::1] create_cost_mat_2d(double[:, ::1] a, double[:, ::1] b, int c
         for j in range(max(1, i-constraint), min(cost_mat.shape[1], i+constraint+1)):
             cost_mat[i, j] = dist_func(a[i - 1], b[j - 1]) +\
                 d_min(cost_mat[i - 1, j], cost_mat[i, j - 1], cost_mat[i - 1, j - 1])
-    return cost_mat[1:, 1:]
+    return cost_mat #[1:, 1:]
 
 
 @cython.boundscheck(False)
@@ -175,7 +175,7 @@ cdef double[:, ::1] _refill_cost_matrix(double[:, ::1] a, double[:, ::1] b, doub
             cost_mat[i, j] = dist_func(a[i - 1], b[j - 1]) + \
                             d_min(cost_mat[i - 1, j], cost_mat[i, j - 1], cost_mat[i - 1, j - 1])
 
-    return cost_mat[1:, 1:]
+    return cost_mat #[1:, 1:]
 
 
 @cython.boundscheck(False)
@@ -191,18 +191,18 @@ def refill_cost_matrix(np.ndarray[np.float64_t, ndim=2, mode="c"] a, np.ndarray[
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef traceback(double[:, ::1] cost_mat, int ilen, int jlen):
+cdef traceback(double[:, ::1] cost_mat):
     cdef int i, j
-    i = ilen - 1
-    j = jlen - 1
+    i = cost_mat.shape[0] - 1 # go from shape to index
+    j = cost_mat.shape[1] - 1
     #cost_mat = cost_mat[1:, 1:]
-    cdef double cost = cost_mat[i, j]
+    cdef double cost = cost_mat[i+1, j+1] # because of inf rows/cols
     cdef vector[int] a
     cdef vector[int] b
-    a.push_back(i)
-    b.push_back(j)
+    a.push_back(i-1) # because cost matrix is too big; corner item is i-1 idx of a
+    b.push_back(j-1)
     cdef int match
-    while (i > 0 or j > 0):
+    while (i > 1 or j > 1):
         match = d_argmin(cost_mat[i - 1, j - 1], cost_mat[i - 1, j], cost_mat[i, j - 1])
         if match == 0:
             i -= 1
@@ -211,14 +211,17 @@ cdef traceback(double[:, ::1] cost_mat, int ilen, int jlen):
             i -= 1
         else:
             j -= 1
-        a.push_back(i)
-        b.push_back(j)
+        a.push_back(i-1)
+        b.push_back(j-1)
     return a, b, cost
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def traceback2(np.ndarray[np.float64_t, ndim=2, mode="c"] cost_mat, ilen, jlen):
-    return traceback(cost_mat, ilen, jlen)
+def traceback2(np.ndarray[np.float64_t, ndim=2, mode="c"] cost_mat):
+    a, b, cost = traceback(cost_mat)
+    a.reverse()
+    b.reverse()
+    return a, b, cost
 
 
 @cython.boundscheck(False)
@@ -246,7 +249,7 @@ cdef __dtw2d_with_backward(
     else:
         raise ValueError("unrecognized metric")
     cdef double[:, ::1] cost_mat = create_cost_mat_2d_with_backward(a, b, b2, constraint, dist_func)
-    align_a, align_b, cost = traceback(cost_mat, a.shape[0], b.shape[0])
+    align_a, align_b, cost = traceback(cost_mat)
     align_a.reverse()
     align_b.reverse()
     return cost_mat, cost, align_a, align_b
@@ -267,4 +270,4 @@ cdef double[:, ::1] create_cost_mat_2d_with_backward(
         for j in range(max(1, i-constraint), min(cost_mat.shape[1], i+constraint+1)):
             cost_mat[i, j] = min(dist_func(a[i - 1], b[j - 1]), dist_func(a[i - 1], b2[j - 1])) +\
                 d_min(cost_mat[i - 1, j], cost_mat[i, j - 1], cost_mat[i - 1, j - 1])
-    return cost_mat[1:, 1:]
+    return cost_mat #[1:, 1:]

@@ -277,10 +277,10 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=0):
     #print("old cost (partial): ", old_cost)
     #print("cost (partial): ", cost_mat_truncated[-1,-1])
 
-    if cost_mat_truncated[-1,-1]+.001 < old_cost:
+    if cost_mat_truncated[-1,-1]+.001 < old_cost and False:
         #print("BETTER MATCH!!!")
         # Optimize later - don't need to retrace entire matrix, just the recalc + buffer
-        a,b,cost = dtw.traceback2(np.ascontiguousarray(cost_mat.base[1:,1:]), cost_mat.shape[0], cost_mat.shape[1])
+        a,b,cost = dtw.traceback2(np.ascontiguousarray(cost_mat.base), cost_mat.shape[0], cost_mat.shape[1])
         # print("new")
         # print(a)
         # print(b)

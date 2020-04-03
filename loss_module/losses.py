@@ -15,6 +15,7 @@ from hwr_utils.stroke_recovery import relativefy_torch, swap_to_minimize_l1, get
 from loss_module.dev import adaptive_dtw
 import sys
 sys.path.append("..")
+from unittest import FunctionTestCase
 #pip install git+https://github.com/tahlor/pydtw
 
 # def extensions():
@@ -37,7 +38,7 @@ sys.path.append("..")
 # pyximport.install(setup_args=extensions())
 # cd loss_module && python taylor_dtw/setup.py install --force
 from taylor_dtw.custom_dtw import dtw2d_with_backward
-
+from pydtw import constrained_dtw2d as constrained_dtw2d2
 
 BCELoss = torch.nn.BCELoss()
 BCEWithLogitsLoss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.ones(1)*5)
@@ -188,7 +189,18 @@ class DTWLoss(CustomLoss):
             targ = targs[i]
             # This can be extended to do DTW with just a small buffer
             _targ = item["gt_numpy"][i]
+
             a,b,_gt, adaptive_instr_dict = adaptive_dtw(item["preds_numpy"][i], _targ, constraint=self.window_size, buffer=20)
+            a3, b3 = self.dtw_single((item["preds_numpy"][i], item["gt_numpy"][i]), dtw_mapping_basis=self.dtw_mapping_basis, window_size=self.window_size)
+            dist, cost, a2, b2 = constrained_dtw2d2(np.ascontiguousarray(item["preds_numpy"][i][:,:2]),
+                                                    np.ascontiguousarray(item["gt_numpy"][i][:,:2]),
+                                                    constraint=self.window_size)
+            print(f"new1 {i}", a)
+            print(f"new2 {i}", b)
+            print(f"old {i}", a3)
+            assert all([_a == _b for _a, _b in zip(a, a3)])
+            assert all([_a == _b for _a, _b in zip(a2, a3)])
+            assert all([_a == _b for _a, _b in zip(b2, b3)])
 
             ## Reverse the original GT
             if adaptive_instr_dict and False:
