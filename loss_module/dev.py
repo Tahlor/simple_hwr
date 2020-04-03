@@ -283,7 +283,7 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=0, testing=False):
     if testing:
         assert cost_mat_truncated[-1,-1] == old_cost
     if cost_mat_truncated[-1,-1]+.001 < old_cost and not testing:
-        #print("BETTER MATCH!!!")
+        print("BETTER MATCH!!!")
         # Optimize later - don't need to retrace entire matrix, just the recalc + buffer
         a,b,cost = dtw.traceback2(np.ascontiguousarray(cost_mat))
         # print("new")
