@@ -217,7 +217,7 @@ def get_worst_match(gt, preds, a, b, sos):
 # These are all GT indices
 # First ROW/COL of cost matrix are NULL!
 
-def adaptive_dtw(preds, gt, constraint=5, buffer=0, testing=False):
+def adaptive_dtw(preds, gt, constraint=5, buffer=20, testing=False):
 
     # traceback(mat, x1.shape[0], x2.shape[0])
     # create_cost_mat_2d
