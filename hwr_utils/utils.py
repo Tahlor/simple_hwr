@@ -760,7 +760,8 @@ def save_model_stroke(config, bsf=False):
         'model': config["model"].state_dict(),
         'optimizer': config["optimizer"].state_dict(),
         'global_step': config.counter.updates,
-        'scheduler': config.scheduler.state_dict()
+        'scheduler': config.scheduler.state_dict(),
+        'batch_size': config.batch_size
     }
 
     config["main_model_path"] = os.path.join(path, "{}_model.pt".format(config['name']))
@@ -787,9 +788,9 @@ def save_model_stroke(config, bsf=False):
     if "training_dataset" in config:
         np.save(Path(config["results_dir"]) / "training_dataset.npy", [gt["gt"] for gt in config.training_dataset.data] )
 
-def new_scheduler(optimizer, batch_size, last_epoch=-1):
+def new_scheduler(optimizer, batch_size, gamma=.95, last_epoch=-1):
     print("Building new scheduler...")
-    return lr_scheduler.StepLR(optimizer, step_size=int(180000 / 16), gamma=.95, last_epoch=last_epoch)
+    return lr_scheduler.StepLR(optimizer, step_size=int(180000 / batch_size), gamma=gamma, last_epoch=last_epoch)
 
 def load_model_strokes(config, load_optimizer=True):
     # User can specify folder or .pt file; other files are assumed to be in the same folder
@@ -818,6 +819,8 @@ def load_model_strokes(config, load_optimizer=True):
     else:
         config["model"].load_state_dict(old_state)
 
+    old_batch_size = old_state["batch_size"] if "batch_size" in old_state else config.batch_size
+
     # Load these counters -- will be overwritten if all_stats.json found
     config.counter.updates = config["global_counter"]
     config.counter.epochs = config["current_epoch"]
@@ -828,7 +831,7 @@ def load_model_strokes(config, load_optimizer=True):
         print("Loading saved scheduler...")
         config.scheduler.load_state_dict(old_state["scheduler"])
     elif load_optimizer: # if there is no saved schedule state, rebuild it
-        config.scheduler = new_scheduler(config.optimizer, config.batch_size, last_epoch=config.counter.updates)
+        config.scheduler = new_scheduler(config.optimizer, old_batch_size, gamma=config.scheduler_gamma, last_epoch=config.counter.updates)
 
     # Launch visdom
     if config["use_visdom"]:

@@ -327,7 +327,7 @@ def main(config_path, testing=False):
     LR = config.learning_rate * batch_size/24
     logger.info(f"Specified LR: {config.learning_rate}, Effective: {LR}")
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
-    config.scheduler = utils.new_scheduler(optimizer, batch_size)  # halves every ~10 "super" epochs
+    config.scheduler = utils.new_scheduler(optimizer, batch_size, gamma=config.scheduler_gamma)  # halves every ~10 "super" epochs
     # config.scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=80, verbose=False,
     #                                             threshold=0.00005, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)
 

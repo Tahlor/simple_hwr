@@ -50,7 +50,7 @@ warp: true
 # LR schedule
 learning_rate: 1e-4          # LR
 scheduler_step: 1            # Every X steps, multiply LR by gamma
-scheduler_gamma: .95         # LR decay rate
+scheduler_gamma: .96         # LR decay rate
 
 ## Loss options:
   # Based on width of image, determine how many outputs there should be
@@ -61,7 +61,7 @@ scheduler_gamma: .95         # LR decay rate
 
 test_size: null
 train_size: null
-batch_size: 32
+batch_size: 28
 
 ## GTs
 # All options include:
