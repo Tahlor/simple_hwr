@@ -785,7 +785,7 @@ def save_model_stroke(config, bsf=False):
         create_resume_training_stroke(config)
     config["save_count"] += 1
     if "training_dataset" in config:
-        np.save(Path(config["results_dir"]) / "training_dataset.npy", config.training_dataset)
+        np.save(Path(config["results_dir"]) / "training_dataset.npy", [gt["gt"] for gt in config.training_dataset.data] )
 
 def new_scheduler(optimizer, batch_size, last_epoch=-1):
     print("Building new scheduler...")
