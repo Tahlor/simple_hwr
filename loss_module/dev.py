@@ -217,7 +217,7 @@ def get_worst_match(gt, preds, a, b, sos):
 # These are all GT indices
 # First ROW/COL of cost matrix are NULL!
 
-def adaptive_dtw(preds, gt, constraint=5, buffer=0):
+def adaptive_dtw(preds, gt, constraint=5, buffer=0, reverse_on=True):
     # traceback(mat, x1.shape[0], x2.shape[0])
     # create_cost_mat_2d
     # constrained_dtw2d
@@ -277,10 +277,10 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=0):
     #print("old cost (partial): ", old_cost)
     #print("cost (partial): ", cost_mat_truncated[-1,-1])
 
-    if cost_mat_truncated[-1,-1]+.001 < old_cost and False:
+    if cost_mat_truncated[-1,-1]+.001 < old_cost and reverse_on:
         #print("BETTER MATCH!!!")
         # Optimize later - don't need to retrace entire matrix, just the recalc + buffer
-        a,b,cost = dtw.traceback2(np.ascontiguousarray(cost_mat.base), cost_mat.shape[0], cost_mat.shape[1])
+        a,b,cost = dtw.traceback2(np.ascontiguousarray(cost_mat.base))
         # print("new")
         # print(a)
         # print(b)

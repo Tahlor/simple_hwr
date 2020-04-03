@@ -191,25 +191,26 @@ class DTWLoss(CustomLoss):
             _targ = item["gt_numpy"][i]
 
             a,b,_gt, adaptive_instr_dict = adaptive_dtw(item["preds_numpy"][i], _targ, constraint=self.window_size, buffer=20)
-            a3, b3 = self.dtw_single((item["preds_numpy"][i], item["gt_numpy"][i]), dtw_mapping_basis=self.dtw_mapping_basis, window_size=self.window_size)
-            dist, cost, a2, b2 = constrained_dtw2d2(np.ascontiguousarray(item["preds_numpy"][i][:,:2]),
-                                                    np.ascontiguousarray(item["gt_numpy"][i][:,:2]),
-                                                    constraint=self.window_size)
+
+            # a3, b3 = self.dtw_single((item["preds_numpy"][i], item["gt_numpy"][i]), dtw_mapping_basis=self.dtw_mapping_basis, window_size=self.window_size)
+            # dist, cost, a2, b2 = constrained_dtw2d2(np.ascontiguousarray(item["preds_numpy"][i][:,:2]),
+            #                                         np.ascontiguousarray(item["gt_numpy"][i][:,:2]),
+            #                                         constraint=self.window_size)
             # print(f"new1 {i}", a)
             # print(f"new2 {i}", b)
             # print(f"old {i}", a3)
-            assert all([_a == _b for _a, _b in zip(a, a3)])
-            assert all([_a == _b for _a, _b in zip(a2, a3)])
-            assert all([_a == _b for _a, _b in zip(b2, b3)])
+            # assert all([_a == _b for _a, _b in zip(a, a3)])
+            # assert all([_a == _b for _a, _b in zip(a2, a3)])
+            # assert all([_a == _b for _a, _b in zip(b2, b3)])
 
             ## Reverse the original GT
-            if adaptive_instr_dict and False:
+            if adaptive_instr_dict:
                 reverse_slice = adaptive_instr_dict["reverse"][1]
                 normal_slice = adaptive_instr_dict["reverse"][0]
                 #print(self.training_dataset, item["gt_idx"], normal_slice, reverse_slice)
                 original_gt = self.training_dataset[item["gt_idx"][i]]["gt"]
                 #print(normal_slice, reverse_slice)
-                #original_gt[normal_slice,:2] = original_gt[reverse_slice,:2]
+                original_gt[normal_slice,:2] = original_gt[reverse_slice,:2]
                 _gt = Tensor(_gt)
                 self.updates +=1
                 if self.updates % 10000 == 0:
