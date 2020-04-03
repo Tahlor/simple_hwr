@@ -191,7 +191,7 @@ class DTWLoss(CustomLoss):
             a,b,_gt, adaptive_instr_dict = adaptive_dtw(item["preds_numpy"][i], _targ, constraint=self.window_size, buffer=20)
 
             ## Reverse the original GT
-            if adaptive_instr_dict:
+            if adaptive_instr_dict and False:
                 reverse_slice = adaptive_instr_dict["reverse"][1]
                 normal_slice = adaptive_instr_dict["reverse"][0]
                 #print(self.training_dataset, item["gt_idx"], normal_slice, reverse_slice)

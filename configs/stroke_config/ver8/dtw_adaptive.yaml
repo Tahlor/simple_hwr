@@ -10,7 +10,7 @@ load_path: /fslhome/tarch/fsl_groups/fslg_hwr/compute/taylor_simple_hwr/RESULTS/
 load_path: "/home/taylor/github/simple_hwr/RESULTS/ver5/March 10/normal_v4_model.part"
 load_path: /home/taylor/github/simple_hwr/RESULTS/pretrained/normal_SOS_EOS_ORDERED_brodie_model.pt
 load_path: /fslhome/tarch/fsl_groups/fslg_hwr/compute/taylordtw_adaptive.yaml_simple_hwr/RESULTS/20200301-PRETRAIN/3_stroke.pt
-load_path: /home/taylor/github/simple_hwr/RESULTS/pretrained/3_stroke.pt
+load_path: ./RESULTS/pretrained/3_stroke.pt
 
 load_optimizer: true # load LR and per-parameter LR's from saved state
 reset_LR: false # reset the global LR if loading optimizer
