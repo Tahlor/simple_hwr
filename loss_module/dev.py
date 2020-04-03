@@ -184,7 +184,7 @@ def refill_cost_matrix_dev(a, b, cost_mat, start_a, end_a, start_b, end_b, const
         for j in range(max(start_b + 1, i - constraint), min(end_b + 1, i + constraint + 1)):
             x = dist_func(a[i - 1], b[j - 1]) + \
                             d_min(cost_mat[i - 1, j], cost_mat[i, j - 1], cost_mat[i - 1, j - 1])
-            print("SEQ", x)
+
             cost_mat[i, j] = dist_func(a[i - 1], b[j - 1]) + \
                             d_min(cost_mat[i - 1, j], cost_mat[i, j - 1], cost_mat[i - 1, j - 1])
 
@@ -237,8 +237,8 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=0):
     start_idx = sos[worst_match_idx]
     start_idx_buffer = max(start_idx - buffer, 0)  # double check -1
 
-    end_idx = gt.shape[0] if worst_match_idx + 1 >= sos.size or sos[worst_match_idx] > gt.size else sos[worst_match_idx + 1]
-    end_idx_buffer = gt.shape[0] if worst_match_idx + 1 >= sos.size or end_idx + buffer >= gt.size else end_idx + buffer # too many strokes OR too many stroke points
+    end_idx = gt.shape[0] if worst_match_idx + 1 >= sos.size or sos[worst_match_idx + 1] > gt.shape[0] else sos[worst_match_idx + 1]
+    end_idx_buffer = gt.shape[0] if end_idx + buffer >= gt.shape[0] else end_idx + buffer # too many strokes OR too many stroke points
 
     # Reverse the line
     _start_idx = start_idx-1 if start_idx > 0 else None
@@ -264,9 +264,10 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=0):
 
     # PREDS AND GTS MUST BE SAME LENGTH TO BE CONSISTENT; need to recalculate distance to end_idx buffer
     #print(np.asarray(cost_mat))
-    #cost_mat = dtw.refill_cost_matrix(_new_gt, _preds, cost_mat.base, start_idx, end_idx_buffer, start_idx, end_idx_buffer, constraint=constraint, metric="euclidean")
-    cost_mat = refill_cost_matrix_dev(_new_gt, _preds, cost_mat.base, start_idx, end_idx_buffer, start_idx,
-                                      end_idx_buffer, constraint=constraint, metric="euclidean")
+    cost_mat = dtw.refill_cost_matrix(_new_gt, _preds, cost_mat.base, start_idx, end_idx_buffer, start_idx, end_idx_buffer, constraint=constraint, metric="euclidean")
+    #print(cost_mat.base.shape, cost_mat.shape)
+    # cost_mat = refill_cost_matrix_dev(_new_gt, _preds, cost_mat.base, start_idx, end_idx_buffer, start_idx,
+    #                                   end_idx_buffer, constraint=constraint, metric="euclidean")
 
     # Truncate the cost matrix to be to the designated start and end
     #print(start_idx_buffer,end_idx_buffer,pred_start_buffer,pred_end_buffer)
@@ -276,8 +277,8 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=0):
     #print("old cost (partial): ", old_cost)
     #print("cost (partial): ", cost_mat_truncated[-1,-1])
 
-    if cost_mat_truncated[-1,-1] < old_cost:
-        print("BETTER MATCH!!!")
+    if cost_mat_truncated[-1,-1]+.001 < old_cost:
+        #print("BETTER MATCH!!!")
         # Optimize later - don't need to retrace entire matrix, just the recalc + buffer
         a,b,cost = traceback(cost_mat, cost_mat.shape[0], cost_mat.shape[1])
         # print("new")

@@ -162,6 +162,7 @@ class DTWLoss(CustomLoss):
         if "training_dataset" in kwargs and kwargs["training_dataset"] is not None:
             logger.info("Training dataset provided to loss function...GT adaptation possible")
             self.training_dataset = kwargs["training_dataset"]
+            self.updates = 0
 
     # not faster
     def parallel_dtw(self, preds, targs, label_lengths, **kwargs):
@@ -198,6 +199,9 @@ class DTWLoss(CustomLoss):
                 print(normal_slice, reverse_slice)
                 #original_gt[normal_slice,:2] = original_gt[reverse_slice,:2]
                 _gt = Tensor(_gt)
+                self.updates +=1
+                if self.updates % 10 == 0:
+                    logger.info(f"Made {self.updates} adaptive GT changes")
             else:
                 _gt = targ
 
