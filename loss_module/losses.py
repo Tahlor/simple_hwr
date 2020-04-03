@@ -196,11 +196,11 @@ class DTWLoss(CustomLoss):
                 normal_slice = adaptive_instr_dict["reverse"][0]
                 #print(self.training_dataset, item["gt_idx"], normal_slice, reverse_slice)
                 original_gt = self.training_dataset[item["gt_idx"][i]]["gt"]
-                print(normal_slice, reverse_slice)
+                #print(normal_slice, reverse_slice)
                 #original_gt[normal_slice,:2] = original_gt[reverse_slice,:2]
                 _gt = Tensor(_gt)
                 self.updates +=1
-                if self.updates % 10 == 0:
+                if self.updates % 10000 == 0:
                     logger.info(f"Made {self.updates} adaptive GT changes")
             else:
                 _gt = targ
