@@ -471,7 +471,7 @@ def is_galois():
     return get_computer() == "Galois"
 
 def is_dalai():
-    return get_computer() == "DalaiLama"
+    return get_computer() in ["DalaiLama", "TheServe"]
 
 def is_taylor():
     return get_computer() in ("Galois", "brodie")

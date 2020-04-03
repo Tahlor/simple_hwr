@@ -47,8 +47,8 @@ INFINITY = 1000
 
 def euclidean_distance(a, b):
     d = 0
-    a = np.asarray([a])
-    b = np.asarray([b])
+    a = np.asarray(a)
+    b = np.asarray(b)
     # print(a.shape,b)
     for i in range(a.shape[0]):
         tmp = a[i] - b[i]
@@ -184,7 +184,7 @@ def refill_cost_matrix_dev(a, b, cost_mat, start_a, end_a, start_b, end_b, const
         for j in range(max(start_b + 1, i - constraint), min(end_b + 1, i + constraint + 1)):
             x = dist_func(a[i - 1], b[j - 1]) + \
                             d_min(cost_mat[i - 1, j], cost_mat[i, j - 1], cost_mat[i - 1, j - 1])
-            print(x)
+            print("SEQ", x)
             cost_mat[i, j] = dist_func(a[i - 1], b[j - 1]) + \
                             d_min(cost_mat[i - 1, j], cost_mat[i, j - 1], cost_mat[i - 1, j - 1])
 
