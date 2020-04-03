@@ -213,7 +213,7 @@ class DTWLoss(CustomLoss):
                 original_gt[normal_slice,:2] = original_gt[reverse_slice,:2]
                 _gt = Tensor(_gt)
                 self.updates +=1
-                if self.updates % 1000 == 0:
+                if self.updates % 10 == 0:
                     logger.info(f"Made {self.updates} adaptive GT changes")
             else:
                 _gt = targ
