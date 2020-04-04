@@ -28,7 +28,10 @@ normal_error_handling = False
 #     print("ERROR!")
 #     Stop
 #     return "error"
+
+### GLOBALS
 PARALLEL = True
+RENDER = True
 
 def error_handler(func):
     @wraps(func)
@@ -639,7 +642,7 @@ def synthetic(vers="random"):
     test_set_size = None  # use leftover test images in Training
     train_set_size = None
     combine_images = False # combine images to make them longer
-    RENDER = False
+
     if True: # new version
         variant = f"Boosted2_{vers}"
         source_json_path = f"synthetic_online/boosted2/{vers}"
@@ -707,8 +710,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("--testing", action='store_true', help="No parallel", default=False)
     args = parser.parse_args()
-    PARALLEL = ~args.testing
-
+    PARALLEL = not args.testing
+    print("parallel", PARALLEL)
     synthetic("random")
     synthetic("normal")
     #indic()
