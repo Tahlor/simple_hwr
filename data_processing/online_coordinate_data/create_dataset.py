@@ -1,4 +1,8 @@
+###########################
+### RUN FROM LOCAL FOLDER
+###########################
 from pathlib import Path
+import argparse
 import json
 import cv2
 import matplotlib.pyplot as plt
@@ -8,6 +12,7 @@ from easydict import EasyDict as edict
 from collections import defaultdict
 
 sys.path.insert(0, "../../")
+sys.path.insert(0, ".")
 from copy import deepcopy
 import warnings
 import time
@@ -23,7 +28,7 @@ normal_error_handling = False
 #     print("ERROR!")
 #     Stop
 #     return "error"
-
+PARALLEL = True
 
 def error_handler(func):
     @wraps(func)
@@ -100,6 +105,8 @@ class CreateDataset:
             for f in self.json_path.glob("*.json"):
                 print(f"Loading from {f}")
                 self.data_dict.extend(json.load(f.open("r")))
+        else:
+            raise Exception("JSON load problem")
 
         self.output_dict = {"train": [], "test": []}
         self.max_strokes=max_strokes
@@ -245,7 +252,8 @@ class CreateDataset:
             s = np.array(item["stroke"])
             s[-1,2] = 0 # replace last EOS with nothing
             file_name = "".join([c for c in item[text_key] if (c.isalpha() or c.isdigit() or c in [' ', "_"])]).rstrip()
-
+            if "bias" in item:
+                file_name += f"{item['bias']}_{item['style']}"
             # if s[0,2]==1:
             #     warnings.warn(f"Stroke shouldn't usually start with end stroke! {file_name}")
             # Synthetic generator has EOS tokens - NOT SOS TOKENS!!!
@@ -482,7 +490,7 @@ class CreateDataset:
         #args, kwargs = arg
         return process_fn(arg, **hyper_param_dict)
 
-    def parallel(self, max_iter=None, start_iter=0, parallel=True):
+    def parallel(self, max_iter=None, start_iter=0, parallel=PARALLEL):
         data_dict = self.data_dict
         if max_iter:
             data_dict = data_dict[start_iter:max_iter]
@@ -594,7 +602,7 @@ def old():
                              test_set_size=test_set_size,
                              combine_images=combine_images)
 
-    data_set.parallel(max_iter=instances, parallel=True)
+    data_set.parallel(max_iter=instances, parallel=PARALLEL)
 
 def new():
     strokes = 3      # None=MAX stroke
@@ -622,20 +630,20 @@ def new():
                              #img_folder="prepare_online_data/lineImages",
                              #json_path="online_coordinate_data/3_stroke_64_v2/train_online_coords.json"
                              )
-    data_set.parallel(max_iter=instances, parallel=True)
+    data_set.parallel(max_iter=instances, parallel=PARALLEL)
 
 def synthetic(vers="random"):
     strokes = None      # None=MAX stroke
     square = False      # Don't require square images
     instances = None    # None=Use all available instances
-    test_set_size = 30  # use leftover test images in Training
-    train_set_size = 60
+    test_set_size = None  # use leftover test images in Training
+    train_set_size = None
     combine_images = False # combine images to make them longer
     RENDER = False
-    if True:
-        variant = f"Boosted_{vers}"
-        source_json_path = f"synthetic_online/boosted/{vers}"
-    else:
+    if True: # new version
+        variant = f"Boosted2_{vers}"
+        source_json_path = f"synthetic_online/boosted2/{vers}"
+    else: # Mason's
         variant="FullSynthetic100k"
         source_json_path = "synthetic_online/train_synth_full.json"
     #json_path = "synthetic_online/train_synth_sample.json"
@@ -655,7 +663,7 @@ def synthetic(vers="random"):
                              synthetic=True
                              )
 
-    data_set.parallel(max_iter=instances, parallel=True)
+    data_set.parallel(max_iter=instances, parallel=PARALLEL)
 
 def indic():
     """
@@ -690,11 +698,17 @@ def indic():
                                  json_path=load_path,
                                  synthetic=True
                                  )
-        data_set.parallel(max_iter=instances, parallel=True)
+        data_set.parallel(max_iter=instances, parallel=PARALLEL)
 
 
 if __name__ == "__main__":
     #new()
+
+    parser = argparse.ArgumentParser(description="")
+    parser.add_argument("--testing", action='store_true', help="No parallel", default=False)
+    args = parser.parse_args()
+    PARALLEL = ~args.testing
+
     synthetic("random")
     synthetic("normal")
     #indic()

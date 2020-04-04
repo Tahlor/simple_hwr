@@ -210,7 +210,9 @@ class DTWLoss(CustomLoss):
                 #print(self.training_dataset, item["gt_idx"], normal_slice, reverse_slice)
                 original_gt = self.training_dataset[item["gt_idx"][i]]["gt"]
                 #print(normal_slice, reverse_slice)
+                x = original_gt.copy()
                 original_gt[normal_slice,:2] = original_gt[reverse_slice,:2]
+                np.testing.assert_allclose(x == original_gt)
                 _gt = Tensor(_gt)
                 self.updates +=1
                 if self.updates % 1000 == 0:

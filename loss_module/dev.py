@@ -12,6 +12,8 @@ from hwr_utils.stroke_recovery import *
 import json
 from matplotlib import pyplot as plt
 from taylor_dtw import custom_dtw as dtw
+from torch.nn.functional import softmax
+
 np.set_printoptions(precision=1)
 
 ### POSSIBLY GO BACK TO ORIGINAL HANDLING OF COST_MAT, AND USE cost_mat.base
@@ -216,6 +218,14 @@ def get_worst_match(gt, preds, a, b, sos):
 # Traceback from end buffer
 # These are all GT indices
 # First ROW/COL of cost matrix are NULL!
+
+
+## Check pre, post, and reverse
+    ## Function that recalculates given a swap
+    ## Return indices to be swapped
+## Use either a sampler based on mean and sampler based on absolute error - use softmax to assign probabilities
+
+
 
 def adaptive_dtw(preds, gt, constraint=5, buffer=20, testing=False, verbose=False):
     _print = print if verbose else lambda *a, **k: None
