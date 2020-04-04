@@ -252,13 +252,13 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=20, testing=False, verbose=Fals
 
     # Old Cost
     if end_idx_buffer < gt.shape[0]:
-        alignment_end_idx = np.argmax(a == end_idx_buffer)  # first GT point
-
+        alignment_end_idx = np.argmax(a == end_idx_buffer)  # get end arg of alignment sequence (first time it appears)
+        alignment_start_idx = np.argmax(a == start_idx_buffer)
         # The indices in the preds that DTW with the GTs
-        pred_start_buffer = b[np.argmax(a == start_idx_buffer)]
-        pred_end_buffer = b[alignment_end_idx]
+        pred_start_buffer = b[alignment_start_idx] # get the corresponding pred indices
+        pred_end_buffer = b[alignment_end_idx] # at this point, we could have a rectangle cost matrix!!
         #assert a[alignment_end_idx] == end_idx_buffer
-        old_cost = cost_mat[a[alignment_end_idx]+1, pred_end_buffer+1]  # where we will start the traceback later
+        old_cost = cost_mat[end_idx_buffer, pred_end_buffer]  # cost mat is 1-indexed +1, but these are ranges -1
 
     else: # last stroke
         old_cost = cost_mat[-1,-1]
@@ -269,7 +269,7 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=20, testing=False, verbose=Fals
 
     # PREDS AND GTS MUST BE SAME LENGTH TO BE CONSISTENT; need to recalculate distance to end_idx buffer
     #_print(np.asarray(cost_mat))
-    cost_mat = dtw.refill_cost_matrix(_new_gt, _preds, cost_mat.base, start_idx, end_idx_buffer, start_idx, end_idx_buffer, constraint=constraint, metric="euclidean")
+    cost_mat = dtw.refill_cost_matrix(_new_gt, _preds, cost_mat.base, start_idx, end_idx_buffer, pred_start_buffer, pred_end_buffer, constraint=constraint, metric="euclidean")
     _print(cost_mat.base.shape, cost_mat.shape)
     #_print(np.asarray(cost_mat))
 
@@ -277,9 +277,9 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=20, testing=False, verbose=Fals
     #                                   end_idx_buffer, constraint=constraint, metric="euclidean")
 
     # Truncate the cost matrix to be to the designated start and end
-    #print(start_idx_buffer,end_idx_buffer,pred_start_buffer,pred_end_buffer)
-    cost_mat_truncated = cost_mat[1:,1:][start_idx_buffer:end_idx_buffer,pred_start_buffer:pred_end_buffer] # the first point in the pred]
-    #print(np.asarray(cost_mat_truncated))
+    _print(start_idx_buffer,end_idx_buffer,pred_start_buffer,pred_end_buffer)
+    cost_mat_truncated = cost_mat[start_idx_buffer+1:end_idx_buffer+1,pred_start_buffer+1:pred_end_buffer+1] # +1 since 1-indexed
+    _print(np.asarray(cost_mat_truncated))
 
     _print("old cost (partial): ", old_cost)
     _print("cost (partial): ", cost_mat_truncated[-1,-1])
@@ -370,6 +370,17 @@ def test():
             [28, 29, 0, 31],
             [24, 25, 0, 35]]
 
+    random_preds = [[5, 1, 0, 11],
+            [6, 5, 0, 7],
+            [7, 9, 1, 3],
+            [24, 13, 1, 15],
+            [3, 17, 0, 19],
+            [19, 21, 1, 23],
+            [2, 33, 1, 27],
+            [4, 29, 0, 31],
+            [18, 25, 0, 35]]
+
+
     test_cases = {}
     test_cases["preds_first_last"] = {"preds":np.asarray(preds_first_last).astype(np.float64),
                            "final_cost": 0}
@@ -383,6 +394,11 @@ def test():
     for key, pred in test_cases.items():
         print(f"TESTING {key}")
         adaptive_dtw(pred["preds"], gt, constraint=5, buffer=0, verbose=True)
+
+    # print("TESTING MODE")
+    # for i in range(100):
+    #     random_preds = np.random.randint(0,30,4*9).reshape(9,4).astype(np.float64)
+    #     adaptive_dtw(random_preds, gt, constraint=5, buffer=0, testing=True, verbose=True)
 
 if __name__=='__main__':
     test()
