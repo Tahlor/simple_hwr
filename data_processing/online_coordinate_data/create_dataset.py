@@ -565,6 +565,9 @@ class CreateDataset:
                     time.sleep(1)
                     new = len(all_results)
                     pbar.update(new - previous)
+                    if new == previous:
+                        print("Done")
+                        break
                     previous = new
 
             pool.join()
