@@ -259,13 +259,16 @@ def swap_strokes(instruction_dict, gt, stroke_numbers):
         first_stroke_idx = instruction_dict["first_stroke_idx"]
         second_stroke_idx = instruction_dict["second_stroke_idx"]
         end_stroke_idx = instruction_dict["end_stroke_idx"]
-
+    print(first_stroke_idx, second_stroke_idx, end_stroke_idx)
     first_backup = gt[first_stroke_idx:second_stroke_idx].copy()
     second_backup = gt[second_stroke_idx:end_stroke_idx].copy()
     gt[first_stroke_idx:first_stroke_idx+end_stroke_idx-second_stroke_idx] = second_backup
     new_middle_point = first_stroke_idx + end_stroke_idx - second_stroke_idx
     gt[first_stroke_idx:new_middle_point] = second_backup
     gt[new_middle_point:end_stroke_idx] = first_backup
+
+    #second_stroke_idx-first_stroke_idx == end_stroke_idx-new_middle_point
+    #second_stroke_idx-first_stroke_idx == end_stroke_idx-(first_stroke_idx + end_stroke_idx - second_stroke_idx)
 
     if stroke_numbers: # Stroke numbers are now out of order; find where the strokes change, then re-add
         sos = relativefy(gt[:,2])!=0
@@ -468,7 +471,7 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=20, stroke_numbers=True, testin
     # WORST["strokes"].update({len(sos_args):1})
     # WORST["percentile"].append((worst_match_stroke_num+1)/len(sos_args))
     results = {}
-    cost_mat2 = np.asarray(cost_mat).copy()
+    #cost_mat2 = np.asarray(cost_mat).copy()
 
     # SWAP
     if worst_match_stroke_num+1 < len(sos_args):
@@ -484,7 +487,7 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=20, stroke_numbers=True, testin
     # Reverse
     results["reverse"] = check_reverse(_gt, _preds, cost_mat, a, b, worst_match_stroke_num, sos_args, constraint, buffer, testing=testing, verbose=verbose)
 
-    np.testing.assert_allclose(cost_mat2, cost_mat)
+    #np.testing.assert_allclose(cost_mat2, cost_mat)
     key_max = max(results.keys(), key=(lambda k: results[k]["cost_savings"]))
 
     _print(results)
