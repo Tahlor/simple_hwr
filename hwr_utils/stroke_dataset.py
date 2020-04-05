@@ -337,8 +337,10 @@ class StrokeRecoveryDataset(Dataset):
         #         break
 
         # Stroke order
-        #idx = 27
+        #idx = 27; print("IDX 27")
         item = self.data[idx]
+        #print(item["gt"].shape)
+        #assert item["gt"].shape[0]==52
 
         # if not "current_stroke_order" in item:
         #     item["current_stroke_order"] = list(range(np.sum(item["gt"][:,2])))

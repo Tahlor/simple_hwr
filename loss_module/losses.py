@@ -104,8 +104,6 @@ class NearestNeighbor(CustomLoss):
         bad_indices = line_imgs[torch.round(preds[:,self.loss_indices])]
 
 
-
-
 class DTWLoss(CustomLoss):
     def __init__(self, loss_indices, dtw_mapping_basis=None, **kwargs):
         """
@@ -123,7 +121,6 @@ class DTWLoss(CustomLoss):
         self.lossfun = self.dtw
         self.abs = abs
         self.method = "normal" if not "method" in kwargs else kwargs["method"]
-
 
         if "cross_entropy_indices" in kwargs and kwargs["cross_entropy_indices"]:
             self.cross_entropy_indices = kwargs["cross_entropy_indices"]
@@ -181,7 +178,7 @@ class DTWLoss(CustomLoss):
         return loss
 
 
-    def dtw_adaptive(self, preds, targs, label_lengths, item, **kwargs):
+    def dtw_adaptive(self, preds, targs, label_lengths, item, suffix, **kwargs):
         loss = 0
         item = add_preds_numpy(preds, item)
         for i in range(len(preds)):  # loop through BATCH
@@ -205,29 +202,26 @@ class DTWLoss(CustomLoss):
 
             ## Reverse the original GT
             if adaptive_instr_dict:
-                original_gt = self.training_dataset[item["gt_idx"][i]]["gt"]
-                #print(original_gt.shape, _targ.shape)
-                try:
-                    np.testing.assert_allclose(original_gt.shape, _targ.shape)
-                except:
-                    raise Exception("GT changed size?!?!?!?!?!?!")
-                #o = original_gt.copy()
-                #print(adaptive_instr_dict.keys())
-                if "reverse" in adaptive_instr_dict:
-                    reverse_slice = adaptive_instr_dict["reverse"][1]
-                    normal_slice = adaptive_instr_dict["reverse"][0]
-                    original_gt[normal_slice,:2] = original_gt[reverse_slice,:2]
-                else:
-                    swap_strokes(instruction_dict=adaptive_instr_dict, gt=original_gt, stroke_numbers=True)
+                if suffix != "_test":
+                    original_gt = self.training_dataset[item["gt_idx"][i]]["gt"]
+                    #print(original_gt.shape, _targ.shape)
+                    #o = original_gt.copy()
+                    #print(adaptive_instr_dict.keys())
+                    if "reverse" in adaptive_instr_dict:
+                        reverse_slice = adaptive_instr_dict["reverse"][1]
+                        normal_slice = adaptive_instr_dict["reverse"][0]
+                        original_gt[normal_slice,:2] = original_gt[reverse_slice,:2]
+                    else:
+                        swap_strokes(instruction_dict=adaptive_instr_dict, gt=original_gt, stroke_numbers=True)
+                    self.updates += 1
+                    if self.updates % 10000 == 0:
+                        logger.info(f"Made {self.updates} adaptive GT changes")
 
                 # Make sure something has changed!
                 # assert np.any(np.not_equal(o,original_gt))
                 # np.testing.assert_allclose(o, original_gt)
 
                 _gt = Tensor(_gt)
-                self.updates +=1
-                if self.updates % 1000 == 0:
-                    logger.info(f"Made {self.updates} adaptive GT changes")
             else:
                 _gt = targ
 
