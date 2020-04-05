@@ -362,7 +362,7 @@ def main(config_path, testing=False):
         check_epoch_build_loss(config)
 
         all_test_losses = [x for x in config.stats["Actual_Loss_Function_test"].y if x and x > 0]
-        if test_loss <= np.min(all_test_losses):
+        if all_test_losses and test_loss <= np.min(all_test_losses):
             utils.save_model_stroke(config, bsf=True)
         if epoch % config.save_freq == 0: # how often to save
             utils.save_model_stroke(config, bsf=False)
