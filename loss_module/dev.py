@@ -209,7 +209,7 @@ def get_worst_match(gt, preds, a, b, stroke_numbers=True):
     Returns:
 
     """
-    sos_stroke_numbers = np.cumsum(gt[:,2] if not stroke_numbers else gt[:,2])
+    sos_stroke_numbers = np.cumsum(gt[:,2])  if not stroke_numbers else gt[:,2]
     error = abs(gt[a][:,:2] - preds[b]) ** 2
     # print("error", error)
     # for x in np.split(gt, sos)[1:]:
