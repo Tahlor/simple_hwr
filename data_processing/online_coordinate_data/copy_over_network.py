@@ -9,7 +9,9 @@ for dest in dests:
     for var in "random", "normal":
         subvar = f"MAX_stroke_vBoosted2_{var}"
         try:
+            print(f"Copying {dest}")
             (Path(dest) / subvar).mkdir(exist_ok=True, parents=True)
             shutil.copy(source / subvar / "train_online_coords.json", dest)
         except Exception as e:
             print(e)
+
