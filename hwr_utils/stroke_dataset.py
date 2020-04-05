@@ -95,7 +95,7 @@ class BasicDataset(Dataset):
     """ The kind of dataset used for e.g. offline data. Just looks at images, and calculates the output size etc.
 
     """
-    def __init__(self, root, extension=".png", cnn=None, pickle_file=None):
+    def __init__(self, root, extension=".png", cnn=None, pickle_file=None, altered_gt=None):
         # Create dictionary with all the paths and some index
         root = Path(root)
         self.root = root
@@ -103,24 +103,28 @@ class BasicDataset(Dataset):
         self.num_of_channels = 1
         self.collate = collate_stroke_eval
         self.cnn = cnn
-        if pickle_file is None and cnn:
-            output = Path(root / "stroke_cached")
-            output.mkdir(parents=True, exist_ok=True)
-            pickle_file = output / (self.cnn.cnn_type + ".pickle")
-        if Path(pickle_file).exists():
-            self.data = unpickle_it(pickle_file)
-        else:
-            print("Pickle not found, rebuilding")
-            # Rebuild the dataset - find all PNG files
-            for i in root.rglob("*" + extension):
-                self.data.append({"image_path":i.as_posix()})
-            logger.info(("Length of data", len(self.data)))
+        if altered_gt:
+            self.data = 
 
-            # Add label lengths - save to pickle
-            if self.cnn:
-                add_output_size_to_data(self.data, self.cnn, key="label_length", root=self.root)
-                logger.info(f"DUMPING cached version to: {pickle_file}")
-                pickle.dump(self.data, pickle_file.open(mode="wb"))
+        else:
+            if pickle_file is None and cnn:
+                output = Path(root / "stroke_cached")
+                output.mkdir(parents=True, exist_ok=True)
+                pickle_file = output / (self.cnn.cnn_type + ".pickle")
+            if Path(pickle_file).exists():
+                self.data = unpickle_it(pickle_file)
+            else:
+                print("Pickle not found, rebuilding")
+                # Rebuild the dataset - find all PNG files
+                for i in root.rglob("*" + extension):
+                    self.data.append({"image_path":i.as_posix()})
+                logger.info(("Length of data", len(self.data)))
+
+                # Add label lengths - save to pickle
+                if self.cnn:
+                    add_output_size_to_data(self.data, self.cnn, key="label_length", root=self.root)
+                    logger.info(f"DUMPING cached version to: {pickle_file}")
+                    pickle.dump(self.data, pickle_file.open(mode="wb"))
 
     def __len__(self):
         return len(self.data)

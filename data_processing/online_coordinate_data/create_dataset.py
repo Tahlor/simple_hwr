@@ -456,7 +456,7 @@ class CreateDataset:
         for i, result in enumerate(temp_results):
             if func is not None:
                 result = func(result)
-            if isinstance(result, Exception) and no_errors:
+            if (isinstance(result, Exception) or result is None) and no_errors:
                 print("error", result)
                 no_errors = False
             else:
