@@ -164,6 +164,7 @@ cdef double[:, ::1] _refill_cost_matrix(double[:, ::1] a, double[:, ::1] b, doub
     Returns:
 
     """
+    cdef int i,j
     cdef metric_ptr dist_func
     if metric == 'euclidean':
         dist_func = &euclidean_distance
@@ -181,11 +182,22 @@ cdef double[:, ::1] _refill_cost_matrix(double[:, ::1] a, double[:, ::1] b, doub
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def refill_cost_matrix(np.ndarray[np.float64_t, ndim=2, mode="c"] a, np.ndarray[np.float64_t, ndim=2, mode="c"] b,
-                       np.ndarray[np.float64_t, ndim=2, mode="c"] cost_mat, start_a, end_a, start_b, end_b, constraint, metric='euclidean'):
+                       double[:, ::1] cost_mat, start_a, end_a, start_b, end_b, constraint, metric='euclidean'):
 
     #cdef np.ndarray[np.float64_t, ndim=2, mode="c"]
     #cost_mat2 = np.ascontiguousarray(cost_mat.base) # get the original matrix back with the infs in first/last row
-    new_cost_mat = _refill_cost_matrix(a, b, cost_mat, start_a, end_a, start_b, end_b, constraint, metric=metric)
+    #cdef double[:, ::1] _cost_mat = cost_mat
+
+    # cdef double[:, ::1] to_view, from_view
+    # to_view = np.ones((20, 15), dtype=np.float64)
+    # from_view = np.ones((20, 15), dtype=np.float64)
+    #
+    # # copy the elements in from_view to to_view
+    # to_view[...] = from_view
+
+    cdef double[:, ::1] _cost_mat = np.empty([cost_mat.shape[0],cost_mat.shape[1]])
+    _cost_mat[...] = cost_mat
+    new_cost_mat = _refill_cost_matrix(a, b, _cost_mat, start_a, end_a, start_b, end_b, constraint, metric=metric)
     return new_cost_mat
 
 

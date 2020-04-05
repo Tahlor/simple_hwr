@@ -12,7 +12,7 @@ import logging
 from hwr_utils.stroke_dataset import create_gts
 from hwr_utils.utils import to_numpy
 from hwr_utils.stroke_recovery import relativefy_torch, swap_to_minimize_l1, get_number_of_stroke_pts_from_gt
-from loss_module.dev import adaptive_dtw
+from loss_module.dev import adaptive_dtw, swap_strokes
 import sys
 sys.path.append("..")
 from unittest import FunctionTestCase
@@ -205,14 +205,20 @@ class DTWLoss(CustomLoss):
 
             ## Reverse the original GT
             if adaptive_instr_dict:
-                reverse_slice = adaptive_instr_dict["reverse"][1]
-                normal_slice = adaptive_instr_dict["reverse"][0]
-                #print(self.training_dataset, item["gt_idx"], normal_slice, reverse_slice)
                 original_gt = self.training_dataset[item["gt_idx"][i]]["gt"]
-                #print(normal_slice, reverse_slice)
-                x = original_gt.copy()
-                original_gt[normal_slice,:2] = original_gt[reverse_slice,:2]
-                np.testing.assert_allclose(x == original_gt)
+                #o = original_gt.copy()
+                #print(adaptive_instr_dict.keys())
+                if "reverse" in adaptive_instr_dict:
+                    reverse_slice = adaptive_instr_dict["reverse"][1]
+                    normal_slice = adaptive_instr_dict["reverse"][0]
+                    original_gt[normal_slice,:2] = original_gt[reverse_slice,:2]
+                else:
+                    swap_strokes(instruction_dict=adaptive_instr_dict, gt=original_gt, stroke_numbers=True)
+
+                # Make sure something has changed!
+                # assert np.any(np.not_equal(o,original_gt))
+                # np.testing.assert_allclose(o, original_gt)
+
                 _gt = Tensor(_gt)
                 self.updates +=1
                 if self.updates % 1000 == 0:
@@ -232,6 +238,7 @@ class DTWLoss(CustomLoss):
                 pred2 = torch.clamp(pred2, -4, 4)
                 if self.relativefy:
                     targ2 = relativefy_torch(targ2, default_value=1)  # default=1 ensures first point is a 1 (SOS);
+                    targ2[targ2 != 0] = 1 # everywhere it's not zero, there was a stroke change
                 loss += BCEWithLogitsLoss(pred2, targ2).sum() * .1  # AVERAGE pointwise loss for 1 image
 
         return loss  # , to_value(loss)
@@ -268,6 +275,7 @@ class DTWLoss(CustomLoss):
                 pred2 = torch.clamp(pred2, -4, 4)
                 if self.relativefy:
                     targ2 = relativefy_torch(targ2, default_value=1)  # default=1 ensures first point is a 1 (SOS);
+                    targ2[targ2 != 0] = 1  # everywhere it's not zero, there was a stroke change
                 loss += BCEWithLogitsLoss(pred2, targ2).sum() * .1  # AVERAGE pointwise loss for 1 image
         return loss  # , to_value(loss)
 
@@ -299,6 +307,7 @@ class DTWLoss(CustomLoss):
                 pred2 = torch.clamp(pred2, -4,4)
                 if self.relativefy:
                     targ2 = relativefy_torch(targ2, default_value=1) # default=1 ensures first point is a 1 (SOS);
+                    targ2[targ2 != 0] = 1  # everywhere it's not zero, there was a stroke change
                 loss += BCEWithLogitsLoss(pred2, targ2).sum() * .1  # AVERAGE pointwise loss for 1 image
 
                 # TEMP HACKY LOSS, WEIGHT START/END POINTS MORE!
@@ -340,6 +349,7 @@ class DTWLoss(CustomLoss):
                 pred2 = torch.clamp(pred2, -4,4)
                 if self.relativefy:
                     targ2 = relativefy_torch(targ2, default_value=1) # default=1 ensures first point is a 1 (SOS);
+                    targ2[targ2 != 0] = 1  # everywhere it's not zero, there was a stroke change
                 loss += BCEWithLogitsLoss(pred2, targ2).sum() * .1  # AVERAGE pointwise loss for 1 image
 
                 # TEMP HACKY LOSS, WEIGHT START/END POINTS MORE!
@@ -378,6 +388,7 @@ class DTWLoss(CustomLoss):
                 pred2 = torch.clamp(pred2, -4,4)
                 if self.relativefy:
                     targ2 = relativefy_torch(targ2, default_value=1) # default=1 ensures first point is a 1 (SOS);
+                    targ2[targ2 != 0] = 1  # everywhere it's not zero, there was a stroke change
                 loss += BCEWithLogitsLoss(pred2, targ2).sum() * .1  # AVERAGE pointwise loss for 1 image
         return loss  # , to_value(loss)
 
@@ -428,6 +439,7 @@ class DTWLoss(CustomLoss):
                 pred2 = torch.clamp(pred2, -4,4)
                 if self.relativefy:
                     targ2 = relativefy_torch(targ2, default_value=1) # default=1 ensures first point is a 1 (SOS);
+                    targ2[targ2 != 0] = 1  # everywhere it's not zero, there was a stroke change
                 loss += BCEWithLogitsLoss(pred2, targ2).sum() * .1  # AVERAGE pointwise loss for 1 image
 
         return loss  # , to_value(loss)

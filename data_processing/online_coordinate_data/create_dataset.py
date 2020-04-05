@@ -257,6 +257,8 @@ class CreateDataset:
             file_name = "".join([c for c in item[text_key] if (c.isalpha() or c.isdigit() or c in [' ', "_"])]).rstrip()
             if "bias" in item:
                 file_name += f"{item['bias']}_{item['style']}"
+                if item['style']==13: # this style always starts with "is a random"
+                    return None
             # if s[0,2]==1:
             #     warnings.warn(f"Stroke shouldn't usually start with end stroke! {file_name}")
             # Synthetic generator has EOS tokens - NOT SOS TOKENS!!!

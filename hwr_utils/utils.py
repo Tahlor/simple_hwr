@@ -368,9 +368,9 @@ def make_config_consistent_stroke(config):
             config.dataset.extra_dataset = ["online_coordinate_data/MAX_stroke_vFullSynthetic100kFull/train_online_coords_sample.json"]
         else:
             config.dataset.extra_dataset = ["online_coordinate_data/MAX_stroke_vFullSynthetic100kFull/train_online_coords.json",
-                                            "online_coordinate_data/MAX_stroke_vBoosted_normal/train_online_coords.json",
-                                            "online_coordinate_data/MAX_stroke_vBoosted_random/train_online_coords.json",
                                             ]
+            ## "online_coordinate_data/MAX_stroke_vBoosted_normal/train_online_coords.json",
+            ## "online_coordinate_data/MAX_stroke_vBoosted_random/train_online_coords.json",
     else:
         config.dataset.extra_dataset = []
 
