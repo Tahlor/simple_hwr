@@ -10,7 +10,7 @@ import sys
 import pickle
 from easydict import EasyDict as edict
 from collections import defaultdict
-
+import traceback
 sys.path.insert(0, "../../")
 sys.path.insert(0, ".")
 from copy import deepcopy
@@ -275,11 +275,11 @@ class CreateDataset:
             new_format = raw_format = item["stroke"]
             # if len(item["stroke"])>1:
             #     return None
-            file_name = Path(item["name"]).stem
+            file_name = Path(item[text_key]).stem
 
         stroke_dict = prep_stroke_dict(new_format, time_interval=0, scale_time_distance=True)  # list of dictionaries, 1 per file
         if stroke_dict is None:
-            warnings.warn(f"{item['name']} failed")
+            warnings.warn(f"{item[text_key]} failed")
             return None
         all_substrokes = get_all_substrokes(stroke_dict, desired_num_of_strokes=max_strokes)  # subdivide file into smaller sets
         stroke_dict.raw = raw_format
@@ -494,7 +494,11 @@ class CreateDataset:
     @staticmethod
     def worker_wrapper(arg):
         #args, kwargs = arg
-        return process_fn(arg, **hyper_param_dict)
+        try:
+            return process_fn(arg, **hyper_param_dict)
+        except:
+            traceback.print_exc()
+            return None
 
     def parallel(self, max_iter=None, start_iter=0, parallel=PARALLEL):
         data_dict = self.data_dict

@@ -36,7 +36,7 @@ dataset:
   image_prep: pil_with_distortion
   #gt_format - specified elsewhere
   #batch_size - specified elsewhere
-
+  adapted_gt_path: None
 # WARP
 warp: true
 

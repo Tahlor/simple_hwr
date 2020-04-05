@@ -34,6 +34,8 @@ dataset:
   include_synthetic: true
   num_of_channels: 1
   image_prep: pil_with_distortion
+  # adapted_gt_path:
+
 
 # Training data
 #dataset_folder: online_coordinate_data/8_stroke_vSmall_16
