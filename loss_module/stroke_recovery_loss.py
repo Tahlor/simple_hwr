@@ -168,7 +168,7 @@ class StrokeLoss:
                 losses[i] = torch.zeros(1, requires_grad=True)
                 logger.error(e)
                 logger.error(f"{loss_fn}")
-                loss_tensor = loss_fn(preds, targs, label_lengths, item=item)
+                #loss_tensor = loss_fn(preds, targs, label_lengths, item=item)
                 continue
 
             loss = to_value(loss_tensor)

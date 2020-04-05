@@ -210,7 +210,7 @@ class DTWLoss(CustomLoss):
                 try:
                     np.testing.assert_allclose(original_gt.shape, _targ.shape)
                 except:
-                    return 0
+                    raise Exception("GT changed size?!?!?!?!?!?!")
                 #o = original_gt.copy()
                 #print(adaptive_instr_dict.keys())
                 if "reverse" in adaptive_instr_dict:
