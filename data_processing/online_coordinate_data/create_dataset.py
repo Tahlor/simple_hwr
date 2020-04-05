@@ -456,9 +456,10 @@ class CreateDataset:
         for i, result in enumerate(temp_results):
             if func is not None:
                 result = func(result)
-            if (isinstance(result, Exception) or result is None) and no_errors:
-                print("error", result)
-                no_errors = False
+            if (isinstance(result, Exception) or result is None):
+                if no_errors:
+                    print("error", result)
+                    no_errors = False
             else:
                 all_results.extend(result)
         return all_results
@@ -523,10 +524,11 @@ class CreateDataset:
         print(f"Total items: {len(data_dict)}, using batches of 20k")
         while start < len(data_dict):
             subdict = data_dict[:step]
-            if parallel:
-                 all_results.extend(self._parallel(subdict))
-            else:
-                all_results.extend(self.loop(tqdm(subdict), func=self.worker_wrapper))
+            if subdict:
+                if parallel:
+                     all_results.extend(self._parallel(subdict))
+                else:
+                    all_results.extend(self.loop(tqdm(subdict), func=self.worker_wrapper))
             # Shrink data_dict for memory reasons
             data_dict = data_dict[step:]
         return self.final_process(all_results)

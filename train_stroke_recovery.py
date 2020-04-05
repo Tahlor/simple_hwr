@@ -236,7 +236,7 @@ def build_data_loaders(folder, cnn, train_size, test_size, **kwargs):
                             root=config.data_root,
                             max_images_to_load=test_size,
                             cnn=cnn,
-                            ** kwargs
+                            **kwargs
                             )
 
     test_dataloader = DataLoader(test_dataset,

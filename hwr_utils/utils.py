@@ -153,11 +153,15 @@ stroke_defaults = {"SMALL_TRAINING": False,
                     "cumsum_window_size": 30,
                     "convolve_func": "conv_weight", # or conv_window
                     "model_name":"normal",
-                    "dataset": {"img_height": 61, "image_prep": "pil_with_distortion","num_of_channels": 1, "include_synthetic": True},
+                    "dataset": {"img_height": 61,
+                                "image_prep": "pil_with_distortion",
+                                "num_of_channels": 1,
+                                "include_synthetic": True,
+                                "adapted_gt_path": None},
                     "coordconv_method": "y_abs",
                     "model": {"nHidden": 128, "num_layers": 2},
                     "reset_LR": True,
-                    "load_optimizer": False
+                    "load_optimizer": False,
                     }
 
 def debugger(func):

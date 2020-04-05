@@ -95,7 +95,7 @@ class BasicDataset(Dataset):
     """ The kind of dataset used for e.g. offline data. Just looks at images, and calculates the output size etc.
 
     """
-    def __init__(self, root, extension=".png", cnn=None, pickle_file=None, altered_gt=None):
+    def __init__(self, root, extension=".png", cnn=None, pickle_file=None, adapted_gt_path=None):
         # Create dictionary with all the paths and some index
         root = Path(root)
         self.root = root
@@ -103,8 +103,8 @@ class BasicDataset(Dataset):
         self.num_of_channels = 1
         self.collate = collate_stroke_eval
         self.cnn = cnn
-        if altered_gt:
-            self.data = 
+        if adapted_gt_path:
+            self.data = np.load(adapted_gt_path, allow_pickle=True)
 
         else:
             if pickle_file is None and cnn:
