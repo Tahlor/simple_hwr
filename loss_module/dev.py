@@ -259,8 +259,8 @@ def swap_strokes(instruction_dict, gt, stroke_numbers):
         first_stroke_idx = instruction_dict["first_stroke_idx"]
         second_stroke_idx = instruction_dict["second_stroke_idx"]
         end_stroke_idx = instruction_dict["end_stroke_idx"]
-    print(instruction_dict)
-    print(first_stroke_idx, second_stroke_idx, end_stroke_idx, gt.shape)
+    # print(instruction_dict)
+    # print(first_stroke_idx, second_stroke_idx, end_stroke_idx, gt.shape)
     first_backup = gt[first_stroke_idx:second_stroke_idx].copy()
     second_backup = gt[second_stroke_idx:end_stroke_idx].copy()
     gt[first_stroke_idx:first_stroke_idx+end_stroke_idx-second_stroke_idx] = second_backup

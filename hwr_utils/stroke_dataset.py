@@ -337,6 +337,7 @@ class StrokeRecoveryDataset(Dataset):
         #         break
 
         # Stroke order
+        idx = 27
         item = self.data[idx]
 
         # if not "current_stroke_order" in item:
@@ -389,6 +390,7 @@ class StrokeRecoveryDataset(Dataset):
         gt_reverse_strokes, sos_args = stroke_recovery.invert_each_stroke(gt)
         gt_reverse_strokes = np.array([])
 
+        np.testing.assert_allclose(item["gt"].shape, gt.shape)
         # Assumes dimension 2 is start points, 3 is EOS
         # START POINT MODEL
         if False and gt.shape[-1] > 3:

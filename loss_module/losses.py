@@ -206,8 +206,11 @@ class DTWLoss(CustomLoss):
             ## Reverse the original GT
             if adaptive_instr_dict:
                 original_gt = self.training_dataset[item["gt_idx"][i]]["gt"]
-                print(original_gt.shape, _targ.shape)
-                np.testing.assert_allclose(original_gt.shape, _targ.shape)
+                #print(original_gt.shape, _targ.shape)
+                try:
+                    np.testing.assert_allclose(original_gt.shape, _targ.shape)
+                except:
+                    return 0
                 #o = original_gt.copy()
                 #print(adaptive_instr_dict.keys())
                 if "reverse" in adaptive_instr_dict:
