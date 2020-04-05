@@ -468,23 +468,23 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=20, stroke_numbers=True, testin
     # WORST["strokes"].update({len(sos_args):1})
     # WORST["percentile"].append((worst_match_stroke_num+1)/len(sos_args))
     results = {}
-    #cost_mat2 = np.asarray(cost_mat).copy()
+    cost_mat2 = np.asarray(cost_mat).copy()
 
     # SWAP
-    # if worst_match_stroke_num+1 < len(sos_args):
-    #     # Swap with next element
-    #     results["swap_next"] = check_swap(_gt, _preds, cost_mat, a, b, worst_match_stroke_num+1, sos_args, constraint, buffer, testing=testing, verbose=verbose)
-    #     #COUNTER["swap_next"][1] += 1
-    # # Swap with previous
-    # if worst_match_stroke_num > 0 and len(sos_args) > 1:
-    #     results["swap_prev"] = check_swap(_gt, _preds, cost_mat, a, b, worst_match_stroke_num, sos_args, constraint, buffer, testing=testing, verbose=verbose)
-    #     #COUNTER["swap_prev"][1] += 1
+    if worst_match_stroke_num+1 < len(sos_args):
+        # Swap with next element
+        results["swap_next"] = check_swap(_gt, _preds, cost_mat, a, b, worst_match_stroke_num+1, sos_args, constraint, buffer, testing=testing, verbose=verbose)
+        #COUNTER["swap_next"][1] += 1
+    # Swap with previous
+    if worst_match_stroke_num > 0 and len(sos_args) > 1:
+        results["swap_prev"] = check_swap(_gt, _preds, cost_mat, a, b, worst_match_stroke_num, sos_args, constraint, buffer, testing=testing, verbose=verbose)
+        #COUNTER["swap_prev"][1] += 1
 
 
     # Reverse
     results["reverse"] = check_reverse(_gt, _preds, cost_mat, a, b, worst_match_stroke_num, sos_args, constraint, buffer, testing=testing, verbose=verbose)
 
-    #np.testing.assert_allclose(cost_mat2, cost_mat)
+    np.testing.assert_allclose(cost_mat2, cost_mat)
     key_max = max(results.keys(), key=(lambda k: results[k]["cost_savings"]))
 
     _print(results)
