@@ -50,9 +50,9 @@ dataset_folder: online_coordinate_data/MAX_stroke_vlargeTrnSetFull
 warp: true
 
 # LR schedule
-learning_rate: 3e-5          # LR
-scheduler_step: 1            # Every X steps, multiply LR by gamma
-scheduler_gamma: .97         # LR decay rate
+learning_rate: 2e-5          # LR
+scheduler_step: null         # Every X steps, multiply LR by gamma
+scheduler_gamma: .98         # LR decay rate
 
 ## Loss options:
   # Based on width of image, determine how many outputs there should be

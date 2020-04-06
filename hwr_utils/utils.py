@@ -835,6 +835,7 @@ def load_model_strokes(config, load_optimizer=True):
     if "scheduler" in old_state and load_optimizer:
         print("Loading saved scheduler...")
         config.scheduler.load_state_dict(old_state["scheduler"])
+
     elif load_optimizer: # if there is no saved schedule state, rebuild it
         config.scheduler = new_scheduler(config.optimizer, old_batch_size, gamma=config.scheduler_gamma, last_epoch=config.counter.updates)
 
