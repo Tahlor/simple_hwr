@@ -121,10 +121,15 @@ def test(dataloader):
 
     return config.stats["Actual_Loss_Function_test"].get_last()
 
-def reset_LR(optimizer, lr):
-    for param_group in optimizer.param_groups:
+def reset_LR(config, lr):
+    for param_group in config.optimizer.param_groups:
         param_group['lr'] = lr
 
+    # Create new scheduler too!
+    # config.scheduler_step - deprecated
+    config.scheduler = utils.new_scheduler(config.optimizer, config.batch_size,
+                                           gamma=config.scheduler_gamma, last_epoch=config.scheduler.last_epoch)
+    logger.info(("Scheduler Gamma", config.scheduler.gamma))
 
 def graph(batch, config=None, preds=None, _type="test", save_folder="auto", epoch="current", show=False, plot_points=True):
     if save_folder == "auto":
@@ -346,11 +351,7 @@ def main(config_path, testing=False):
 
     if config.reset_LR:
         logger.info("Resetting LR")
-        reset_LR(optimizer, LR)
-
-        # Reset scheduler too!
-        config.scheduler.gamma = config.scheduler_gamma
-        config.scheduler.step_size = config.scheduler_step
+        reset_LR(config, LR)
 
     logger.info(f"Starting LR is {next(iter(config.optimizer.param_groups))['lr']}")
 
