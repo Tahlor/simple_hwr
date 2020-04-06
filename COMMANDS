@@ -1,3 +1,14 @@
+# Copy models around
+ BRODIE TO GALOIS
  cp ~/shares/brodie/github/simple_hwr/RESULTS/ver8/20200405_035941-dtw_adaptive_new/dtw_adaptive_new_model.pt /media/data/GitHub/simple_hwr/RESULTS/pretrained/
 
- 
+ BRODIE TO SUPER
+ cp ~/shares/brodie/github/simple_hwr/RESULTS/ver8/20200405_035941-dtw_adaptive_new/dtw_adaptive_new_model.pt /simple_hwr/RESULTS/pretrained/
+
+
+ # Synthetic Data
+mv *normal* normal & mv *random* random
+cp /synth/checkpoints/gen_training_data/*.json /media/data/GitHub/simple_hwr/data/synthetic_online/boosted2
+
+## Copy Data to Synth Learner
+/simple_hwr/RESULTS/pretrained$ dtw_adaptive_new_model.pt
