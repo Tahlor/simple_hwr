@@ -2,7 +2,7 @@ from torch import nn
 import torch
 from .basic import CNN, BidirectionalRNN
 from .CoordConv import CoordConv
-from hwr_utils.utils import is_dalai
+from hwr_utils.utils import is_dalai, no_gpu_testing
 
 class StrokeRecoveryModel(nn.Module):
     def __init__(self, vocab_size=5, device="cuda", cnn_type="default64", first_conv_op=CoordConv, first_conv_opts=None, **kwargs):
@@ -16,7 +16,7 @@ class StrokeRecoveryModel(nn.Module):
 
         if first_conv_op:
             first_conv_op = CoordConv
-        if not is_dalai():
+        if not no_gpu_testing():
             self.rnn = BidirectionalRNN(nIn=1024, nHidden=self.nHidden, nOut=vocab_size, dropout=.5, num_layers=self.num_layers, rnn_constructor=nn.LSTM)
             self.cnn = CNN(nc=1, first_conv_op=first_conv_op, cnn_type=cnn_type, first_conv_opts=first_conv_opts)
         else:

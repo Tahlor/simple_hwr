@@ -271,10 +271,11 @@ def main(config_path, testing=False):
     train_size = config.train_size
     batch_size = config.batch_size
     vocab_size = config.vocab_size
-    device = config.device
+    device = config.device if not utils.no_gpu_testing() else 'cpu'
+    config.device = device # these need to be the same
 
     # Free GPU memory if necessary
-    if config.device == "cuda":
+    if device == "cuda":
         utils.kill_gpu_hogs()
 
     #output = utils.increment_path(name="Run", base_path=Path("./results/stroke_recovery"))
@@ -346,7 +347,7 @@ def main(config_path, testing=False):
     config.trainer=trainer
     config.model = model
     logger.info(f"LR before loading model: {next(iter(config.optimizer.param_groups))['lr']}")
-    if config.load_path:
+    if config.load_path and not utils.no_gpu_testing(): # don't load model if not using GPU
         utils.load_model_strokes(config, config.load_optimizer)  # should be load_model_strokes??????
         print(config.counter.epochs)
 

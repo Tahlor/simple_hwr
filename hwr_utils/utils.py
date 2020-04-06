@@ -481,6 +481,13 @@ def is_dalai():
 def is_taylor():
     return get_computer() in ("Galois", "brodie")
 
+def no_gpu_testing():
+    """ Quick test, no GPU
+
+    Returns:
+
+    """
+    return is_dalai()
 
 def choose_optimal_gpu(priority="memory"):
     import GPUtil
@@ -989,13 +996,15 @@ def create_resume_training_stroke(config):
         item = config[key]
         # Only keep items that are numbers, strings, and lists
         if item is not None \
-                and not isinstance(item, (bool, list, dict, numbers.Number, str)):
+                and not isinstance(item, (bool, list, dict, numbers.Number, str, edict)):
             del export_config[key]
 
     output = Path(config["results_dir"])
     with open(Path(output / 'RESUME.yaml'), 'w') as outfile:
-        export_config.reset_LR = False # don't reset learning rate if loading from pretrained model
-        export_config.load_optimizer = True # load the previous optimizer state
+        export_config["reset_LR"] = False # don't reset learning rate if loading from pretrained model
+        export_config["load_optimizer"] = True # load the previous optimizer state
+        if "adapted_gt_path" in config.dataset and config.dataset.adapted_gt_path:
+            export_config["dataset"]["adapted_gt_path"] = Path(export_config["load_path"]).parent / "training_dataset.npy"
         yaml.dump(export_config, outfile, default_flow_style=False, sort_keys=False)
 
     with open(Path(output / 'TEST.yaml'), 'w') as outfile:
