@@ -12,3 +12,7 @@ cp /synth/checkpoints/gen_training_data/*.json /media/data/GitHub/simple_hwr/dat
 
 ## Copy Data to Synth Learner
 /simple_hwr/RESULTS/pretrained$ dtw_adaptive_new_model.pt
+
+
+### Copy training set
+cp /media/data/GitHub/simple_hwr/RESULTS/ver8/20200405_203648-dtw_adaptive_new2/training_dataset.npy /simple_hwr/RESULTS/pretrained/
