@@ -184,6 +184,7 @@ def load_all_gts(gt_path):
         key = Path(i["image_path"]).stem.lower()
         assert not key in GT_DATA
         GT_DATA[key] = i["gt"]
+    print(f"GT's found: {GT_DATA.keys()})
     return GT_DATA
 
 if __name__=="__main__":
