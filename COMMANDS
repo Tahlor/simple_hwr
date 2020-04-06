@@ -6,13 +6,20 @@
  cp ~/shares/brodie/github/simple_hwr/RESULTS/ver8/20200405_035941-dtw_adaptive_new/dtw_adaptive_new_model.pt /simple_hwr/RESULTS/pretrained/
 
 
- # Synthetic Data
+ # Synthetic Data Created FOR STROKE RECOVERY
 mv *normal* normal & mv *random* random
 cp /synth/checkpoints/gen_training_data/*.json /media/data/GitHub/simple_hwr/data/synthetic_online/boosted2
 
-## Copy Data to Synth Learner
-/simple_hwr/RESULTS/pretrained$ dtw_adaptive_new_model.pt
+## Copy Model
+cp /media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_adaptive_new_model.pt /simple_hwr/RESULTS/pretrained/
+
+# COPY DATA - also in copy_over_network.py
+source = Path(f"/media/data/GitHub/simple_hwr/data/online_coordinate_data/")
+dests = ["/fslg_hwr/hw_data/strokes/online_coordinate_data", "/home/taylor/shares/brodie/github/simple_hwr/data/online_coordinate_data"]
 
 
 ### Copy training set
 cp /media/data/GitHub/simple_hwr/RESULTS/ver8/20200405_203648-dtw_adaptive_new2/training_dataset.npy /simple_hwr/RESULTS/pretrained/
+
+
+sudo ln -s /media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr /simple_hwr

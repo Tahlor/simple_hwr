@@ -74,6 +74,8 @@ def main(config_path):
         # OVERLOAD
         folder = PROJ_ROOT / Path("data/prepare_IAM_Lines/lines/")
         gt_path = PROJ_ROOT / Path("data/prepare_IAM_Lines/gts/lines/txt")
+
+
         #folder = Path(r"fish:////taylor@localhost:2222/media/data/GitHub/simple_hwr/data/prepare_IAM_Lines/")
         #folder = Path("/media/data/GitHub/simple_hwr/data/prepare_IAM_Lines/words")
         model = StrokeRecoveryModel(vocab_size=vocab_size, device=device, cnn_type=config.cnn_type, first_conv_op=config.coordconv, first_conv_opts=config.coordconv_opts).to(device)
