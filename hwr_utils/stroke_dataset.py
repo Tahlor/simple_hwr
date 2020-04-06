@@ -157,7 +157,6 @@ class StrokeRecoveryDataset(Dataset):
                  gt_format=None,
                  cnn=None,
                  config=None,
-                 logger=None,
                  image_prep="pil_with_distortions",
                  **kwargs):
 
@@ -188,6 +187,7 @@ class StrokeRecoveryDataset(Dataset):
             print(f"LOADING FROM {adapted_gt_path}")
             self.data = np.load(adapted_gt_path, allow_pickle=True)
         else:
+            logger.info(f"Loading data traditional way {data_paths}")
             self.data = self.load_data(root, max_images_to_load, data_paths)
         logger.info(("Dataloader size", len(self.data)))
 
