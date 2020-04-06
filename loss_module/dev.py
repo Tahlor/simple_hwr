@@ -16,11 +16,16 @@ from torch.nn.functional import softmax
 from collections import defaultdict, Counter
 from matplotlib import pyplot as plt
 from numpy.random import choice
+import time
 
 np.set_printoptions(precision=1)
 
 COUNTER ={"swap_prev":[0,0], "swap_next":[0,0], "reverse":[0,0]}
 WORST = {"strokes": Counter(), "worst": Counter(), 'percentile':[]}
+TOTAL_COUNT = 0
+today = time.strftime("%Y%m%d_%H%M%S")
+
+
 ### POSSIBLY GO BACK TO ORIGINAL HANDLING OF COST_MAT, AND USE cost_mat.base
 
 # Original DTW
@@ -240,8 +245,8 @@ def choose_bad_match(gt, preds, a, b, stroke_numbers=True, opt="worst", method="
     if opt=="worst":
         return np.argmax(x), sos
     elif opt=="sample":
-        probs = softmax(tensor(x))
-        print("PROBS", torch.max(probs))
+        probs = softmax(tensor(x), dim=0)
+        #print("PROBS", torch.max(probs))
         [draw] = choice(range(0,len(probs)), 1, p=probs)
         return draw, sos
     else:
@@ -302,88 +307,6 @@ def swap_strokes(instruction_dict, gt, stroke_numbers):
 
     return gt, first_stroke_idx, end_stroke_idx
 
-def adaptive_dtw_original(preds, gt, constraint=5, buffer=20, testing=False, verbose=False):
-    _print = print if verbose else lambda *a, **k: None
-    # traceback(mat, x1.shape[0], x2.shape[0])
-    # create_cost_mat_2d
-    # constrained_dtw2d
-    _gt, _preds = np.ascontiguousarray(gt[:, :2]), np.ascontiguousarray(preds[:, :2])
-    cost_mat, costr, a, b = dtw.constrained_dtw2d(_gt,_preds,
-                                                  constraint=constraint)
-    # print(a)
-    # print(b)
-    # print("full cost: ", costr)
-    sos = get_sos_args(gt[:, 2], stroke_numbers=False)
-
-
-    worst_match_str_num = get_worst_match(gt[:, :2], preds[:, :2], a, b, sos)
-
-    # Convert the stroke number to indices in GT
-    start_idx = sos[worst_match_str_num]
-    start_idx_buffer = max(start_idx - buffer, 0)  # double check -1
-
-    # end_idx already include range
-    end_idx = gt.shape[0] if worst_match_str_num + 1 >= sos.size or sos[worst_match_str_num + 1] > gt.shape[0] else sos[worst_match_str_num + 1]
-    end_idx_buffer = gt.shape[0] if end_idx + buffer >= gt.shape[0] else end_idx + buffer # too many strokes OR too many stroke points
-
-    # Reverse the line
-    _new_gt = _gt.copy()  # optimization: make a copy with the dataloader
-    _start_idx = start_idx-1 if start_idx > 0 else None
-
-    if not testing:
-        _reversed = np.ascontiguousarray(_gt[end_idx-1:_start_idx:-1, :2])
-        _new_gt[start_idx:end_idx] = _reversed
-
-    # Old Cost
-    if end_idx_buffer < gt.shape[0]:
-        alignment_end_idx = np.argmax(a == end_idx_buffer)  # get end arg of alignment sequence (first time it appears)
-        alignment_start_idx = np.argmax(a == start_idx_buffer)
-        # The indices in the preds that DTW with the GTs
-        pred_start_buffer = b[alignment_start_idx] # get the corresponding pred indices
-        pred_end_buffer = b[alignment_end_idx] # at this point, we could have a rectangle cost matrix!!
-        #assert a[alignment_end_idx] == end_idx_buffer
-        old_cost = cost_mat[end_idx_buffer, pred_end_buffer]  # cost mat is 1-indexed +1, but these are ranges -1
-
-    else: # last stroke
-        old_cost = cost_mat[-1,-1]
-        pred_end_buffer = preds.shape[0]
-        pred_start_buffer = b[np.argmax(a == start_idx_buffer)]
-
-    # Refill - end is with buffer
-
-    # PREDS AND GTS MUST BE SAME LENGTH TO BE CONSISTENT; need to recalculate distance to end_idx buffer
-    #_print(np.asarray(cost_mat))
-    cost_mat = dtw.refill_cost_matrix(_new_gt, _preds, cost_mat.base, start_idx, end_idx_buffer, pred_start_buffer, pred_end_buffer, constraint=constraint, metric="euclidean")
-    _print(cost_mat.base.shape, cost_mat.shape)
-    #_print(np.asarray(cost_mat))
-
-    # Truncate the cost matrix to be to the designated start and end
-    _print(start_idx_buffer,end_idx_buffer,pred_start_buffer,pred_end_buffer)
-    cost_mat_truncated = cost_mat[start_idx_buffer+1:end_idx_buffer+1,pred_start_buffer+1:pred_end_buffer+1] # +1 since 1-indexed
-    _print(np.asarray(cost_mat_truncated))
-
-    _print("old cost (partial): ", old_cost)
-    _print("cost (partial): ", cost_mat_truncated[-1,-1])
-    _print(cost_mat_truncated[-1,-1], old_cost)
-    if testing:
-        assert cost_mat_truncated[-1,-1] == old_cost
-    if cost_mat_truncated[-1,-1]+.00001 < old_cost and not testing:
-        _print("BETTER MATCH!!!")
-        # Optimize later - don't need to retrace entire matrix, just the recalc + buffer
-        a,b,cost = dtw.traceback2(np.ascontiguousarray(cost_mat))
-        _print("new")
-        _print(a)
-        _print(b)
-        return b,a,_new_gt, {"swaps": None, "reverse": (slice(start_idx, end_idx), slice(end_idx-1,_start_idx, -1))}
-    else:
-        return b,a, None, None
-
-    # Traceback - all the way to before the buffer
-        # Finds new path
-        # if better, replace path through window+buffer of original DTW
-    # OVERWRITE ORIGINAL STROKE
-    # OVERWRITE CURRENT STROKE
-    # IF SWAPPING STROKES, NEED TO SWAP SOS TOO; SHOULD NOT SWAP SOS FOR REVERSING
 
 def check(new_gt, _preds, cost_mat, a, b, start_idx, end_idx, constraint, buffer, verbose, testing):
     start_idx_buffer = max(start_idx - buffer, 0)  # double check -1
@@ -417,6 +340,7 @@ def check(new_gt, _preds, cost_mat, a, b, start_idx, end_idx, constraint, buffer
     _print("old cost (partial): ", old_cost)
     _print("cost (partial): ", cost_mat_truncated[-1,-1])
     _print(cost_mat_truncated[-1,-1], old_cost)
+
     if testing:
         assert cost_mat_truncated[-1,-1] == old_cost
     #if cost_mat_truncated[-1, -1] + .00001 < old_cost and not testing:
@@ -483,7 +407,7 @@ def sample_worst_matches():
 
 
 def adaptive_dtw(preds, gt, constraint=5, buffer=20, stroke_numbers=True, testing=False, verbose=False, **kwargs):
-    global COUNTER
+    global COUNTER, TOTAL_COUNT, WORST
     _print = print if verbose else lambda *a, **k: None
     _gt, _preds = np.ascontiguousarray(gt[:, :2]), np.ascontiguousarray(preds[:, :2])
     cost_mat, costr, a, b = dtw.constrained_dtw2d(_gt,_preds,
@@ -515,6 +439,10 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=20, stroke_numbers=True, testin
 
     #np.testing.assert_allclose(cost_mat2, cost_mat)
     key_max = max(results.keys(), key=(lambda k: results[k]["cost_savings"]))
+    TOTAL_COUNT += 1
+    if TOTAL_COUNT % 100000 == 0 and TOTAL_COUNT>0:
+        np.save(f"{today}_{TOTAL_COUNT}_COUNTER.npy", COUNTER)
+        np.save(f"{today}_{TOTAL_COUNT}_WORST.npy", WORST)
 
     _print(results)
     if results[key_max]["cost_savings"] > 0 and not testing:
