@@ -988,17 +988,14 @@ def create_resume_training_stroke(config):
     for key in config.keys():
         item = config[key]
         # Only keep items that are numbers, strings, and lists
-        if not isinstance(item, str) \
-                and not isinstance(item, numbers.Number) \
-                and not isinstance(item, list) \
-                and item is not None \
-                and not isinstance(item, bool):
+        if item is not None \
+                and not isinstance(item, (bool, list, dict, numbers.Number, str)):
             del export_config[key]
 
     output = Path(config["results_dir"])
     with open(Path(output / 'RESUME.yaml'), 'w') as outfile:
-        config.reset_LR = False # don't reset learning rate if loading from pretrained model
-        config.load_optimizer = True # load the previous optimizer state
+        export_config.reset_LR = False # don't reset learning rate if loading from pretrained model
+        export_config.load_optimizer = True # load the previous optimizer state
         yaml.dump(export_config, outfile, default_flow_style=False, sort_keys=False)
 
     with open(Path(output / 'TEST.yaml'), 'w') as outfile:
