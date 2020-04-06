@@ -803,7 +803,13 @@ def load_model_strokes(config, load_optimizer=True):
         old_state = torch.load(config["load_path"], ) # map_location=torch.device(config.device)
         path, child = os.path.split(config["load_path"])
     else:
-        old_state = torch.load(os.path.join(config["load_path"], "baseline_model.pt"), ) # map_location=torch.device(config.device)
+        children = [f.name for f in Path(config["load_path"]).glob("*.pt")]
+        if "baseline_model.pt" in children:
+            old_state = torch.load(os.path.join(config["load_path"], "baseline_model.pt"), ) # map_location=torch.device(config.device)
+        else:
+            old_state = torch.load(os.path.join(config["load_path"], children[0]), )
+            if len(children) > 1:
+                warnings.warn(f"Multiple .pt files found, using {children[0]}")
         path = config["load_path"]
     logger.info(f"Loading MODEL from {path}")
 

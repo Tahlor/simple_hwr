@@ -37,6 +37,7 @@ def main(config_path):
     load_path_override = "/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_train_2.9/normal_preload_model.pt"
     load_path_override = "/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_train_v2/v2.pt"
     load_path_override = PROJ_ROOT + "/RESULTS/pretrained/dtw_adaptive_new_model.pt"
+    load_path_override = PROJ_ROOT + "/RESULTS/pretrained/adapted_v2/"
 
     for load_path_override in [load_path_override
                                ]:
