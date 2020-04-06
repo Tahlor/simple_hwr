@@ -189,6 +189,7 @@ class StrokeRecoveryDataset(Dataset):
             self.data = np.load(adapted_gt_path, allow_pickle=True)
         else:
             self.data = self.load_data(root, max_images_to_load, data_paths)
+        logger.info(("Dataloader size", len(self.data)))
 
     def resample_one(self, item, parameter=PARAMETER):
         """ Resample will be based on time, unless the number of samples has been calculated;

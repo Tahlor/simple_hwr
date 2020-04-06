@@ -6,7 +6,28 @@
  cp ~/shares/brodie/github/simple_hwr/RESULTS/ver8/20200405_035941-dtw_adaptive_new/dtw_adaptive_new_model.pt /simple_hwr/RESULTS/pretrained/
 
 SUPER TO BRODIE
- cp /simple_hwr/RESULTS/RESULTS/ver8 ~/shares/brodie/github/simple_hwr/pretrained
+ new_home=adapted_v2
+ brodie_home=~/shares/brodie/github/simple_hwr/RESULTS/pretrained/$new_home
+ super_home=/simple_hwr/RESULTS/pretrained/$new_home
+ galois_home=/media/data/GitHub/simple_hwr/RESULTS/pretrained/$new_home
+ source_path=/simple_hwr/RESULTS/ver8/super/20200405_225449-dtw_adaptive_new2_restartLR
+ mkdir $brodie_home
+ mkdir $super_home
+ mkdir $galois_home
+
+ ln -s $source_path/dtw_adaptive_new2_restartLR_model.pt $galois_home/dtw_adaptive_new2_restartLR_model.pt
+ ln -s $source_path/training_dataset.npy $galois_home/training_dataset.npy
+
+ ln -s $source_path/dtw_adaptive_new2_restartLR_model.pt $brodie_home/dtw_adaptive_new2_restartLR_model.pt
+ ln -s $source_path/training_dataset.npy $brodie_home/training_dataset.npy
+
+ ln -s $source_path/dtw_adaptive_new2_restartLR_model.pt $super_home/dtw_adaptive_new2_restartLR_model.pt
+ ln -s $source_path/training_dataset.npy $super_home/training_dataset.npy
+
+
+ #cp $source_path/*.npy $brodie_home
+ #cp $source_path/*.pt  $brodie_home
+
 
 
 
