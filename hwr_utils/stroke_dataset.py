@@ -104,6 +104,7 @@ class BasicDataset(Dataset):
         self.collate = collate_stroke_eval
         self.cnn = cnn
         if adapted_gt_path:
+            print(f"LOADING FROM {adapted_gt_path}")
             self.data = np.load(adapted_gt_path, allow_pickle=True)
 
         else:
@@ -182,7 +183,12 @@ class StrokeRecoveryDataset(Dataset):
         self.__dict__.update(kwargs)
 
         ### LOAD THE DATA LAST!!
-        self.data = self.load_data(root, max_images_to_load, data_paths)
+        if "adapted_gt_path" in kwargs and kwargs["adapted_gt_path"] and "training" in kwargs:
+            adapted_gt_path = kwargs["adapted_gt_path"]
+            print(f"LOADING FROM {adapted_gt_path}")
+            self.data = np.load(adapted_gt_path, allow_pickle=True)
+        else:
+            self.data = self.load_data(root, max_images_to_load, data_paths)
 
     def resample_one(self, item, parameter=PARAMETER):
         """ Resample will be based on time, unless the number of samples has been calculated;
