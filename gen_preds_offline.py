@@ -162,7 +162,7 @@ def eval_only(dataloader, model):
                 name = name[:name.find("_")]
             if name in GT_DATA:
                 p = preds[ii].detach().numpy()
-                _, distances = stroke_recovery.get_nearest_point(item["line_imgs"][i], p, reference_is_image=True)
+                _, distances = stroke_recovery.get_nearest_point(item["line_imgs"][ii], p, reference_is_image=True)
                 d = np.average(distances)
                 output.append({"stroke": p,
                                "text":GT_DATA[name],
