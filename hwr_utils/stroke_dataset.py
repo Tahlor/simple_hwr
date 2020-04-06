@@ -446,8 +446,8 @@ class StrokeRecoveryDataset(Dataset):
             "gt_reverse_strokes": gt_reverse_strokes,
             "sos_args": sos_args,
             "path": image_path,
-            "x_func": item["x_func"],
-            "y_func": item["y_func"],
+            "x_func": item["x_func"] if "x_func" in item else None,
+            "y_func": item["y_func"]  if "y_func" in item else None,
             "gt_format": self.gt_format,
             "start_points": start_points,
             "kdtree": kdtree, # Will force preds to get nearer to nearest GTs; really want GTs forced to nearest pred; this will finish strokes better
