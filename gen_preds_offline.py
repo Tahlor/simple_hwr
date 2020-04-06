@@ -35,6 +35,7 @@ def main(config_path):
     load_path_override = "/media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr/RESULTS/ver2/20200217_033031-normal2/normal2_model.pt"
     load_path_override = "/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_train_2.9/normal_preload_model.pt"
     load_path_override = "/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_train_v2/v2.pt"
+    load_path_override = "/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_adaptive_new_model.pt"
 
     for load_path_override in ["/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_v3/normal_preload_SOS_EOS_L2_model.pt",
                                "/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_v3/REVERSE_NO_L1_model.pt",
