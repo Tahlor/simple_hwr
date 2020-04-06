@@ -83,10 +83,14 @@ def add_unormalized_distortion(img):
 
     # Apply targeted gaussian on stroke only
     stroke_mask = x<100
-    x[stroke_mask] = distortions.gaussian_noise(x[stroke_mask], max_intensity=.5)
-    plt.imshow(x)
-    plt.show()
-    STOP
+    # plt.imshow(x, cmap="gray")
+    # plt.show()
+
+    x[stroke_mask] = distortions.gaussian_noise(x[stroke_mask], max_intensity=.8)
+    # plt.imshow(x, cmap="gray")
+    # plt.show()
+    # from time import sleep
+    # sleep(1)
     return x
     #return img.astype(np.float64) # this one can really mess it up, def no bigger than 2
 

@@ -1,3 +1,4 @@
+import traceback
 import torch
 import robust_loss_pytorch
 import numpy as np
@@ -168,6 +169,7 @@ class StrokeLoss:
                 losses[i] = torch.zeros(1, requires_grad=True)
                 logger.error(e)
                 logger.error(f"{loss_fn}")
+                logger.error(traceback.format_exc())
                 #loss_tensor = loss_fn(preds, targs, label_lengths, item=item)
                 continue
 

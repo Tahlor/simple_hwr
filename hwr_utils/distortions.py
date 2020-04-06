@@ -278,7 +278,8 @@ def gaussian_noise(img, max_intensity=.1, logger=None):
     """
 
     random_state = np.random.RandomState()
-    sd = min(abs(np.random.normal()) * max_intensity / 2, max_intensity / 2)
+    sd = np.random.rand() * max_intensity / 2
+    # min(abs(np.random.normal()) * max_intensity / 2, max_intensity / 2)
     #sd = max_intensity / 2  # ~95% of observations will be less extreme; if max_intensity=1, we set so 95% of multipliers are <1
     noise_mask = random_state.randn(*img.shape, ) * sd  # * 2 - max_intensity # min -occlusion, max occlusion
     noise_mask = np.clip(noise_mask, -1, 1) * 255/2

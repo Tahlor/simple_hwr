@@ -126,9 +126,15 @@ def main(config_path):
 
 def post_process(pred,gt):
     #return make_more_starts(move_bad_points(reference=gt, moving_component=pred, reference_is_image=True), max_dist=.15)
-    _, distances = stroke_recovery.get_nearest_point(gt, pred, reference_is_image=True)
-    return make_more_starts(pred, max_dist=.12), np.average(distances)
-    #return pred
+    if True:
+        _, distances = stroke_recovery.get_nearest_point(gt, pred, reference_is_image=True)
+    else:
+        distances = 0
+
+    if False:
+        return make_more_starts(pred, max_dist=.12), np.average(distances)
+    else:
+        return pred.numpy(), distances
 
 def eval_only(dataloader, model):
     final_out = []
@@ -144,7 +150,8 @@ def eval_only(dataloader, model):
             pred, distance = post_process(p, item["line_imgs"][ii])
             preds_to_graph.append(pred.transpose([1, 0])) # Convert to VOCAB X WIDTH
             path = item['paths'][ii]
-            new_stem = path.stem + f"_{str(distance)[2:5]}"
+            avg_distance = np.average(distance)
+            new_stem = path.stem + f"_{str(avg_distance)[:8].replace('.',',')}"
             #print(distance, new_stem)
             item["paths"][ii] = (path.parent / new_stem).with_suffix(path.suffix)
 
@@ -162,11 +169,11 @@ def eval_only(dataloader, model):
                 name = name[:name.find("_")]
             if name in GT_DATA:
                 p = preds[ii].detach().numpy()
-                _, distances = stroke_recovery.get_nearest_point(item["line_imgs"][ii], p, reference_is_image=True)
-                d = np.average(distances)
+                _, distance = stroke_recovery.get_nearest_point(item["line_imgs"][ii], p, reference_is_image=True)
                 output.append({"stroke": p,
                                "text":GT_DATA[name],
-                               "id": name
+                               "id": name,
+                               "distance": np.average(distance)
                                })
             else:
                 print(f"{name} not found")
