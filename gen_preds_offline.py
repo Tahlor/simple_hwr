@@ -157,6 +157,8 @@ def eval_only(dataloader, model):
         names = [Path(p).stem.lower() for p in item["paths"]]
         output = []
         for ii, name in enumerate(names):
+            if "_" in name:
+                name = name[:name.find("_")]
             if name in GT_DATA:
                 p = preds[ii].detach().numpy()
                 _, distances = stroke_recovery.get_nearest_point(item["line_imgs"][i], p, reference_is_image=True)
@@ -167,6 +169,7 @@ def eval_only(dataloader, model):
                                })
             else:
                 print(f"{name} not found")
+
         utils.pickle_it(output, output_path / f"{i}.pickle")
         np.save(output_path / f"{i}.npy", output)
         final_out += output
@@ -184,7 +187,7 @@ def load_all_gts(gt_path):
         key = Path(i["image_path"]).stem.lower()
         assert not key in GT_DATA
         GT_DATA[key] = i["gt"]
-    print(f"GT's found: {GT_DATA.keys()})
+    #print(f"GT's found: {GT_DATA.keys()}")
     return GT_DATA
 
 if __name__=="__main__":
