@@ -15,6 +15,8 @@ from taylor_dtw import custom_dtw as dtw
 from torch.nn.functional import softmax
 from collections import defaultdict, Counter
 from matplotlib import pyplot as plt
+from numpy.random import choice
+
 np.set_printoptions(precision=1)
 
 COUNTER ={"swap_prev":[0,0], "swap_next":[0,0], "reverse":[0,0]}
@@ -196,7 +198,7 @@ def refill_cost_matrix_dev(a, b, cost_mat, start_a, end_a, start_b, end_b, const
     return cost_mat[1:, 1:]
 
 
-def get_worst_match(gt, preds, a, b, stroke_numbers=True):
+def choose_bad_match(gt, preds, a, b, stroke_numbers=True, opt="worst", method="mean", verbose=False):
     """ Return the stroke number with the worst match
 
     Args:
@@ -209,6 +211,15 @@ def get_worst_match(gt, preds, a, b, stroke_numbers=True):
     Returns:
 
     """
+    # Flip a coin for the method
+    if method is None:
+        method="mean" if np.random.randint(0,2) else "sum"
+    # Flip a coin for whether to target the worst or sample
+    if opt is None:
+        opt="worst" if np.random.randint(0,2) else "sample"
+    if verbose:
+        print(method, opt)
+
     sos_stroke_numbers = np.cumsum(gt[:,2])  if not stroke_numbers else gt[:,2]
     error = abs(gt[a][:,:2] - preds[b]) ** 2
     # print("error", error)
@@ -218,12 +229,26 @@ def get_worst_match(gt, preds, a, b, stroke_numbers=True):
     sos = get_sos_args(sos_stroke_numbers[a], stroke_numbers=True)
     strokes = np.split(error, sos)[1:]
 
-    ## ACTUAL DISTANCE
-    x = [np.sum(np.sum(x, axis=1)) for x in strokes]
+    ## Take average badness or abs badness
+    if method == "mean":
+        x = np.asarray([np.mean(np.sum(x, axis=1)) for x in strokes])
+    elif method == "sum":
+        x = np.asarray([np.sum(np.sum(x, axis=1)) for x in strokes])
+    else:
+        raise NotImplemented
 
-    #print("average mismatch cost", x)
-    return np.argmax(x), sos
+    if opt=="worst":
+        return np.argmax(x), sos
+    elif opt=="sample":
+        probs = softmax(tensor(x))
+        print("PROBS", torch.max(probs))
+        [draw] = choice(range(0,len(probs)), 1, p=probs)
+        return draw, sos
+    else:
+        raise NotImplemented
 
+def get_worst_match(gt, preds, a, b, stroke_numbers=True):
+    return choose_bad_match(gt, preds, a, b, stroke_numbers=stroke_numbers, opt="worst", method="mean")
 
 # Try reversing the stroke
 # Refill ONLY the stroke of the matrix + end buffer
@@ -457,7 +482,7 @@ def sample_worst_matches():
     pass
 
 
-def adaptive_dtw(preds, gt, constraint=5, buffer=20, stroke_numbers=True, testing=False, verbose=False):
+def adaptive_dtw(preds, gt, constraint=5, buffer=20, stroke_numbers=True, testing=False, verbose=False, **kwargs):
     global COUNTER
     _print = print if verbose else lambda *a, **k: None
     _gt, _preds = np.ascontiguousarray(gt[:, :2]), np.ascontiguousarray(preds[:, :2])
@@ -466,11 +491,12 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=20, stroke_numbers=True, testin
 
     sos_args = get_sos_args(gt[:, 2], stroke_numbers=stroke_numbers)
 
-    worst_match_stroke_num, sos2 = get_worst_match(gt, _preds, a, b, stroke_numbers=stroke_numbers)
+    #worst_match_stroke_num, sos2 = get_worst_match(gt, _preds, a, b, stroke_numbers=stroke_numbers)
+    worst_match_stroke_num, sos2 = choose_bad_match(gt, _preds, a, b, stroke_numbers=stroke_numbers, verbose=verbose, **kwargs)
     assert len(sos_args) == len(sos2)
-    # WORST["worst"].update({worst_match_stroke_num:1})
-    # WORST["strokes"].update({len(sos_args):1})
-    # WORST["percentile"].append((worst_match_stroke_num+1)/len(sos_args))
+    WORST["worst"].update({worst_match_stroke_num:1})
+    WORST["strokes"].update({len(sos_args):1})
+    WORST["percentile"].append((worst_match_stroke_num+1)/len(sos_args))
     results = {}
     #cost_mat2 = np.asarray(cost_mat).copy()
 
@@ -478,12 +504,11 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=20, stroke_numbers=True, testin
     if worst_match_stroke_num+1 < len(sos_args):
         # Swap with next element
         results["swap_next"] = check_swap(_gt, _preds, cost_mat, a, b, worst_match_stroke_num+1, sos_args, constraint, buffer, testing=testing, verbose=verbose)
-        #COUNTER["swap_next"][1] += 1
+        COUNTER["swap_next"][1] += 1
     # Swap with previous
     if worst_match_stroke_num > 0 and len(sos_args) > 1:
         results["swap_prev"] = check_swap(_gt, _preds, cost_mat, a, b, worst_match_stroke_num, sos_args, constraint, buffer, testing=testing, verbose=verbose)
-        #COUNTER["swap_prev"][1] += 1
-
+        COUNTER["swap_prev"][1] += 1
 
     # Reverse
     results["reverse"] = check_reverse(_gt, _preds, cost_mat, a, b, worst_match_stroke_num, sos_args, constraint, buffer, testing=testing, verbose=verbose)
@@ -629,7 +654,7 @@ def test():
 
     for key, pred in test_cases.items():
         print(f"TESTING {key}")
-        adaptive_dtw(pred["preds"], gt, constraint=5, buffer=0, stroke_numbers=False, verbose=True)
+        adaptive_dtw(pred["preds"], gt, constraint=5, buffer=0, stroke_numbers=False, verbose=True, opt=None, method=None)
     #stop
     print("TESTING MODE -- doesn't find better outcomes, just makes sure the cost matrix is refilled the same way")
     for i in range(1000):

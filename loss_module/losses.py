@@ -187,7 +187,11 @@ class DTWLoss(CustomLoss):
             # This can be extended to do DTW with just a small buffer
             _targ = item["gt_numpy"][i]
 
-            a,b,_gt, adaptive_instr_dict = adaptive_dtw(item["preds_numpy"][i], _targ, constraint=self.window_size, buffer=20)
+            a,b,_gt, adaptive_instr_dict = adaptive_dtw(item["preds_numpy"][i], _targ,
+                                                        constraint=self.window_size,
+                                                        buffer=20,
+                                                        opt="sample", method=None
+                                                        )
 
             # a3, b3 = self.dtw_single((item["preds_numpy"][i], item["gt_numpy"][i]), dtw_mapping_basis=self.dtw_mapping_basis, window_size=self.window_size)
             # dist, cost, a2, b2 = constrained_dtw2d2(np.ascontiguousarray(item["preds_numpy"][i][:,:2]),
