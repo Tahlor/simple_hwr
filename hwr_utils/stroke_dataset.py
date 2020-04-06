@@ -1,6 +1,7 @@
 import re
 import json
 import warnings
+from matplotlib import pyplot as plt
 import multiprocessing
 import torch
 from torch.utils.data import Dataset
@@ -72,13 +73,21 @@ def add_unormalized_distortion(img):
 
     """
 
-    return distortions.change_contrast(
+    x = distortions.change_contrast(
             distortions.gaussian_noise(
             distortions.blur(
                 distortions.random_distortions(img.astype(np.float32), noise_max=1.1), # this one can really mess it up, def no bigger than 2
                 max_intensity=1.0),
             max_intensity=.30)
             )
+
+    # Apply targeted gaussian on stroke only
+    stroke_mask = x<100
+    x[stroke_mask] = distortions.gaussian_noise(x[stroke_mask], max_intensity=.5)
+    plt.imshow(x)
+    plt.show()
+    STOP
+    return x
     #return img.astype(np.float64) # this one can really mess it up, def no bigger than 2
 
 def fake_gt():
@@ -95,7 +104,7 @@ class BasicDataset(Dataset):
     """ The kind of dataset used for e.g. offline data. Just looks at images, and calculates the output size etc.
 
     """
-    def __init__(self, root, extension=".png", cnn=None, pickle_file=None, adapted_gt_path=None):
+    def __init__(self, root, extension=".png", cnn=None, pickle_file=None, adapted_gt_path=None, **kwargs):
         # Create dictionary with all the paths and some index
         root = Path(root)
         self.root = root
@@ -103,6 +112,9 @@ class BasicDataset(Dataset):
         self.num_of_channels = 1
         self.collate = collate_stroke_eval
         self.cnn = cnn
+        if "contrast" in kwargs:
+            self.contrast = kwargs["contrast"]
+
         if adapted_gt_path:
             print(f"LOADING FROM {adapted_gt_path}")
             self.data = np.load(adapted_gt_path, allow_pickle=True)
@@ -134,6 +146,14 @@ class BasicDataset(Dataset):
         item = self.data[idx]
         image_path = self.root / item['image_path']
         img = read_img(image_path, num_of_channels=self.num_of_channels)
+
+        # plt.imshow(img[:,:,0], cmap="gray")
+        # plt.show()
+
+        img = (distortions.change_contrast((img+1)*127.5, contrast=2)/ 127.5 - 1.0)[:,:,np.newaxis]
+        # plt.imshow(img, cmap="gray")
+        # plt.show()
+        # STPO
         label_length = item["label_length"] if self.cnn else None
         return {
             "line_img": img,

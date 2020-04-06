@@ -84,8 +84,8 @@ def main(config_path):
         ## Loader
         logger.info(("Current dataset: ", folder))
         # Dataset - just expecting a folder
-        eval_dataset=BasicDataset(root=folder, cnn=model.cnn)
-
+        eval_dataset=BasicDataset(root=folder, cnn=model.cnn, )
+        next(iter(eval_dataset))
         eval_loader=DataLoader(eval_dataset,
                                       batch_size=batch_size,
                                       shuffle=True,
@@ -177,6 +177,7 @@ def eval_only(dataloader, model):
     utils.pickle_it(final_out, output_path / f"all_data.pickle")
     np.save(output_path / f"all_data.npy", final_out)
     logger.info(f"Output size: {len(output)}")
+    logger.info("ALL DONE")
 
 def load_all_gts(gt_path):
     global GT_DATA

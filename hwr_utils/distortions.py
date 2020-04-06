@@ -18,6 +18,9 @@ cv2.setNumThreads(0)
 
 def change_contrast(img, min_contrast=.25, max_contrast=1.3, contrast=None):
     if isinstance(img, np.ndarray):
+        if img.ndim > 2:
+            assert img.shape[-1]==1
+            img = img[:, :, 0]
         img = Image.fromarray(np.uint8(img), "L")
     enhancer = ImageEnhance.Contrast(img)
     if contrast is None:
