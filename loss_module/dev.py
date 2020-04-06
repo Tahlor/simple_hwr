@@ -24,7 +24,7 @@ COUNTER ={"swap_prev":[0,0], "swap_next":[0,0], "reverse":[0,0]}
 WORST = {"strokes": Counter(), "worst": Counter(), 'percentile':[]}
 TOTAL_COUNT = 0
 today = time.strftime("%Y%m%d_%H%M%S")
-
+PATH = Path(f"./RESULTS/GT_SWAPS/{today}").mkdir(exist_ok=True, parents=True)
 
 ### POSSIBLY GO BACK TO ORIGINAL HANDLING OF COST_MAT, AND USE cost_mat.base
 
@@ -441,8 +441,8 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=20, stroke_numbers=True, testin
     key_max = max(results.keys(), key=(lambda k: results[k]["cost_savings"]))
     TOTAL_COUNT += 1
     if TOTAL_COUNT % 100000 == 0 and TOTAL_COUNT>0:
-        np.save(f"{today}_{TOTAL_COUNT}_COUNTER.npy", COUNTER)
-        np.save(f"{today}_{TOTAL_COUNT}_WORST.npy", WORST)
+        np.save(PATH / f"{TOTAL_COUNT}_COUNTER.npy", COUNTER)
+        np.save(PATH / f"{TOTAL_COUNT}_WORST.npy", WORST)
 
     _print(results)
     if results[key_max]["cost_savings"] > 0 and not testing:

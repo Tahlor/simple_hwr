@@ -6,6 +6,7 @@
 *.slurm
 ~archive/
 STYLE\ TRANSFER/
+GT_SWAP/
 
 # Prepare_IAM (Handwriting Database)A
 
