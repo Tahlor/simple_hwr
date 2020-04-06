@@ -23,7 +23,7 @@ def main(config_path):
     global epoch, device, trainer, batch_size, output, loss_obj, x_relative_positions, config, LOGGER
     torch.cuda.empty_cache()
 
-    PROJ_ROOT= os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    PROJ_ROOT= os.path.dirname(os.path.realpath(__file__))
     config_path = "/media/data/GitHub/simple_hwr/~RESULTS/20191213_155358-baseline-GOOD_long/TEST.yaml"
     config_path = "/media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr/RESULTS/ver1/RESUME.yaml"
     config_path = PROJ_ROOT + "RESULTS/OFFLINE_PREDS/good/normal_preload.yaml"
