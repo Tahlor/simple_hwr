@@ -365,17 +365,20 @@ def main(config_path, testing=False):
         config.counter.update(epochs=1)
         loss = run_epoch(train_dataloader, report_freq=config.update_freq)
         logger.info(f"Epoch: {epoch}, Training Loss: {loss}")
-        test_loss = test(test_dataloader)
-        logger.info(f"Epoch: {epoch}, Test Loss: {test_loss}")
-        check_epoch_build_loss(config)
 
-        all_test_losses = [x for x in config.stats["Actual_Loss_Function_test"].y if x and x > 0]
-        if all_test_losses and test_loss <= np.min(all_test_losses):
-            utils.save_model_stroke(config, bsf=True)
-        if epoch % config.save_freq == 0: # how often to save
-            utils.save_model_stroke(config, bsf=False)
-        else:
-            utils.save_stats_stroke(config, bsf=False)
+        # Test and save models
+        if True:
+            test_loss = test(test_dataloader)
+            logger.info(f"Epoch: {epoch}, Test Loss: {test_loss}")
+            check_epoch_build_loss(config)
+
+            all_test_losses = [x for x in config.stats["Actual_Loss_Function_test"].y if x and x > 0]
+            if all_test_losses and test_loss <= np.min(all_test_losses):
+                utils.save_model_stroke(config, bsf=True)
+            if epoch % config.save_freq == 0: # how often to save
+                utils.save_model_stroke(config, bsf=False)
+            else:
+                utils.save_stats_stroke(config, bsf=False)
 
     ## Bezier curve
     # Have network predict whether it has reached the end of a stroke or not

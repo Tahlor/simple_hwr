@@ -411,6 +411,12 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=20, stroke_numbers=True, testin
     global COUNTER, TOTAL_COUNT, WORST
     _print = print if verbose else lambda *a, **k: None
     _gt, _preds = np.ascontiguousarray(gt[:, :2]), np.ascontiguousarray(preds[:, :2])
+
+    # print("MAJOR PROBLEM")
+    # print(_gt)
+    # _preds = np.ascontiguousarray(range(36)).reshape(9, 4).astype(np.float64)
+    # preds[:, 2] = np.cumsum([1, 0, 0, 1, 0, 1, 1, 0, 0])
+
     cost_mat, costr, a, b = dtw.constrained_dtw2d(_gt,_preds,
                                                   constraint=constraint)
 
