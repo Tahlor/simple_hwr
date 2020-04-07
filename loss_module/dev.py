@@ -24,7 +24,8 @@ COUNTER ={"swap_prev":[0,0], "swap_next":[0,0], "reverse":[0,0]}
 WORST = {"strokes": Counter(), "worst": Counter(), 'percentile':[]}
 TOTAL_COUNT = 0
 today = time.strftime("%Y%m%d_%H%M%S")
-PATH = Path(f"./RESULTS/GT_SWAPS/{today}").mkdir(exist_ok=True, parents=True)
+PATH = Path(f"./RESULTS/GT_SWAPS/{today}")
+PATH.mkdir(exist_ok=True, parents=True)
 
 ### POSSIBLY GO BACK TO ORIGINAL HANDLING OF COST_MAT, AND USE cost_mat.base
 
