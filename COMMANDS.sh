@@ -25,6 +25,10 @@ SUPER TO BRODIE
  ln -s $source_path/training_dataset.npy $super_home/training_dataset.npy
 
 
+
+ln -s /fslhome/tarch/fsl_groups/fslg_hwr/compute/taylor_simple_hwr/RESULTS/ver8/super/20200405_225449-dtw_adaptive_new2_restartLR/training_dataset.npy ./RESULTS/pretrained/adapted_v2/training_dataset.npy
+ln -s /fslhome/tarch/fsl_groups/fslg_hwr/compute/taylor_simple_hwr/RESULTS/ver8/super/20200405_225449-dtw_adaptive_new2_restartLR/dtw_adaptive_new2_restartLR_model.pt ./RESULTS/pretrained/adapted_v2/dtw_adaptive_new2_restartLR_model.pt
+
  #cp $source_path/*.npy $brodie_home
  #cp $source_path/*.pt  $brodie_home
 
