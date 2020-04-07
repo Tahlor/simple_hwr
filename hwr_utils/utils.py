@@ -33,7 +33,7 @@ def read_config(config):
     if config.suffix.lower() == ".json":
         return json.load(config.open(mode="r"))
     elif config.suffix.lower() == ".yaml":
-        return fix_scientific_notation(yaml.load(config.open(mode="r")))
+        return fix_scientific_notation(yaml.load(config.open(mode="r"), Loader=yaml.Loader))
     else:
         raise "Unknown Filetype {}".format(config)
 
