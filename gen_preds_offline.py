@@ -183,7 +183,7 @@ def eval_only(dataloader, model):
         final_out += output
     utils.pickle_it(final_out, output_path / f"all_data.pickle")
     np.save(output_path / f"all_data.npy", final_out)
-    logger.info(f"Output size: {len(output)}")
+    logger.info(f"Output size: {len(final_out)}")
     logger.info("ALL DONE")
 
 def load_all_gts(gt_path):
