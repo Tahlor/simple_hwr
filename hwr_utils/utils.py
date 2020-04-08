@@ -1330,7 +1330,7 @@ def get_index(l, item):
 def npy_loader(path):
     if Path(path).suffix == ".json":
         numpy_path = Path(path).with_suffix(".npy")
-        if numpy_path.exists() and os.path.getmtime(numpy_path) > os.path.getmtime(path):
+        if numpy_path.exists() and (not Path(path).exists() or os.path.getmtime(numpy_path) > os.path.getmtime(path)):
             print("Loading .npy version")
             return np.load(numpy_path, allow_pickle=True)
         else: # if json was updated, re-make the numpy version
