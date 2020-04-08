@@ -505,6 +505,33 @@ def choose_optimal_gpu(priority="memory"):
     except:
         return None
 
+def project_root(set_root=True):
+    current_directory = Path(os.getcwd())
+    rel_path = "."
+    while current_directory and current_directory.stem != "handwriting-synthesis":
+        current_directory = current_directory.parent
+        rel_path += "/.."
+
+    if set_root:
+        os.chdir(current_directory.as_posix())
+        return Path(".")
+    else:
+        return Path(rel_path)
+
+def get_project_root():
+    ROOT_DIR = Path(os.path.dirname(os.path.realpath(__file__)))
+    while ROOT_DIR.name != "simple_hwr":
+        ROOT_DIR = ROOT_DIR.parent
+    return ROOT_DIR
+
+def get_folder(folder="."):
+    path = (project_root() / folder)
+    if path.exists() and path.is_file():
+        return path.as_posix()
+    else:
+        return (project_root() / folder).as_posix() + "/"
+
+
 def get_gpu_utilization():
     import GPUtil
     GPUtil.showUtilization()
