@@ -81,6 +81,7 @@ def gen(sh_path, log_path, env, command, hardware_dict, cd_path=None):
 #SBATCH -C 'rhel7&pascal'
 #SBATCH --mem-per-cpu {mem}
 #SBATCH --ntasks {threads}
+#SBATCH --nodes=1
 #SBATCH --output="{log_path}"
 #SBATCH --time {time}
 #SBATCH --mail-user={EMAIL}   # email address
