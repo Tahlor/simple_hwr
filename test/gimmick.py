@@ -1,26 +1,27 @@
 import numpy as np
 
-preds_combo = [[0, 1, 1, 11],
-               [4, 5, 0, 7],
-               [8, 9, 0, 3],
-               [20, 21, 1, 23],
-               [12, 13, 1, 15],
-               [16, 17, 0, 19],
-               [32, 33, 1, 27],
-               [28, 29, 0, 31],
-               [24, 25, 0, 35]]
+if False:
+    preds_combo = [[0, 1, 1, 11],
+                   [4, 5, 0, 7],
+                   [8, 9, 0, 3],
+                   [20, 21, 1, 23],
+                   [12, 13, 1, 15],
+                   [16, 17, 0, 19],
+                   [32, 33, 1, 27],
+                   [28, 29, 0, 31],
+                   [24, 25, 0, 35]]
 
-preds_combo = np.asarray(preds_combo)
-k = []
-preds_combo[:,2] = np.cumsum(preds_combo[:,2])
+    preds_combo = np.asarray(preds_combo)
+    k = []
+    preds_combo[:,2] = np.cumsum(preds_combo[:,2])
 
-for i in range(0,32):
-    k.append({"gt": np.asarray(preds_combo), "image_path":f"{i}"})
+    for i in range(0,32):
+        k.append({"gt": np.asarray(preds_combo), "image_path":f"{i}"})
 
-np.save("training_dataset.npy", k)
+    np.save("training_dataset.npy", k)
 
-gt = np.array(range(36)).reshape(9, 4).astype(np.float64)
-gt[:, 2] = np.cumsum([1, 0, 0, 1, 0, 1, 1, 0, 0])
+    gt = np.array(range(36)).reshape(9, 4).astype(np.float64)
+    gt[:, 2] = np.cumsum([1, 0, 0, 1, 0, 1, 1, 0, 0])
 
 
 ## Make sure these aren't the same data
