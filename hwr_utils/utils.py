@@ -803,7 +803,12 @@ def save_model_stroke(config, bsf=False):
         'batch_size': config.batch_size
     }
 
-    config["main_model_path"] = os.path.join(path, "{}_model.pt".format(config['name']))
+    # Make resume model be the BSF one
+    #config["main_model_path"] = os.path.join(path, "{}_model.pt".format(config['name']))
+
+    # Make resume model be the most recent
+    config["main_model_path"] = os.path.join(config["results_dir"], "{}_model.pt".format(config['name']))
+
     torch.save(state_dict, config["main_model_path"])
     save_stats_stroke(config, bsf)
 
@@ -1031,7 +1036,8 @@ def create_resume_training_stroke(config):
         export_config["reset_LR"] = False # don't reset learning rate if loading from pretrained model
         export_config["load_optimizer"] = True # load the previous optimizer state
         if "adapted_gt_path" in config.dataset and config.dataset.adapted_gt_path:
-            export_config["dataset"]["adapted_gt_path"] = Path(export_config["load_path"]).parent / "training_dataset.npy"
+            # export_config["load_path"] is probably BSF
+            export_config["dataset"]["adapted_gt_path"] = Path(export_config["results_dir"]).parent / "training_dataset.npy"
         yaml.dump(export_config, outfile, default_flow_style=False, sort_keys=False)
 
     with open(Path(output / 'TEST.yaml'), 'w') as outfile:

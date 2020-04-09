@@ -81,7 +81,6 @@ def draw_ellipse(point, draw, color=(0, 0, 255), width=2):
         draw:
         color:
         width:
-
     Returns:
 
     """
