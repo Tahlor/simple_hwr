@@ -505,6 +505,33 @@ def choose_optimal_gpu(priority="memory"):
     except:
         return None
 
+def project_root(set_root=True):
+    current_directory = Path(os.getcwd())
+    rel_path = "."
+    while current_directory and current_directory.stem != "handwriting-synthesis":
+        current_directory = current_directory.parent
+        rel_path += "/.."
+
+    if set_root:
+        os.chdir(current_directory.as_posix())
+        return Path(".")
+    else:
+        return Path(rel_path)
+
+def get_project_root():
+    ROOT_DIR = Path(os.path.dirname(os.path.realpath(__file__)))
+    while ROOT_DIR.name != "simple_hwr":
+        ROOT_DIR = ROOT_DIR.parent
+    return ROOT_DIR
+
+def get_folder(folder="."):
+    path = (project_root() / folder)
+    if path.exists() and path.is_file():
+        return path.as_posix()
+    else:
+        return (project_root() / folder).as_posix() + "/"
+
+
 def get_gpu_utilization():
     import GPUtil
     GPUtil.showUtilization()
@@ -797,7 +824,7 @@ def save_model_stroke(config, bsf=False):
     if config["save_count"]==0:
         create_resume_training_stroke(config)
     config["save_count"] += 1
-    if "training_dataset" in config:
+    if "training_dataset" in config and "dtw_adaptive" in config.all_losses:
         np.save(Path(config["results_dir"]) / "training_dataset.npy", [{"gt":gt["gt"], "image_path":gt["image_path"]} for gt in config.training_dataset.data] )
 
 def new_scheduler(optimizer, batch_size, gamma=.95, last_epoch=-1):
@@ -1303,7 +1330,7 @@ def get_index(l, item):
 def npy_loader(path):
     if Path(path).suffix == ".json":
         numpy_path = Path(path).with_suffix(".npy")
-        if numpy_path.exists() and os.path.getmtime(numpy_path) > os.path.getmtime(path):
+        if numpy_path.exists() and (not Path(path).exists() or os.path.getmtime(numpy_path) > os.path.getmtime(path)):
             print("Loading .npy version")
             return np.load(numpy_path, allow_pickle=True)
         else: # if json was updated, re-make the numpy version

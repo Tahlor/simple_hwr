@@ -274,9 +274,19 @@ class StrokeRecoveryDataset(Dataset):
 
             if isinstance(new_data, dict):
                 new_data = [item for key, item in new_data.items()]
-            data.extend(new_data)
-        # Calculate how many points are needed
 
+            # Clean up to reduce memory footprint
+            for i,d in enumerate(new_data):
+                #"gt":new_data[i]["gt"],
+                # "number_of_samples":item["number_of_samples"], "start_distances":item["start_distances"],
+                item = new_data[i]
+                new_data[i] = {"raw":item["raw"],
+                               "shape":item["shape"],
+                               "image_path":new_data[i]["image_path"]}
+
+            data.extend(new_data)
+
+        # Calculate how many points are needed
         if self.cnn:
             add_output_size_to_data(data, self.cnn, root=self.root, max_width=self.max_width)
             self.cnn=True # remove CUDA-object from class for multiprocessing to work!!

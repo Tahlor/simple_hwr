@@ -6,7 +6,7 @@ import socket
 
 # GLOBALS
 EMAIL = "taylornarchibald@gmail.com" # mikebbrodie@gmail.com
-MEM = 64000
+MEM = 100000
 
 ## Setup paths
 group_path = Path("/panfs/pan.fsl.byu.edu/scr/grp/fslg_hwr")
@@ -28,7 +28,7 @@ sh_root = proj_dir / "slurm_scripts/scripts"              # the .sh root folder
 env = '/panfs/pan.fsl.byu.edu/scr/grp/fslg_hwr/env/hwr4_env'
 
 hardware_dict = {
-    "default":{"threads":6, "time":"72:00:00", "gpu":"pascal"},
+    "default":{"threads":8, "time":"72:00:00", "gpu":"pascal"},
     }
 
 def get_sh(path, ext=".sh"):
@@ -70,7 +70,7 @@ def mkdir(paths, parent=False):
 def gen(sh_path, log_path, env, command, hardware_dict, cd_path=None):
     time = hardware_dict["time"]
     threads = hardware_dict["threads"]
-    mem = int( MEM / threads )
+    mem = f"{int( MEM / threads )}MB"
     if cd_path is None:
         cd_path,_ = os.path.split(sh_path)
     mkdir(sh_path, parent=True)

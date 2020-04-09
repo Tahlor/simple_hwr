@@ -73,12 +73,13 @@ def main(config_path):
         folder = Path(config.dataset_folder)
 
         # OVERLOAD
-        folder = PROJ_ROOT / Path("data/prepare_IAM_Lines/lines/")
-        gt_path = PROJ_ROOT / Path("data/prepare_IAM_Lines/gts/lines/txt")
+        if False:
+            folder = PROJ_ROOT / Path("data/prepare_IAM_Lines/lines/")
+            gt_path = PROJ_ROOT / Path("data/prepare_IAM_Lines/gts/lines/txt")
+        else:
+            folder = Path("/media/data/GitHub/simple_hwr/data/prepare_IAM_Lines/words")
+            gt_path = PROJ_ROOT / Path("data/prepare_IAM_Lines/gts/words")
 
-
-        #folder = Path(r"fish:////taylor@localhost:2222/media/data/GitHub/simple_hwr/data/prepare_IAM_Lines/")
-        #folder = Path("/media/data/GitHub/simple_hwr/data/prepare_IAM_Lines/words")
         model = StrokeRecoveryModel(vocab_size=vocab_size, device=device, cnn_type=config.cnn_type, first_conv_op=config.coordconv, first_conv_opts=config.coordconv_opts).to(device)
 
         ## Loader
@@ -124,9 +125,9 @@ def main(config_path):
         eval_only(eval_loader, model)
         globals().update(locals())
 
-def post_process(pred,gt):
+def post_process(pred,gt, calculate_distance=False):
     #return make_more_starts(move_bad_points(reference=gt, moving_component=pred, reference_is_image=True), max_dist=.15)
-    if True:
+    if calculate_distance:
         _, distances = stroke_recovery.get_nearest_point(gt, pred, reference_is_image=True)
     else:
         distances = 0
@@ -169,7 +170,7 @@ def eval_only(dataloader, model):
                 name = name[:name.find("_")]
             if name in GT_DATA:
                 p = preds[ii].detach().numpy()
-                _, distance = stroke_recovery.get_nearest_point(item["line_imgs"][ii], p, reference_is_image=True)
+                #_, distance = stroke_recovery.get_nearest_point(item["line_imgs"][ii], p, reference_is_image=True)
                 output.append({"stroke": p,
                                "text":GT_DATA[name],
                                "id": name,
