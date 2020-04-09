@@ -49,7 +49,7 @@ dataset_folder: online_coordinate_data/MAX_stroke_vlargeTrnSetFull
 warp: true
 
 # LR schedule
-learning_rate: 1e-3          # LR
+learning_rate: 1e-4          # LR
 scheduler_step: null         # Every X steps, multiply LR by gamma
 scheduler_gamma: .96         # LR decay rate
 
