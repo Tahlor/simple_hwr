@@ -14,6 +14,7 @@ from train_stroke_recovery import parse_args, graph
 from hwr_utils.hwr_logger import logger
 from pathlib import Path
 import os
+from tqdm import tqdm
 from subprocess import Popen
 
 pid = os.getpid()
@@ -148,7 +149,7 @@ def eval_only(dataloader, model):
         kd_trees = np.load(KDTREE_PATH, allow_pickle=True).item()
     else:
         kd_trees = {}
-    for i, item in enumerate(dataloader):
+    for i, item in enumerate(tqdm(dataloader)):
         preds = TrainerStrokeRecovery.eval(item["line_imgs"], model,
                                            label_lengths=item["label_lengths"],
                                            relative_indices=config.pred_relativefy,

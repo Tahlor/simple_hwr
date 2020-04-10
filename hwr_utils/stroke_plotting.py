@@ -396,8 +396,8 @@ def gt_to_pil(gt, stroke_number=False):
     for stroke in list_of_strokes:
         yield [tuple(stroke_point) for stroke_point in stroke.flatten().reshape(-1, 2).tolist()]
 
-def rnd_width(w):
-    if random.randint(0,1): # don't usually change the width
+def rnd_width(w, on=True):
+    if on and random.randint(0,1): # don't usually change the width
         w = w + random.randint(-1,1)
     return max(1, w)
 
@@ -437,6 +437,7 @@ def draw_from_gt(gt, show=True, save_path=None, min_width=None, height=61,
         color = tuple((*color, 255))
         background = tuple((*background, 0))
 
+    using_random_width = True if linewidth is None else False
     if linewidth is None:
         linewidth = min(max(int(abs(np.random.beta(2,4)) * max_width + .8), 1),max_width)
         #min(max(int(abs(np.random.randn()) * (max_width - 1) * .5 + 1), 1),max_width)
@@ -466,7 +467,7 @@ def draw_from_gt(gt, show=True, save_path=None, min_width=None, height=61,
     for i, line in enumerate(pil_format):
         if line.size > 2:
             line = [tuple(x) for x in line.flatten().reshape(-1, 2).tolist()]
-            draw.line(line, fill=_color, width=rnd_width(linewidth), joint='curve')
+            draw.line(line, fill=_color, width=rnd_width(linewidth, using_random_width), joint='curve')
         elif line.size == 2: # only have a single coordinate, make it big!
             line1 = line - linewidth / 2
             line2 = line + linewidth / 2
