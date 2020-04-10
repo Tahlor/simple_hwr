@@ -186,13 +186,12 @@ class HwDataset(Dataset):
                  logger=None,
                  **kwargs):
 
-        global LOADSTROKES
-        LOADSTROKES = True if "loadstrokes" in kwargs and kwargs["loadstrokes"] else False
+        self.load_strokes_flag = True if LOADSTROKES and "loadstrokes" in kwargs and kwargs["loadstrokes"] else False
         self.stroke_path = kwargs["stroke_path"] if "stroke_path" in kwargs else "RESULTS/OFFLINE_PREDS/good/imgs/current/eval/data/all_data.npy"
 
         data = self.load_data(data_paths, root, images_to_load=max_images_to_load)
 
-        if LOADSTROKES:
+        if self.load_strokes_flag:
             self.stroke_dict = self.load_strokes(file_path=self.stroke_path)
 
         # Data
@@ -347,6 +346,13 @@ class HwDataset(Dataset):
                                                            number_of_samples=cnn_embedding_width, noise="random")
 
             gt = np.array([x, y, is_start_stroke]).transpose([1, 0])
+            # Normalize
+            gt[:, 1] -= np.min(gt[:, 1])
+            gt[:, 0] -= np.min(gt[:, 0])
+            factor = np.max(gt[:, 1])
+            factor = 1/factor if factor else 1
+            gt[:, :2] *= factor
+            #draw_from_gt(gt, show=True)
         else:
             gt = np.zeros([cnn_embedding_width, 3])
 
@@ -370,10 +376,10 @@ class HwDataset(Dataset):
 
         img = self.data[idx]["line_img"].copy()
 
-        if LOADSTROKES and "stroke" not in self.data[idx]:
+        if self.load_strokes_flag and "stroke" not in self.data[idx]:
             img_id = Path(item['image_path']).stem
             self.data[idx]["stroke"] = self.process_stroke(img_id, img.shape[1])
-        elif not LOADSTROKES:
+        elif not self.load_strokes_flag:
             self.data[idx]["stroke"] = None
 
         if self.warp:

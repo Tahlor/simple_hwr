@@ -231,6 +231,35 @@ def prep_stroke_dict(strokes, time_interval=None, scale_time_distance=True):
     #print(d_list, x_list, y_list, t_list)
     return output
 
+def resample(gt, distance=True):
+    # Calculate distances
+    EPSILON = 1e-6
+    #not_start_stroke_online = 1 - np.tile(gt[:-1, 2:], 2) + eos*EPSILON
+    sos = [np.round(gt[:,2])==1]
+
+    # Add origin for reference
+    gt_with_origin = np.vstack([[0,0,0],gt])
+    distances = np.sum((gt_with_origin[1:,:2]-gt_with_origin[0:-1, :2])**2, axis=1)
+    distances[sos] = EPSILON # distances for start strokes are epsilon
+    cum_distance = np.cumsum(distances)
+
+    x_func = interpolate.interp1d(cum_distance, gt[:, 0])
+    y_func = interpolate.interp1d(cum_distance, gt[:, 1])
+
+    # Create funcs
+    start_of_stroke_distance_values = cum_distance[sos]
+
+    x, y, is_start_stroke = sample(x_func, y_func,
+                                   start_of_stroke_distance_values,
+                                   number_of_samples=gt.shape[0],
+                                   noise=False,
+                                   last_time=cum_distance[-1])
+    gt = np.vstack([x,y,is_start_stroke]).transpose()
+
+    #draw_from_gt(gt)
+
+    return gt
+
 ## DOES THIS WORK? SHOULD BE THE SAME AS BATCH_TORCH, NEED TO TEST
 def relativefy_batch(batch, reverse=False):
     """ A tensor: Batch, Width, Vocab
@@ -571,7 +600,7 @@ def sample_OLD(function_x, function_y, starts, number_of_samples=64, noise=None,
     #print(time)
     return function_x(time), function_y(time), is_start_stroke
 
-def sample(function_x, function_y, start_times, number_of_samples=64, noise=None, plot=False):
+def sample(function_x, function_y, start_times, number_of_samples=64, noise=None, plot=False, last_time=None):
     """ Given some ipolate functions, return
 
     Args:
@@ -581,15 +610,20 @@ def sample(function_x, function_y, start_times, number_of_samples=64, noise=None
         number_of_samples:
         noise: "random" or "lagged"
         plot:
+        last_time: If the original stroke does not have extra time
+                    built-in with a dummy last start stroke, specify the max here
 
     Returns:
         list of x_points, list of y_points, binary list of whether the corresponding point is a start stroke
     """
     adj_number_of_samples = number_of_samples - len(start_times)
-    last_time = start_times[-1] # get the last start point - this should actually be the first start point of the next stroke!!
-    interval = last_time / (adj_number_of_samples)
+    if last_time is None:
+        _last_time = start_times[-1] # get the last start point - this should actually be the first start point of the next stroke!!
+    else:
+        _last_time = last_time
+    interval = _last_time / (adj_number_of_samples)
     std_dev = interval / 4 # next point is ~3 std deviations away
-    time = np.linspace(interval, last_time-interval, adj_number_of_samples, dtype=np.float64)
+    time = np.linspace(interval, _last_time - interval, adj_number_of_samples, dtype=np.float64)
 
     noise = "random" if noise is True else noise
     if noise:
@@ -603,7 +637,7 @@ def sample(function_x, function_y, start_times, number_of_samples=64, noise=None
             plt.show()
         time += noises
         time = np.maximum(time, 3*EPSILON) # 0 start stroke will be added below
-        time = np.minimum(time, last_time-3*EPSILON)
+        time = np.minimum(time, _last_time - 3 * EPSILON)
 
     time = np.r_[time, start_times]  # add the start times back in; last start time is the same as the end time
 
@@ -619,7 +653,8 @@ def sample(function_x, function_y, start_times, number_of_samples=64, noise=None
     time = time[:, 0]
 
     # Make sure the first/last strokes SOS
-    assert is_start_stroke[-1] == 1
+    if last_time is None:
+        assert is_start_stroke[-1] == 1
     assert is_start_stroke[0] == 1
     assert len(time) == number_of_samples
 
@@ -826,17 +861,17 @@ def get_nearest_point(reference, moving_component, reference_is_image=False, **k
         y_coords,x_coords = np.where(reference<150/127.5-1)
         reference = np.c_[x_coords, height-y_coords].astype(np.float64) / height # rescale to be 0-1 based on height!
 
-    if "kd" in kwargs:
+    if "kd" in kwargs and kwargs["kd"] is not None:
         kd = kwargs["kd"]
     else:
         kd = KDTree(reference[:, :2])
 
     distances, neighbor_indices = kd.query(moving_component[:, :2])  # How far do we have to move the GT's to match the predictions? Based on 0-1 height scale
     nearest_points = reference[neighbor_indices]
-    return nearest_points, distances
+    return nearest_points, distances, kd
 
 def move_bad_points_deprecated(reference, moving_component, reference_is_image=False, max_distance=6, **kwargs):
-    nearest_points, distances = get_nearest_point(reference, moving_component, reference_is_image, **kwargs)
+    nearest_points, distances, kd = get_nearest_point(reference, moving_component, reference_is_image, **kwargs)
     if isinstance(moving_component, Tensor):
         moving_component = moving_component.detach().numpy()
     moving_component[:,0:2] = nearest_points
@@ -879,7 +914,7 @@ def move_bad_points(reference, moving_component, reference_is_image=True, max_di
     # graph(item, preds=[preds.copy().transpose([1, 0])], _type="eval", epoch="current", config=config, save_folder=None,
     #       plot_points=False, show=True)
 
-    nearest_points, distances = get_nearest_point(reference, moving_component, reference_is_image, **kwargs)
+    nearest_points, distances, kd = get_nearest_point(reference, moving_component, reference_is_image, **kwargs)
     if isinstance(moving_component, Tensor):
         moving_component = moving_component.detach().numpy()
     moving_component[:, 0:2] = nearest_points

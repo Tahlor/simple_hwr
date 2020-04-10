@@ -38,6 +38,7 @@ def main(config_path):
     load_path_override = "/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_train_v2/v2.pt"
     load_path_override = PROJ_ROOT + "/RESULTS/pretrained/dtw_adaptive_new_model.pt"
     load_path_override = PROJ_ROOT + "/RESULTS/pretrained/adapted_v2/"
+    load_path_override = "/home/taylor/shares/brodie/github/simple_hwr/RESULTS/ver8/20200406_131747-dtw_adaptive_new2_restartLR_RESUME/RESUME_model.pt"
 
     for load_path_override in [load_path_override
                                ]:
@@ -73,7 +74,7 @@ def main(config_path):
         folder = Path(config.dataset_folder)
 
         # OVERLOAD
-        if False:
+        if True:
             folder = PROJ_ROOT / Path("data/prepare_IAM_Lines/lines/")
             gt_path = PROJ_ROOT / Path("data/prepare_IAM_Lines/gts/lines/txt")
         else:
@@ -125,36 +126,74 @@ def main(config_path):
         eval_only(eval_loader, model)
         globals().update(locals())
 
-def post_process(pred,gt, calculate_distance=False):
+def post_process(pred,gt, calculate_distance=True, kd=None):
     #return make_more_starts(move_bad_points(reference=gt, moving_component=pred, reference_is_image=True), max_dist=.15)
     if calculate_distance:
-        _, distances = stroke_recovery.get_nearest_point(gt, pred, reference_is_image=True)
+        _, distances, kd = stroke_recovery.get_nearest_point(gt, pred, reference_is_image=True, kd=kd)
     else:
         distances = 0
 
-    if False:
-        return make_more_starts(pred, max_dist=.12), np.average(distances)
+    if True:
+        return make_more_starts(pred, max_dist=.18), distances, kd
+        # Move single points that are far from everything to nearest part on image
+            # If that nearest point is far from other points
+            # Else delete that point
     else:
-        return pred.numpy(), distances
+        return pred.numpy(), distances, kd
 
+KDTREE_PATH = "/media/data/GitHub/simple_hwr/RESULTS/OFFLINE_PREDS/kd_trees.npy"
 def eval_only(dataloader, model):
     final_out = []
+    if Path(KDTREE_PATH).exists():
+        kd_trees = np.load(KDTREE_PATH, allow_pickle=True).item()
+    else:
+        kd_trees = {}
     for i, item in enumerate(dataloader):
         preds = TrainerStrokeRecovery.eval(item["line_imgs"], model,
                                            label_lengths=item["label_lengths"],
                                            relative_indices=config.pred_relativefy,
                                            sigmoid_activations=config.sigmoid_indices)
 
+        output = []
+        names = [Path(p).stem.lower() for p in item["paths"]]
+
         # Pred comes out of eval WIDTH x VOCAB
         preds_to_graph = []
         for ii, p in enumerate(preds): # Loop within batch
-            pred, distance = post_process(p, item["line_imgs"][ii])
+            name = names[ii]
+            kd = kd_trees[name] if name in kd_trees else None
+
+            pred, distance, kd = post_process(p, item["line_imgs"][ii], kd=kd)
+
+            # Warning if the name already exists in the dictionary and it wasn't loaded
+            if name in kd_trees and not Path(KDTREE_PATH).exists():
+                print(f"{name} already in KDTree dict")
+            kd_trees[name] = kd
+
             preds_to_graph.append(pred.transpose([1, 0])) # Convert to VOCAB X WIDTH
             path = item['paths'][ii]
             avg_distance = np.average(distance)
             new_stem = path.stem + f"_{str(avg_distance)[:8].replace('.',',')}"
             #print(distance, new_stem)
             item["paths"][ii] = (path.parent / new_stem).with_suffix(path.suffix)
+
+            if "_" in name:
+                name = name[:name.find("_")]
+            if name in GT_DATA:
+                #p = preds[ii].detach().numpy()
+                # Resample p
+                pred[0,2]=1 # make the first point a start point
+                p = stroke_recovery.resample(pred)
+
+                # _, distance = stroke_recovery.get_nearest_point(item["line_imgs"][ii], p, reference_is_image=True)
+                output.append({"stroke": p,
+                               "text": GT_DATA[name],
+                               "id": name,
+                               "distance": np.average(distance)
+                               })
+            else:
+                print(f"{name} not found")
+
 
         # Get GTs, save to file
         if i < 4:
@@ -163,27 +202,15 @@ def eval_only(dataloader, model):
             output_path = (Path(save_folder) / "data")
             output_path.mkdir(exist_ok=True, parents=True)
 
-        names = [Path(p).stem.lower() for p in item["paths"]]
-        output = []
-        for ii, name in enumerate(names):
-            if "_" in name:
-                name = name[:name.find("_")]
-            if name in GT_DATA:
-                p = preds[ii].detach().numpy()
-                #_, distance = stroke_recovery.get_nearest_point(item["line_imgs"][ii], p, reference_is_image=True)
-                output.append({"stroke": p,
-                               "text":GT_DATA[name],
-                               "id": name,
-                               "distance": np.average(distance)
-                               })
-            else:
-                print(f"{name} not found")
 
-        utils.pickle_it(output, output_path / f"{i}.pickle")
-        np.save(output_path / f"{i}.npy", output)
+        #utils.pickle_it(output, output_path / f"{i}.pickle")
+        #np.save(output_path / f"{i}.npy", output)
         final_out += output
-    utils.pickle_it(final_out, output_path / f"all_data.pickle")
+
+    #utils.pickle_it(final_out, output_path / f"all_data.pickle")
     np.save(output_path / f"all_data.npy", final_out)
+    if kd_trees[next(iter(kd_trees))]: # make sure it's not None
+        np.save(KDTREE_PATH, kd_trees)
     logger.info(f"Output size: {len(final_out)}")
     logger.info("ALL DONE")
 

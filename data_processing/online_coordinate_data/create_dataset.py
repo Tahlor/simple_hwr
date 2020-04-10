@@ -180,8 +180,8 @@ class CreateDataset:
             return new_list
 
     @staticmethod
-    def process_one(item, hyperparams):
-        self = hyperparams
+    def process_one(item, **kwargs):
+        self = edict(kwargs)
         file_name = Path(item["image_path"]).stem
         rel_path = Path(item["image_path"]).relative_to(self.original_img_folder).with_suffix(".xml")
         xml_path = self.xml_folder / rel_path
@@ -193,9 +193,9 @@ class CreateDataset:
         stroke_dict = prep_stroke_dict(stroke_list, time_interval=0, scale_time_distance=True) # list of dictionaries, 1 per file
         all_substrokes = get_all_substrokes(stroke_dict, desired_num_of_strokes=self.max_strokes) # subdivide file into smaller sets
 
-        if item["dataset"] in ["test", "val1", "val2"]:
+        if item["dataset"] in ["test"]:
             dataset = "test"
-        else:
+        else: # "train", "val1", "val2"
             dataset = "train"
 
         new_items = []
@@ -226,7 +226,7 @@ class CreateDataset:
 
         ## Add shapes -- the system needs some time to actually perform the writing op before reading it back
         for item in new_items:
-            new_img_path = hyperparams.absolute_data_folder / item["image_path"]
+            new_img_path = self.absolute_data_folder / item["image_path"]
             img = cv2.imread(new_img_path.as_posix())
             if img is None:
                 print("Image file not found; is render off?")
@@ -474,6 +474,7 @@ class CreateDataset:
             elif item["dataset"] == "test":
                 self.output_dict["test"].append(item)
             ## This could mix training/test sets for partial stroke things -- nbd
+            # If they're both big enough, exit
             if self.train_set_size and self.test_set_size and len(self.output_dict["test"]) > self.test_set_size and len(self.output_dict["train"]) > self.train_set_size:
                 break
 
@@ -541,7 +542,7 @@ class CreateDataset:
         poolcount = multiprocessing.cpu_count() - 3
         pool = multiprocessing.Pool(processes=poolcount)
 
-        if not self.synthetic:
+        if not self.synthetic and False:
             all_results = pool.imap_unordered(self.worker_wrapper,
                                               tqdm(data_dict))  # iterates through everything all at once
             pool.close()
@@ -619,14 +620,14 @@ def old():
     data_set.parallel(max_iter=instances, parallel=PARALLEL)
 
 def new():
-    strokes = 3      # None=MAX stroke
+    strokes = None      # None=MAX stroke
     square = False      # Don't require square images
     instances = None    # None=Use all available instances
-    test_set_size = 30 # use leftover test images in Training
-    train_set_size = 60
+    test_set_size = None # use leftover test images in Training
+    train_set_size = None
     combine_images = False # combine images to make them longer
     RENDER = False
-    variant="verysmall"
+    variant="NORMAL_TRAINING_TEST"
     if square:
         variant += "Square"
     if instances is None:
@@ -717,14 +718,14 @@ def indic():
 
 if __name__ == "__main__":
     #new()
-
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("--testing", action='store_true', help="No parallel", default=False)
     args = parser.parse_args()
     PARALLEL = not args.testing
     print("parallel", PARALLEL)
-    synthetic("random")
-    synthetic("normal")
+    new()
+    # synthetic("random")
+    # synthetic("normal")
     #indic()
 
 

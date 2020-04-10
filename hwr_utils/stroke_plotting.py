@@ -396,6 +396,11 @@ def gt_to_pil(gt, stroke_number=False):
     for stroke in list_of_strokes:
         yield [tuple(stroke_point) for stroke_point in stroke.flatten().reshape(-1, 2).tolist()]
 
+def rnd_width(w):
+    if random.randint(0,1): # don't usually change the width
+        w = w + random.randint(-1,1)
+    return max(1, w)
+
 def draw_from_gt(gt, show=True, save_path=None, min_width=None, height=61,
                  right_padding="random", linewidth=None, max_width=5, color=0, alpha=False,
                  use_stroke_number=None, plot_points=False):
@@ -461,7 +466,7 @@ def draw_from_gt(gt, show=True, save_path=None, min_width=None, height=61,
     for i, line in enumerate(pil_format):
         if line.size > 2:
             line = [tuple(x) for x in line.flatten().reshape(-1, 2).tolist()]
-            draw.line(line, fill=_color, width=linewidth, joint='curve')
+            draw.line(line, fill=_color, width=rnd_width(linewidth), joint='curve')
         elif line.size == 2: # only have a single coordinate, make it big!
             line1 = line - linewidth / 2
             line2 = line + linewidth / 2

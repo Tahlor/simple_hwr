@@ -17,7 +17,7 @@ load_path: false # ./results/baseline/20190622_155031-lr_0.001_bs_16_warp_False_
 test_only: false                             # Do not train
 
 dataset:
-  stroke_path: "RESULTS/OFFLINE_PREDS/good/imgs/current/eval/data/all_data.npy"
+  stroke_path: "/media/data/GitHub/simple_hwr/RESULTS/OFFLINE_PREDS/RESUME_model/imgs/current/eval/data/all_data.npy"
   loadstrokes: true
 
 # General
