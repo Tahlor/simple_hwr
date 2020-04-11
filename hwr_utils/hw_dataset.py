@@ -359,7 +359,9 @@ class HwDataset(Dataset):
         # Relativefy and normalize
         gt[:, 0] = stroke_recovery.relativefy(gt[:,0])
         gt[:, 1] = stroke_recovery.relativefy(gt[:,1])
-        gt[:, :2] /= np.median(np.linalg.norm(gt[:,:2], axis=1))
+        med = np.median(np.linalg.norm(gt[:,:2], axis=1))
+        if med != 0:
+            gt[:, :2] /= np.median(np.linalg.norm(gt[:,:2], axis=1))
         gt[0, :2] = 0 # let first position be origin
         return gt
 

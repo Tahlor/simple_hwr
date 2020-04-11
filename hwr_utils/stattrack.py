@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 
 class Stat:
     def __init__(self, y, x, x_title="", y_title="", name="", plot=True, ymax=None, accumulator_freq=None, **kwargs):
@@ -50,7 +51,8 @@ class Stat:
         return o.__dict__
 
     def accumulate(self, sum, weight):
-        assert self.current_sum >= 0
+        if not self.current_sum >= 0:
+            warnings.warn(f"{self.current_sum} should be greater than 0")
         self.current_sum += sum
         self.current_weight += weight
 
