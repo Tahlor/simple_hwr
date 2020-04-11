@@ -332,7 +332,8 @@ def make_dataloaders(config, device="cpu"):
                                        random_distortions=config["testing_random_distortions"],
                                        distortion_sigma=config["testing_distortion_sigma"],
                                        max_images_to_load=config["images_to_load"],
-                                       logger=config["logger"])
+                                       logger=config["logger"],
+                                       **config.dataset)
 
         validation_dataloader = DataLoader(validation_dataset, batch_size=config["batch_size"], shuffle=config["testing_shuffle"],
                                            num_workers=threads, collate_fn=default_collate)
@@ -508,9 +509,8 @@ def build_model(config_path):
         config["secondary_criterion"] = None
     return config, train_dataloader, test_dataloader, train_dataset, test_dataset, validation_dataset, validation_dataloader
 
-def main():
+def main(opts):
     global config, LOGGER
-    opts = parse_args()
     config, train_dataloader, test_dataloader, train_dataset, test_dataset, validation_dataset, validation_dataloader = build_model(opts.config)
 
     config.train_dataloader = train_dataloader
@@ -587,9 +587,18 @@ def recreate():
     #save_model(config)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', type=str, default="./configs/baseline.yaml", help='Path to the config file.')
+    parser.add_argument('--testing', action="store_true", default=False, help='Run testing version')
+    #parser.add_argument('--name', type=str, default="", help='Optional - special name for this run')
+    opts = parser.parse_args()
+    return opts
+
 if __name__ == "__main__":
     #recreate()
-    main()
+    opts = parse_args()
+    main(opts)
     Stop
     try:
         main()
