@@ -1037,7 +1037,7 @@ def create_resume_training_stroke(config):
         export_config["load_optimizer"] = True # load the previous optimizer state
         if "adapted_gt_path" in config.dataset and config.dataset.adapted_gt_path:
             # export_config["load_path"] is probably BSF
-            export_config["dataset"]["adapted_gt_path"] = Path(export_config["results_dir"]).parent / "training_dataset.npy"
+            export_config["dataset"]["adapted_gt_path"] = Path(output) / "training_dataset.npy"
         yaml.dump(export_config, outfile, default_flow_style=False, sort_keys=False)
 
     with open(Path(output / 'TEST.yaml'), 'w') as outfile:

@@ -61,7 +61,7 @@ scheduler_gamma: .96         # LR decay rate
   # (Future option: with attention, have the GTs to be just be sampled regularly)
 
 test_size: null
-train_size: null
+train_size: nullBSF
 batch_size: 28
 
 ## GTs
