@@ -190,13 +190,17 @@ def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
 
     for i, x in enumerate(dataloader):
         LOGGER.debug(f"Training Iteration: {i}")
-        line_imgs = Variable(x['line_imgs'].type(dtype), requires_grad=False)
-        labels = Variable(x['labels'], requires_grad=False)  # numeric loss_indices version of ground truth
-        label_lengths = Variable(x['label_lengths'], requires_grad=False)
-        gt = x['gt']  # actual string ground truth
-        config["global_step"] += 1
-        config["global_instances_counter"] += line_imgs.shape[0]
-        local_instance_counter += line_imgs.shape[0]
+        try:
+            line_imgs = Variable(x['line_imgs'].type(dtype), requires_grad=False)
+            labels = Variable(x['labels'], requires_grad=False)  # numeric loss_indices version of ground truth
+            label_lengths = Variable(x['label_lengths'], requires_grad=False)
+            gt = x['gt']  # actual string ground truth
+            config["global_step"] += 1
+            config["global_instances_counter"] += line_imgs.shape[0]
+            local_instance_counter += line_imgs.shape[0]
+        except:
+            logger.info("Problem with epoch")
+            traceback.print_exc()
 
         #config["stats"]["instances"] += config["global_instances_counter"]
 
