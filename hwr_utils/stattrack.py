@@ -135,7 +135,7 @@ class AutoStat(Stat):
             assert ("test" in self.x_weight.lower() or "valida" in self.x_weight.lower()) # make sure the key is appropriate
             weight = self.x_counter.__dict__[self.x_weight]
         if weight == 0:
-            print("Error with weight - should be non-zero - using 1")
+            print(f"Error with weight - should be non-zero - using 1; {self.x_weight}, {self.x_counter.__dict__}")
             weight = 1
         try:
             assert weight > 0
@@ -165,7 +165,7 @@ class AutoStat(Stat):
 
 class Counter:
     def __init__(self, instances_per_epoch=1, epochs=0, updates=0, instances=0, training_pred_count=0, test_instances=1,
-                 test_pred_length_static=1, test_pred_count=0, validation_pred_count=0):
+                 test_pred_length_static=1, test_pred_count=0, validation_pred_length_static=0):
         """
 
         Args:
@@ -193,9 +193,9 @@ class Counter:
         self.test_instances = test_instances
         self.test_pred_length_static = test_pred_length_static # If this is not constant, put it in train mode!
         self.test_pred_count = test_pred_count
-        self.validation_pred_count = validation_pred_count
+        self.validation_pred_length_static = validation_pred_length_static
 
-    def update(self, epochs=0, instances=0, updates=0, training_pred_count=0, test_pred_count=0, validation_pred_count=0):
+    def update(self, epochs=0, instances=0, updates=0, training_pred_count=0, test_pred_count=0, validation_pred_length_static=0):
         self.epochs += epochs
         self.instances += instances
         self.updates += updates
@@ -204,7 +204,7 @@ class Counter:
         # Both are same as above, always incrementing
         self.training_pred_count += training_pred_count
         self.test_pred_count += test_pred_count
-        self.validation_pred_count += validation_pred_count
+        self.validation_pred_length_static += validation_pred_length_static
 
 if __name__=='__main__':
     training_counter = Counter()

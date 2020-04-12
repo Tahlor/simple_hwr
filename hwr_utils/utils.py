@@ -1187,7 +1187,7 @@ def stat_prep(config):
     config.counter = Counter(instances_per_epoch=config.n_train_instances,
                              test_instances=config.n_test_instances,
                              test_pred_length_static=config.n_test_points,
-                             validation_pred_count=config.n_validation_instances)
+                             validation_pred_length_static=config.n_validation_instances)
 
     # Prep storage
     config_stats = []
@@ -1210,7 +1210,7 @@ def stat_prep(config):
     # config_stats.append(Stat(y=[], x=[], x_title="Instances", y_title="CER", name="Test Error Rate", ymax=.2, accumulator_freq="instance"))
     # config_stats.append(Stat(y=[], x=[], x_title="Instances", y_title="CER", name="Validation Error Rate", ymax=.2, accumulator_freq="instance"))
     config["designated_training_cer"] = "Training_Error_Rate"
-    config["designated_test_cer"] = "Test Error Rate"
+    config["designated_test_cer"] = "Test_Error_Rate"
     config["designated_validation_cer"] = "Validation_Error_Rate" if config["validation_jsons"] else "Test_Error_Rate"
 
 

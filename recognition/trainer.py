@@ -31,7 +31,7 @@ class TrainerBaseline(json.JSONEncoder):
     def train(self, line_imgs, online, labels, label_lengths, gt, retain_graph=False, step=0):
         self.model.train()
         self.config.counter.update(epochs=0, instances=line_imgs.shape[0], updates=1)
-        logger.info(self.config.counter.__dict__)
+        #logger.info(self.config.counter.__dict__)
 
         pred_tup = self.model(line_imgs, online)
         pred_logits, rnn_input, *_ = pred_tup[0].cpu(), pred_tup[1], pred_tup[2:]
@@ -161,7 +161,8 @@ class TrainerStrokes(TrainerBaseline):
 
     def train(self, line_imgs, strokes, labels, label_lengths, gt, retain_graph=False, step=0):
         self.model.train()
-
+        self.config.counter.update(epochs=0, instances=line_imgs.shape[0], updates=1)
+        print(self.config.counter.__dict__)
         pred_tup = self.model(line_imgs, strokes)
         pred_logits, rnn_input, *_ = pred_tup[0].cpu(), pred_tup[1], pred_tup[2:]
 
