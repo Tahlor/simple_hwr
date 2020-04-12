@@ -195,15 +195,27 @@ def load_all(path, key=None, clear=True, keywords=""):
 
             plotter = Plot(name, port=DEFAULT_PORT)
             stats = json.loads(p.read_text())["stats"]
+            print(stats.keys())
             for key in stats.keys():
+                if key in ["epochs", 'epoch_decimal', "updates"]:
+                    continue
                 losses = stats[key]
-                plotter.register_plot(key, losses["x_title"], key, plot_type="line") # , ymax=.1
 
                 try:
+                    xlen, ylen = len(losses["x"]), len(losses["y"]) 
+                    print(xlen,ylen)
+                    m = min(xlen, ylen)
+                    if xlen != ylen:
+                        print("UNEQAL LENGTHS")
+                        losses["x"] = losses["x"][:m]
+                        losses["y"] = losses["y"][:m] 
+                    plotter.register_plot(key, losses["x_title"], key, plot_type="line") # , ymax=.1
                     plotter.update_plot(plot_name=key, x=losses["x"], y=losses['y'], name=name)
                 except:
                     traceback.print_exc()
+                    print(losses, key)
                     print(f"Problem with {name, key}")
+                    input()
 
 def prep_path(foreign_paths):
     from hwr_utils.base_utils import increment_path, is_iterable
@@ -273,7 +285,7 @@ if __name__=="__main__":
                  "/media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr/results/stroke_config/ver5",
                  '/media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr/results/stroke_config/20200301-PRETRAIN']
 
-
+        paths = ["/simple_hwr/results/recognition/strokes_v1"]
         path = prep_path(paths)
     else:
         path = Path("/media/data/GitHub/simple_hwr/RESULTS/COMPARISON/11_")
