@@ -172,7 +172,7 @@ class Counter:
             instances_per_epoch:
             epochs:
             updates:
-            instances:
+            instances: Number of training instances
             training_pred_count: Running count of the number of individual predictions (i.e. stroke points) in training data
             test_instances: Size of test data (instances)
             test_pred_length_static: Total number of predictions (i.e. stroke points) in test data
