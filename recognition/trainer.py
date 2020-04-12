@@ -60,7 +60,7 @@ class TrainerBaseline(json.JSONEncoder):
         err, weight = calculate_cer(pred_strs, gt)
 
         logger.debug("Accumulating stats")
-        self.config["stats"]["Training_Error_Rate"].accumulate(err, weight)
+        self.config["stats"]["Training_Error_Rate"].accumulate(err, weight) # USING MANUAL WEIGHTS HERE FOR TRAINING
 
         return loss, err, pred_strs
 

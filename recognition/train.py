@@ -253,8 +253,8 @@ def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
     try:
         training_cer_list = config["stats"][config["designated_training_cer"]].y
 
-        if not training_cer_list:
-            reset_all_stats(config, keyword="training")
+        # if not training_cer_list:
+        #     reset_all_stats(config, keyword="training")
         training_cer = training_cer_list[-1]  # most recent training CER
 
         # Save out example images on the first go
