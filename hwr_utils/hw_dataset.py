@@ -388,6 +388,7 @@ class HwDataset(Dataset):
         if self.warp:
             new_img = distortions.warp_image(img)
             if new_img.shape[1] < original_shape[1]:
+                print("new shape is larger")
                 img = np.zeros(original_shape)
                 img[:,:new_img.shape[1]] = new_img
             else:
@@ -407,8 +408,8 @@ class HwDataset(Dataset):
         if self.elastic_distortion:
             img = distortions.elastic_transform(img, alpha=self.elastic_alpha, sigma=self.elastic_sigma)
 
-        img = distortions.crop(img) # trim leading/trailing whitespace
-
+        if not self.warp:
+            img = distortions.crop(img) # trim leading/trailing whitespace
 
         # Add channel dimension, since resize and warp only keep non-trivial channel axis
         if self.num_of_channels==1:

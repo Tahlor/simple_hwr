@@ -1211,7 +1211,7 @@ def stat_prep(config):
     # config_stats.append(Stat(y=[], x=[], x_title="Instances", y_title="CER", name="Validation Error Rate", ymax=.2, accumulator_freq="instance"))
     config["designated_training_cer"] = "Training_Error_Rate"
     config["designated_test_cer"] = "Test Error Rate"
-    config["designated_validation_cer"] = "Validation Error Rate" if config["validation_jsons"] else "Test Error Rate"
+    config["designated_validation_cer"] = "Validation_Error_Rate" if config["validation_jsons"] else "Test_Error_Rate"
 
 
     for stat in config_stats:

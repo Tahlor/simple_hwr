@@ -371,15 +371,14 @@ def load_data(config):
     config['alphabet_size'] = len(config["idx_to_char"])   # alphabet size to be recognized
     config['num_of_writers'] = train_dataset.classes_count + 1
 
-    config['n_train_instances'] = len(train_dataloader.dataset)
     log_print("Number of training instances:", config['n_train_instances'])
 
     if config["validation_jsons"]:
-        log_print("Number of validation instances:", len(validation_dataloader.dataset))
+        log_print("Number of validation instances:", config.n_validation_instances)
 
     assert config['n_train_instances'] > 0
 
-    log_print("Number of test instances:", len(test_dataloader.dataset), '\n')
+    log_print("Number of test instances:", config.n_test_instances, '\n')
     return train_dataloader, test_dataloader, train_dataset, test_dataset, validation_dataset, validation_dataloader
 
 def check_gpu(config):

@@ -132,7 +132,7 @@ class AutoStat(Stat):
             weight = (new_step - self.last_weight_step)
             self.last_weight_step = new_step
         else: # if not training, the desired_num_of_strokes is constant;
-            assert "test" in self.x_weight # make sure the key is appropriate
+            assert ("test" in self.x_weight.lower() or "valida" in self.x_weight.lower()) # make sure the key is appropriate
             weight = self.x_counter.__dict__[self.x_weight]
         if weight == 0:
             print("Error with weight - should be non-zero - using 1")
