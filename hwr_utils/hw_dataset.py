@@ -384,8 +384,14 @@ class HwDataset(Dataset):
         elif not self.load_strokes_flag:
             self.data[idx]["stroke"] = None
 
+        original_shape = img.shape
         if self.warp:
-            img = distortions.warp_image(img)
+            new_img = distortions.warp_image(img)
+            if new_img.shape[1] < original_shape[1]:
+                img = np.zeros(original_shape)
+                img[:,:new_img.shape[1]] = new_img
+            else:
+                img = new_img
 
         if self.occlusion:
             img = distortions.occlude(img, occlusion_freq=self.occlusion_freq,

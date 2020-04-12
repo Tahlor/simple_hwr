@@ -1184,30 +1184,36 @@ def stat_prep(config):
     config["stats"]["epoch_decimal"] = []
     #config["stats"]["instances"] = []
     config["stats"]["updates"] = []
+    config.counter = Counter(instances_per_epoch=config.n_train_instances,
+                             test_instances=config.n_test_instances,
+                             test_pred_length_static=config.n_test_points,
+                             validation_pred_count=config.n_validation_instances)
 
     # Prep storage
     config_stats = []
-    config_stats.append(Stat(y=[], x=config["stats"]["updates"], x_title="Updates", y_title="Loss", name="HWR Training Loss"))
-    config_stats.append(Stat(y=[], x=[], x_title="Instances", y_title="CER", name="Training Error Rate", accumulator_freq="instance"))
-    config_stats.append(Stat(y=[], x=[], x_title="Instances", y_title="CER", name="Test Error Rate", ymax=.2, accumulator_freq="instance"))
-    config_stats.append(Stat(y=[], x=[], x_title="Instances", y_title="CER", name="Validation Error Rate", ymax=.2, accumulator_freq="instance"))
-    config["designated_training_cer"] = "Training Error Rate"
+
+    config_stats.append(AutoStat(counter_obj=config.counter, x_weight="training_pred_count", x_plot="epoch_decimal",
+                                 x_title="Epochs", y_title="HWR Training Loss", name=f"HWR_Training_Loss",
+                                 train=True))
+    config_stats.append(AutoStat(counter_obj=config.counter, x_weight="training_pred_count", x_plot="epoch_decimal",
+                                 x_title="Epochs", y_title="Training Error Rate", name=f"Training_Error_Rate",
+                                 train=True, ymax=.2))
+    config_stats.append(AutoStat(counter_obj=config.counter, x_weight="test_pred_length_static", x_plot="epoch_decimal",
+                                 x_title="Epochs", y_title="Test Error Rate", name=f"Test_Error_Rate",
+                                 train=False, ymax=.2))
+    config_stats.append(AutoStat(counter_obj=config.counter, x_weight="validation_pred_length_static", x_plot="epoch_decimal",
+                                 x_title="Epochs", y_title="Validation Error Rate", name=f"Validation_Error_Rate",
+                                 train=False, ymax=.2))
+
+    # config_stats.append(Stat(y=[], x=config["stats"]["updates"], x_title="Updates", y_title="Loss", name="HWR Training Loss"))
+    # config_stats.append(Stat(y=[], x=[], x_title="Instances", y_title="CER", name="Training Error Rate", accumulator_freq="instance"))
+    # config_stats.append(Stat(y=[], x=[], x_title="Instances", y_title="CER", name="Test Error Rate", ymax=.2, accumulator_freq="instance"))
+    # config_stats.append(Stat(y=[], x=[], x_title="Instances", y_title="CER", name="Validation Error Rate", ymax=.2, accumulator_freq="instance"))
+    config["designated_training_cer"] = "Training_Error_Rate"
     config["designated_test_cer"] = "Test Error Rate"
     config["designated_validation_cer"] = "Validation Error Rate" if config["validation_jsons"] else "Test Error Rate"
 
-    if config["style_encoder"] in ["basic_encoder", "fake_encoder"]:
-        config_stats.append(Stat(y=[], x=config["stats"]["updates"], x_title="Updates", y_title="Loss", name="Writer Style Loss"))
 
-    if config["style_encoder"] in ["2StageNudger"]:
-        config_stats.append(Stat(y=[], x=config["stats"]["updates"], x_title="Updates", y_title="Loss",name="Nudged Training Loss"))
-        config_stats.append(Stat(y=[], x=config["stats"]["epoch_decimal"], x_title="Epochs", y_title="CER", name="Nudged Training Error Rate"))
-        config_stats.append(Stat(y=[], x=config["stats"]["epochs"], x_title="Epochs", y_title="CER", name="Nudged Test Error Rate", ymax=.2))
-        config_stats.append(Stat(y=[], x=config["stats"]["epochs"], x_title="Epochs", y_title="CER", name="Nudged Validation Error Rate",ymax=.2))
-        config["designated_training_cer"] = "Nudged Training Error Rate"
-        config["designated_test_cer"] = "Nudged Test Error Rate"
-        config["designated_validation_cer"] = "Nudged Validation Error Rate" if config["validation_jsons"] else "Nudged Test Error Rate"
-
-        # Register plots, save in stats dictionary
     for stat in config_stats:
         if config["use_visdom"]:
             config["visdom_manager"].register_plot(stat.name, stat.x_title, stat.y_title, ymax=stat.ymax)

@@ -190,6 +190,7 @@ def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
 
     for i, x in enumerate(dataloader):
         LOGGER.debug(f"Training Iteration: {i}")
+        config.counter.update(epochs=1)
         try:
             line_imgs = Variable(x['line_imgs'].type(dtype), requires_grad=False)
             labels = Variable(x['labels'], requires_grad=False)  # numeric loss_indices version of ground truth
@@ -344,6 +345,14 @@ def make_dataloaders(config, device="cpu"):
     else:
         validation_dataset, validation_dataloader = test_dataset, test_dataloader
         config["validation_jsons"]=None
+
+    n_test_points = 0
+    for i in test_dataloader:
+        n_test_points += sum(i["label_lengths"])
+    config.n_train_instances = len(train_dataloader.dataset)
+    config.n_test_instances = len(test_dataloader.dataset)
+    config.n_test_points = int(n_test_points)
+    config.n_validation_instances = len(validation_dataloader.dataset)
 
     return train_dataloader, test_dataloader, train_dataset, test_dataset, validation_dataset, validation_dataloader
 

@@ -53,12 +53,14 @@ class TrainerBaseline(json.JSONEncoder):
         loss = torch.mean(loss_recognizer.cpu(), 0, keepdim=False).item()
 
         # Error Rate
-        self.config["stats"]["HWR Training Loss"].accumulate(loss, 1) # Might need to be divided by batch size?
+        self.config["stats"]["HWR_Training_Loss"].accumulate(loss, 1) # Might need to be divided by batch size?
         logger.debug("Calculating Error Rate: {}".format(step))
         err, weight = calculate_cer(pred_strs, gt)
 
         logger.debug("Accumulating stats")
-        self.config["stats"]["Training Error Rate"].accumulate(err, weight)
+        self.config["stats"]["Training_Error_Rate"].accumulate(err, weight)
+
+        self.config.counter.update(epochs=0, instances=line_imgs.shape[0], updates=1)
 
         return loss, err, pred_strs
 
@@ -182,12 +184,12 @@ class TrainerStrokes(TrainerBaseline):
         loss = torch.mean(loss_recognizer.cpu(), 0, keepdim=False).item()
 
         # Error Rate
-        self.config["stats"]["HWR Training Loss"].accumulate(loss, 1) # Might need to be divided by batch size?
+        self.config["stats"]["HWR_Training_Loss"].accumulate(loss, 1) # Might need to be divided by batch size?
         logger.debug("Calculating Error Rate: {}".format(step))
         err, weight = calculate_cer(pred_strs, gt)
 
         logger.debug("Accumulating stats")
-        self.config["stats"]["Training Error Rate"].accumulate(err, weight)
+        self.config["stats"]["Training_Error_Rate"].accumulate(err, weight)
 
         return loss, err, pred_strs
 
