@@ -1198,7 +1198,7 @@ def stat_prep(config):
     config_stats.append(AutoStat(counter_obj=config.counter, x_weight="instances", x_plot="epoch_decimal",
                                  x_title="Epochs", y_title="Training Error Rate", name=f"Training_Error_Rate",
                                  train=True, ymax=.2))
-    config_stats.append(AutoStat(counter_obj=config.counter, x_weight="test_pred_length_static", x_plot="epoch_decimal",
+    config_stats.append(AutoStat(counter_obj=config.counter, x_weight="test_instances", x_plot="epoch_decimal",
                                  x_title="Epochs", y_title="Test Error Rate", name=f"Test_Error_Rate",
                                  train=False, ymax=.2))
     config_stats.append(AutoStat(counter_obj=config.counter, x_weight="validation_pred_length_static", x_plot="epoch_decimal",
