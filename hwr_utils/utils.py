@@ -836,17 +836,17 @@ def new_scheduler(optimizer, batch_size, gamma=.95, last_epoch=-1):
     print("Building new scheduler...")
     return lr_scheduler.StepLR(optimizer, step_size=int(180000 / batch_size), gamma=gamma, last_epoch=last_epoch)
 
-def load_model_strokes(config, load_optimizer=True):
+def load_model_strokes(config, load_optimizer=True, device="cuda"):
     # User can specify folder or .pt file; other files are assumed to be in the same folder
     if os.path.isfile(config["load_path"]):
-        old_state = torch.load(config["load_path"], ) # map_location=torch.device(config.device)
+        old_state = torch.load(config["load_path"], map_location=torch.device(device)) # map_location=torch.device(config.device)
         path, child = os.path.split(config["load_path"])
     else:
         children = [f.name for f in Path(config["load_path"]).glob("*.pt")]
         if "baseline_model.pt" in children:
-            old_state = torch.load(os.path.join(config["load_path"], "baseline_model.pt"), ) # map_location=torch.device(config.device)
+            old_state = torch.load(os.path.join(config["load_path"], "baseline_model.pt"), map_location=torch.device(device)) # map_location=torch.device(config.device)
         else:
-            old_state = torch.load(os.path.join(config["load_path"], children[0]), )
+            old_state = torch.load(os.path.join(config["load_path"], children[0]), map_location=torch.device(device))
             if len(children) > 1:
                 warnings.warn(f"Multiple .pt files found, using {children[0]}")
         path = config["load_path"]

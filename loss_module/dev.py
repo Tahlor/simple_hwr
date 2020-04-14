@@ -25,8 +25,10 @@ WORST = {"strokes": Counter(), "worst": Counter(), 'percentile':[]}
 TOTAL_COUNT = 0
 today = time.strftime("%Y%m%d_%H%M%S")
 PATH = Path(f"./RESULTS/GT_SWAPS/{today}")
-PATH.mkdir(exist_ok=True, parents=True)
-
+try:
+    PATH.mkdir(exist_ok=True, parents=True)
+except:
+    print("Problem")
 ### POSSIBLY GO BACK TO ORIGINAL HANDLING OF COST_MAT, AND USE cost_mat.base
 
 # Original DTW

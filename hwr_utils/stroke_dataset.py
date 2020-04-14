@@ -143,6 +143,30 @@ class BasicDataset(Dataset):
                     logger.info(f"DUMPING cached version to: {pickle_file}")
                     pickle.dump(self.data, pickle_file.open(mode="wb"))
 
+    @staticmethod
+    def get_item_from_path(image_path, output_path):
+        img = read_img(image_path, num_of_channels=1)
+        image_path = output_path
+        # plt.imshow(img[:,:,0], cmap="gray")
+        # plt.show()
+
+        img = (distortions.change_contrast((img+1)*127.5, contrast=2)/ 127.5 - 1.0)[:,:,np.newaxis]
+        # plt.imshow(img, cmap="gray")
+        # plt.show()
+        # STPO
+        label_length = None
+        return {
+            "line_img": img,
+            "gt": [],
+            "path": image_path,
+            "x_func": None,
+            "y_func": None,
+            "start_times": None,
+            "x_relative": None,
+            "label_length": label_length,
+        }
+
+
     def __len__(self):
         return len(self.data)
 
