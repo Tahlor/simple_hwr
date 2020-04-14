@@ -131,6 +131,29 @@ loss_fns2:
     gts:
       - eos
     activation: sigmoid
+  - name: nnloss # dtw_sos_eos, dtw_reverse
+    method: both   # both, normal, "align_to_gt", "align_to_pred"
+    coef: 1
+    gamma: 1       # soft DTW
+    reverse: false
+    barron: true # use Barron
+    low_level_dtw_alg: invert # use the invert DTW - don't use this
+  - name: dtw_adaptive
+    coef: 1
+    no_swapping: true # disable swapping
+    gts:
+      - x
+      - y
+    dtw_mapping_basis:
+      - x
+      - y
+    cross_entropy_indices: # SIGMOID TAKEN DURING LOSS
+      - stroke_number
+    relativefy_cross_entropy_gt: true #
+    window_size: 40
+    barron: false
+
+
 
 # Always report these, but don't include in backpropagation
 #loss_fns_to_report:

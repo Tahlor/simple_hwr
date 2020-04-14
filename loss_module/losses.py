@@ -162,6 +162,11 @@ class DTWLoss(CustomLoss):
             self.training_dataset = kwargs["training_dataset"]
             self.updates = 0
 
+        self.swapping = True
+        if "no_swapping" in kwargs and kwargs["no_swapping"]:
+            self.swapping = False
+            logger.info("Swapping strokes disabled")
+
     # not faster
     def parallel_dtw(self, preds, targs, label_lengths, **kwargs):
         raise Exception("Deprecated -- replace with async")
@@ -190,7 +195,8 @@ class DTWLoss(CustomLoss):
             a,b,_gt, adaptive_instr_dict = adaptive_dtw(item["preds_numpy"][i], _targ,
                                                         constraint=self.window_size,
                                                         buffer=20,
-                                                        opt="sample", method=None
+                                                        opt="sample", method=None,
+                                                        swapping=self.swapping
                                                         )
 
             # a3, b3 = self.dtw_single((item["preds_numpy"][i], item["gt_numpy"][i]), dtw_mapping_basis=self.dtw_mapping_basis, window_size=self.window_size)
@@ -617,8 +623,11 @@ class NNLoss(CustomLoss):
         # loss_indices - the loss_indices to calculate the actual loss
         super().__init__(loss_indices, **kwargs)
 
-        self.pred_tree = kwargs["pred_tree"] if "pred_tree" in kwargs else True
-        self.gt_tree = kwargs["gt_tree"] if "gt_tree" in kwargs else True
+        self.pred_tree, self.gt_tree = True,True
+        if "pred_tree" in kwargs and not kwargs["pred_tree"]:
+            self.pred_tree = False
+        if "gt_tree" in kwargs and not kwargs["gt_tree"]:
+            self.gt_tree = False
 
         self.lossfun = self.nn_loss
 
@@ -635,11 +644,11 @@ class NNLoss(CustomLoss):
                 targ = targs[i][:, self.loss_indices]
                 pred_numpy = item["preds_numpy"][i][:, self.loss_indices]
 
-                if self.gt_tree:
+                if self.gt_tree: # figure out where preds need to move to match GTs; all preds are used
                     distances, neighbor_indices = item["kdtree"][i].query(pred_numpy)
                     move_preds_to_gt_loss += torch.sum(abs(p - targ[neighbor_indices]) * self.subcoef)
 
-                if self.pred_tree:
+                if self.pred_tree: # figure out where GTs need to move to match Preds; all GTs are used
                     k = KDTree(pred_numpy)
                     #k = kdtrees[i]
                     distances, neighbor_indices = k.query(targ)

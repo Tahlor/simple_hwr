@@ -409,7 +409,7 @@ def sample_worst_matches():
     pass
 
 
-def adaptive_dtw(preds, gt, constraint=5, buffer=20, stroke_numbers=True, testing=False, verbose=False, **kwargs):
+def adaptive_dtw(preds, gt, constraint=5, buffer=20, stroke_numbers=True, testing=False, verbose=False, swapping=True, **kwargs):
     global COUNTER, TOTAL_COUNT, WORST
     _print = print if verbose else lambda *a, **k: None
     _gt, _preds = np.ascontiguousarray(gt[:, :2]), np.ascontiguousarray(preds[:, :2])
@@ -434,14 +434,15 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=20, stroke_numbers=True, testin
     #cost_mat2 = np.asarray(cost_mat).copy()
 
     # SWAP
-    if worst_match_stroke_num+1 < len(sos_args):
-        # Swap with next element
-        results["swap_next"] = check_swap(_gt, _preds, cost_mat, a, b, worst_match_stroke_num+1, sos_args, constraint, buffer, testing=testing, verbose=verbose)
-        COUNTER["swap_next"][1] += 1
-    # Swap with previous
-    if worst_match_stroke_num > 0 and len(sos_args) > 1:
-        results["swap_prev"] = check_swap(_gt, _preds, cost_mat, a, b, worst_match_stroke_num, sos_args, constraint, buffer, testing=testing, verbose=verbose)
-        COUNTER["swap_prev"][1] += 1
+    if swapping:
+        if worst_match_stroke_num+1 < len(sos_args):
+            # Swap with next element
+            results["swap_next"] = check_swap(_gt, _preds, cost_mat, a, b, worst_match_stroke_num+1, sos_args, constraint, buffer, testing=testing, verbose=verbose)
+            COUNTER["swap_next"][1] += 1
+        # Swap with previous
+        if worst_match_stroke_num > 0 and len(sos_args) > 1:
+            results["swap_prev"] = check_swap(_gt, _preds, cost_mat, a, b, worst_match_stroke_num, sos_args, constraint, buffer, testing=testing, verbose=verbose)
+            COUNTER["swap_prev"][1] += 1
 
     # Reverse
     results["reverse"] = check_reverse(_gt, _preds, cost_mat, a, b, worst_match_stroke_num, sos_args, constraint, buffer, testing=testing, verbose=verbose)
