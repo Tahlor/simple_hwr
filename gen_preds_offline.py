@@ -226,6 +226,7 @@ def load_all_gts(gt_path):
         assert not key in GT_DATA
         GT_DATA[key] = i["gt"]
     #print(f"GT's found: {GT_DATA.keys()}")
+    np.save(r"./RESULTS/OFFLINE_PREDS/TEXT.npy", GT_DATA)
     return GT_DATA
 
 if __name__=="__main__":
