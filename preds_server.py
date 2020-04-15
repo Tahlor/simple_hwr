@@ -1,3 +1,6 @@
+from collections import defaultdict
+import shutil
+import traceback
 import time
 from models.basic import CNN, BidirectionalRNN
 from torch import nn
@@ -26,18 +29,15 @@ def main(config_path):
     torch.cuda.empty_cache()
 
     PROJ_ROOT= Path(os.path.dirname(os.path.realpath(__file__)))
-    config_path = PROJ_ROOT / "results/RESUME.yaml"
-    load_path_override = PROJ_ROOT /  "results/RESUME_model.pt"
+    config_path = PROJ_ROOT / "server/RESUME.yaml"
+    load_path_override = PROJ_ROOT /  "server/RESUME_model.pt"
 
     for load_path_override in [load_path_override]:
         _load_path_override = Path(load_path_override)
 
-        OUTPUT = PROJ_ROOT / Path("RESULTS/OFFLINE_PREDS/") / _load_path_override.stem
-        OUTPUT.mkdir(parents=True, exist_ok=True)
-
         # Make these the same as whereever the file is being loaded from; make the log_dir and results dir be a subset
         # main_model_path, log_dir, full_specs, results_dir, load_path
-        config = utils.load_config(config_path, hwr=False, results_dir_override=OUTPUT.as_posix())
+        config = utils.load_config(config_path, hwr=False, results_dir_override=None)
 
         # Free GPU memory if necessary
         if config.device == "cuda":
@@ -79,16 +79,26 @@ def main(config_path):
 
 OUTPUT_PATH = "/home/mason/Desktop/redis_stroke_recovery/results"
 INPUT_PATH = "/home/mason/Desktop/redis_stroke_recovery/raw"
-
+failed = defaultdict(int)
+give_up = []
 def wait(model):
     #     img_path = "/home/mason/Desktop/redis_stroke_recovery/data/a01-000u-00.png"
     while True:
-        completed_files = [x.stem for x in Path(OUTPUT_PATH).rglob("*.png")]
-        for item in Path(INPUT_PATH).rglob("*"):
-            if item.is_file():
-                if not f"0_{item.stem}" in completed_files:
-                    print(item)
-                    do_one(model, str(item))
+        try:
+            completed_files = [x.stem for x in Path(OUTPUT_PATH).rglob("*.png")]
+            for item in Path(INPUT_PATH).rglob("*"):
+                if item.is_file() and item not in give_up:
+                    if not f"0_{item.stem}" in completed_files:
+                        print(item)
+                        do_one(model, str(item))
+        except:
+            print(f"{item.stem} failed")
+            failed[item.stem] += 1
+            traceback.print_exc()
+            if not f"0_{item.stem}" in completed_files and failed[item.stem] > 5:
+                shutil.copy("./server/Well-that-didn-t-work.png", Path(OUTPUT_PATH) / f"0_{item.stem}.png")
+                shutil.copy("./server/Well-that-didn-t-work.png", Path(OUTPUT_PATH) / f"overlay_0_{item.stem}.png")
+                give_up.append(item)
         time.sleep(1)
 
 def do_one(model, img_path):
