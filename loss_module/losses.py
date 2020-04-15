@@ -626,8 +626,10 @@ class NNLoss(CustomLoss):
         self.pred_tree, self.gt_tree = True,True
         if "pred_tree" in kwargs and not kwargs["pred_tree"]:
             self.pred_tree = False
+            logger.info("Disabled pred_tree; all preds evaluated, not all GTs")
         if "gt_tree" in kwargs and not kwargs["gt_tree"]:
             self.gt_tree = False
+            logger.info("Disabled gt_tree; all GTs evaluated, not all preds")
 
         self.lossfun = self.nn_loss
 
