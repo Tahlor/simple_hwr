@@ -203,13 +203,23 @@ def eval_only(dataloader, model):
             output_path = (Path(save_folder) / "data")
             output_path.mkdir(exist_ok=True, parents=True)
 
-
         #utils.pickle_it(output, output_path / f"{i}.pickle")
         #np.save(output_path / f"{i}.npy", output)
         final_out += output
 
     #utils.pickle_it(final_out, output_path / f"all_data.pickle")
     np.save(output_path / f"all_data.npy", final_out)
+
+    distances = np.asarray([x["distance"] for x in final_out])
+    avg = np.average(distances)
+    sd = np.std(distances)
+    threshold = np.sum(distances < .01)
+    print(f"Average distance: {avg}")
+    print(f"SD: {sd}")
+    print(f"Count below .01: {threshold}")
+    with open(output_path / f"stats.txt", "w") as f:
+        f.write(avg, sd, threshold)
+
     if kd_trees[next(iter(kd_trees))]: # make sure it's not None
         np.save(KDTREE_PATH, kd_trees)
     logger.info(f"Output size: {len(final_out)}")
