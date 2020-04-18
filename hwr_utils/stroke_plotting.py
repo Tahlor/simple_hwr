@@ -467,7 +467,12 @@ def draw_from_gt(gt, show=True, save_path=None, min_width=None, height=61,
     for i, line in enumerate(pil_format):
         if line.size > 2:
             line = [tuple(x) for x in line.flatten().reshape(-1, 2).tolist()]
-            draw.line(line, fill=_color, width=rnd_width(linewidth, using_random_width), joint='curve')
+            if len(line) > 20: # make some lines change widths mid-line
+                split = random.randint(10, len(line)-10)
+                draw.line(line[:split], fill=_color, width=rnd_width(linewidth, using_random_width), joint='curve')
+                draw.line(line[split:], fill=_color, width=rnd_width(linewidth, using_random_width), joint='curve')
+            else:
+                draw.line(line, fill=_color, width=rnd_width(linewidth, using_random_width), joint='curve')
         elif line.size == 2: # only have a single coordinate, make it big!
             line1 = line - linewidth / 2
             line2 = line + linewidth / 2

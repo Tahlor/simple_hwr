@@ -39,7 +39,7 @@ def main(config_path):
     load_path_override = "/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_train_v2/v2.pt"
     load_path_override = PROJ_ROOT + "/RESULTS/pretrained/dtw_adaptive_new_model.pt"
     load_path_override = PROJ_ROOT + "/RESULTS/pretrained/adapted_v2/"
-    load_path_override = "/home/taylor/shares/brodie/github/simple_hwr/RESULTS/ver8/20200406_131747-dtw_adaptive_new2_restartLR_RESUME/RESUME_model.pt"
+    load_path_override = "/home/taylor/shares/brodie/home/taylor/github/simple_hwr/RESULTS/ver8/20200406_131747-dtw_adaptive_new2_restartLR_RESUME/RESUME_model.pt"
 
     for load_path_override in [load_path_override
                                ]:
@@ -57,7 +57,7 @@ def main(config_path):
 
 
         config = utils.load_config(config_path, hwr=False, results_dir_override=OUTPUT.as_posix())
-
+        config.use_visdom = False
         # Free GPU memory if necessary
         if config.device == "cuda":
             utils.kill_gpu_hogs()
@@ -203,13 +203,28 @@ def eval_only(dataloader, model):
             output_path = (Path(save_folder) / "data")
             output_path.mkdir(exist_ok=True, parents=True)
 
-
         #utils.pickle_it(output, output_path / f"{i}.pickle")
         #np.save(output_path / f"{i}.npy", output)
         final_out += output
 
     #utils.pickle_it(final_out, output_path / f"all_data.pickle")
     np.save(output_path / f"all_data.npy", final_out)
+
+    # Compute stats
+    distances = np.asarray([x["distance"] for x in final_out])
+    avg = np.average(distances)
+    sd = np.std(distances)
+    threshold = np.sum(distances < .01)
+    print(f"Average distance: {avg}")
+    print(f"SD: {sd}")
+    print(f"Count below .01: {threshold}")
+
+    with open(output_path / f"stats.txt", "w") as ff:
+        ff.write(f"{avg}, {sd}, {threshold}")
+    plt.hist(distances)
+    plt.savefig(output_path / f"stats.png")
+    plt.close()
+
     if kd_trees[next(iter(kd_trees))]: # make sure it's not None
         np.save(KDTREE_PATH, kd_trees)
     logger.info(f"Output size: {len(final_out)}")

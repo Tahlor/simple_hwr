@@ -25,6 +25,7 @@ debug: off
 #dataset_folder: online_coordinate_data/8_stroke_vFull
 data_root_fsl: ../hw_data/strokes
 data_root_local: data
+dataset_folder: MAX_stroke_vNORMAL_TRAINING_TESTFull # normal testing
 dataset_folder: online_coordinate_data/MAX_stroke_vFull
 dataset_folder: online_coordinate_data/MAX_stroke_vTEST_AUGMENTFull
 dataset_folder: online_coordinate_data/MAX_stroke_vlargeTrnSetFull
