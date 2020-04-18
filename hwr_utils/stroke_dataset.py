@@ -59,6 +59,7 @@ def read_img(image_path, num_of_channels=1, target_height=61, resize=True, add_d
         return None
 
     #vertical_pad = False # vertical pad makes the last predictions totally haywire!!
+    vertical_pad = False
     if vertical_pad:
         target_height -= 2
     percent = float(target_height) / img.shape[0]
@@ -455,20 +456,9 @@ class StrokeRecoveryDataset(Dataset):
         if self.image_prep.startswith("pil") and not ("no_warp" in self.image_prep):
             if True:
                 gt = item["gt"].copy() # LENGTH, VOCAB
-            else: # WHAT THE HELL IS HAPPENING HERE?!??!
-                  # SOMETHING VERY STRANGE IS HAPPENING WHEN USING WARP + RANDOM RESAMPLE WITH RANDOM SEEDS
-                start_times = item["start_times"] if PARAMETER == "t" else item["start_distances"]
-                gt = create_gts(item["x_func"], item["y_func"], start_times, item["number_of_samples"], self.gt_format, noise=True)
-
-                # try:
-                #     np.testing.assert_allclose(gt,item["gt"])
-                #     print("same")
-                # except:
-                #     print(gt[0:5], "\n", item["gt"][0:5])
-                #     stop
             if not self.test_dataset: # don't warp the test data
                 gt = distortions.warp_points(gt * self.img_height) / self.img_height  # convert to pixel space
-            gt = np.c_[gt,item["gt"][:,2:]]
+                gt = np.c_[gt,item["gt"][:,2:]]
 
         else:
             gt = item["gt"].copy()
