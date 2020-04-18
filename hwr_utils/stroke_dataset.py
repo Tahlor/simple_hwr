@@ -30,7 +30,21 @@ PARAMETER = "d" # t or d for time/distance resampling
 script_path = Path(os.path.realpath(__file__))
 project_root = script_path.parent.parent
 
-def read_img(image_path, num_of_channels=1, target_height=61, resize=True, add_distortion=False):
+def read_img(image_path, num_of_channels=1, target_height=61, resize=True, add_distortion=False, vertical_pad=False):
+    """
+
+    Args:
+        image_path:
+        num_of_channels:
+        target_height:
+        resize:
+        add_distortion:
+        pad: How many pixels of padding to apply
+
+    Returns:
+
+    """
+
     if isinstance(image_path, str):
         image_path = Path(image_path)
 
@@ -44,10 +58,16 @@ def read_img(image_path, num_of_channels=1, target_height=61, resize=True, add_d
         logging.warning(f"Warning: image is None: {image_path}")
         return None
 
+    #vertical_pad = False # vertical pad makes the last predictions totally haywire!!
+    if vertical_pad:
+        target_height -= 2
     percent = float(target_height) / img.shape[0]
 
     if percent != 1 and resize:
         img = cv2.resize(img, (0, 0), fx=percent, fy=percent, interpolation=cv2.INTER_CUBIC)
+
+    if vertical_pad:
+        img = cv2.copyMakeBorder(img, 0, 2, 0, 0, cv2.BORDER_CONSTANT,value=[255,255,255])
 
     img = img.astype(np.float32)
 
@@ -145,7 +165,17 @@ class BasicDataset(Dataset):
 
     @staticmethod
     def get_item_from_path(image_path, output_path):
-        img = read_img(image_path, num_of_channels=1)
+        """ This is used in the server right now?
+
+        Args:
+            image_path:
+            output_path:
+
+        Returns:
+
+        """
+
+        img = read_img(image_path, num_of_channels=1, vertical_pad=True)
         image_path = output_path
         # plt.imshow(img[:,:,0], cmap="gray")
         # plt.show()
@@ -173,7 +203,7 @@ class BasicDataset(Dataset):
     def __getitem__(self, idx):
         item = self.data[idx]
         image_path = self.root / item['image_path']
-        img = read_img(image_path, num_of_channels=self.num_of_channels)
+        img = read_img(image_path, num_of_channels=self.num_of_channels, vertical_pad=True)
 
         # plt.imshow(img[:,:,0], cmap="gray")
         # plt.show()
@@ -225,7 +255,7 @@ class StrokeRecoveryDataset(Dataset):
         self.config = config
         self.img_height = img_height
         self.image_prep = image_prep
-
+        self.test_dataset = False
         # This will override defaults above
         self.__dict__.update(kwargs)
 
@@ -347,6 +377,7 @@ class StrokeRecoveryDataset(Dataset):
     def prep_image(gt, img_height=61, add_distortion=True, use_stroke_number=None):
         """ Important that this modifies the actual GT so that plotting afterward still works
 
+        Randomly SQUEEZE OR STRETCH? Would have to change GT length...???
         Args:
             gt:
             img_height:
@@ -435,8 +466,8 @@ class StrokeRecoveryDataset(Dataset):
                 # except:
                 #     print(gt[0:5], "\n", item["gt"][0:5])
                 #     stop
-
-            gt = distortions.warp_points(gt * self.img_height) / self.img_height  # convert to pixel space
+            if not self.test_dataset: # don't warp the test data
+                gt = distortions.warp_points(gt * self.img_height) / self.img_height  # convert to pixel space
             gt = np.c_[gt,item["gt"][:,2:]]
 
         else:
@@ -445,7 +476,7 @@ class StrokeRecoveryDataset(Dataset):
         assert gt.shape[0] == item["gt"].shape[0]
 
         # Render image
-        add_distortion = "distortion" in self.image_prep.lower()
+        add_distortion = "distortion" in self.image_prep.lower() and not self.test_dataset # don't distort the test data
         if self.image_prep.lower().startswith("pil"):
             img, gt = self.prep_image(gt, img_height=self.img_height, add_distortion=add_distortion, use_stroke_number=("stroke_number" in self.gt_format))
         else:

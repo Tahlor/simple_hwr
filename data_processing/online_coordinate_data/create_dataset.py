@@ -619,6 +619,35 @@ def old():
 
     data_set.parallel(max_iter=instances, parallel=PARALLEL)
 
+def true_test_data():
+    strokes = None      # None=MAX stroke
+    square = False      # Don't require square images
+    instances = None    # None=Use all available instances
+    test_set_size = None # use leftover test images in Training
+    train_set_size = None
+    combine_images = False # combine images to make them longer
+    RENDER = False
+    variant="NORMAL_TRAINING_TEST"
+    if square:
+        variant += "Square"
+    if instances is None:
+        variant += "Full"
+    else:
+        variant += f"Small_{instances}"
+    number_of_strokes = str(strokes) if isinstance(strokes, int) else "MAX"
+    data_set = CreateDataset(max_strokes=strokes,
+                             square=square,
+                             output_folder_name=f"./{number_of_strokes}_stroke_v{variant}",
+                             render_images=RENDER,
+                             test_set_size=test_set_size,
+                             train_set_size=train_set_size,
+                             combine_images=combine_images,
+                             #img_folder="prepare_online_data/lineImages",
+                             #json_path="online_coordinate_data/3_stroke_64_v2/train_online_coords.json"
+                             )
+    data_set.parallel(max_iter=instances, parallel=PARALLEL)
+
+
 def new():
     strokes = None      # None=MAX stroke
     square = False      # Don't require square images
@@ -740,3 +769,5 @@ if __name__ == "__main__":
 # # after your program ends
 # pr.print_stats(sort="calls")
 
+# /home/taylor/shares/SuperComputerHWR/hw_data/strokes/online_coordinate_data/
+# /media/data/GitHub/simple_hwr/data/online_coordinate_data/

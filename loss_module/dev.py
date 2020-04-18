@@ -313,8 +313,29 @@ def swap_strokes(instruction_dict, gt, stroke_numbers):
 
 
 def check(new_gt, _preds, cost_mat, a, b, start_idx, end_idx, constraint, buffer, verbose, testing):
+    """ Refill matrix: need to refill to last stroke + window + window2, but only to first stroke - window
+        Traceback: traceback need to start at alignment [last stroke + window + window2] and go to [last stroke - window - window2]
+
+    Args:
+        new_gt:
+        _preds:
+        cost_mat:
+        a:
+        b:
+        start_idx:
+        end_idx:
+        constraint: DTW window
+        buffer: the realignment buffer
+        verbose:
+        testing:
+
+    Returns:
+
+    """
     start_idx_buffer = max(start_idx - buffer, 0)  # double check -1
     end_idx_buffer = new_gt.shape[0] if end_idx + buffer >= new_gt.shape[0] else end_idx + buffer # too many strokes OR too many stroke points
+    pred_start = b[np.argmax(a == start_idx)]
+
     # Old Cost
     if end_idx_buffer < new_gt.shape[0]:
         alignment_end_idx = np.argmax(a == end_idx_buffer)  # get end arg of alignment sequence (first time it appears)
@@ -332,6 +353,7 @@ def check(new_gt, _preds, cost_mat, a, b, start_idx, end_idx, constraint, buffer
 
     _print = print if verbose else lambda *a, **k: None
     # PREDS AND GTS MUST BE SAME LENGTH TO BE CONSISTENT; need to recalculate distance to end_idx buffer
+    # THIS SHOULD BE PRED_START, NOT PRED_START_BUFFER
     cost_mat = dtw.refill_cost_matrix(new_gt, _preds, cost_mat.base, start_idx, end_idx_buffer, pred_start_buffer, pred_end_buffer, constraint=constraint, metric="euclidean")
     _print(cost_mat.base.shape, cost_mat.shape)
     #_print(np.asarray(cost_mat))
@@ -447,6 +469,7 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=20, stroke_numbers=True, testin
 
     # Reverse
     results["reverse"] = check_reverse(_gt, _preds, cost_mat, a, b, worst_match_stroke_num, sos_args, constraint, buffer, testing=testing, verbose=verbose)
+    COUNTER["reverse"][1] += 1
 
     #np.testing.assert_allclose(cost_mat2, cost_mat)
     key_max = max(results.keys(), key=(lambda k: results[k]["cost_savings"]))
@@ -459,13 +482,14 @@ def adaptive_dtw(preds, gt, constraint=5, buffer=20, stroke_numbers=True, testin
     if results[key_max]["cost_savings"] > 0 and not testing:
         #COUNTER[key_max][0] +=1
         chosen_one = results[key_max]
+        COUNTER[key_max][0] += 1
         _print(f"BETTER MATCH!!! using {key_max}")
         # Optimize later - don't need to retrace entire matrix, just the recalc + buffer
         a,b,cost = dtw.traceback2(np.ascontiguousarray(chosen_one["cost_mat"]))
         _print("new")
         _print(a)
         _print(b)
-        return b,a, chosen_one["gt"], chosen_one["instruction"]
+        return b,a, chosen_one["gt"], chosen_one["instruction"] # swap, since calling function calls "preds, gts" and this function does the reverse
     else:
         return b,a, None, None
 
