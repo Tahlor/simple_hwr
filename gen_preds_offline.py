@@ -50,7 +50,9 @@ def main(config_path):
         _load_path_override = Path(load_path_override)
 
         OUTPUT = PROJ_ROOT / Path("RESULTS/OFFLINE_PREDS/") / _load_path_override.stem
-        OUTPUT.mkdir(parents=True, exist_ok=True)
+        model_output_dir = OUTPUT / "imgs/current/eval/data"
+        model_output_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy(_load_path_override, model_output_dir) # save the model ya hoser
 
         # Make these the same as whereever the file is being loaded from; make the log_dir and results dir be a subset
         # main_model_path, log_dir, full_specs, results_dir, load_path

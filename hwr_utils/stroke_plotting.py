@@ -403,7 +403,7 @@ def rnd_width(w, on=True):
 
 def draw_from_gt(gt, show=True, save_path=None, min_width=None, height=61,
                  right_padding="random", linewidth=None, max_width=5, color=0, alpha=False,
-                 use_stroke_number=None, plot_points=False):
+                 use_stroke_number=None, plot_points=False, bonus_points=None):
     """ RETURNS DATA IN "LOWER" origin format!!!
         GT is a WIDTH x VOCAB size numpy array
         Start strokes are inferred by [:,2], which should be 1 when the point starts a new stroke
@@ -414,10 +414,14 @@ def draw_from_gt(gt, show=True, save_path=None, min_width=None, height=61,
         save_path:
         height:
         use_stroke_number: True - strokes labelled like 1,1,1,1,2,2,2,2; False - 00000100001
-
+        bonus_points: other points to plot (e.g. intersections); should be [(x1,y1),(x2,y2)...]
     Returns:
 
     """
+    # Make it 3 channels if using bonus points
+    # if bonus_points and color==0:
+    #     color = 0,0,0
+
     ### HACK
     if use_stroke_number is None:
         use_stroke_number = True if gt.shape[-1] > 2 and np.any(gt[:,2] >= 2) else False
@@ -494,6 +498,14 @@ def draw_from_gt(gt, show=True, save_path=None, min_width=None, height=61,
                 point = np.r_[line1, line2].flatten().tolist()
                 draw.ellipse(point, fill=color, outline=color)
         img = background
+
+    if not bonus_points is None:
+        for point in np.asarray(bonus_points):
+            line1 = point - linewidth / 2
+            line2 = point + linewidth / 2
+            #line = tuple(np.r_[line1, line2].flatten().tolist())
+            line = (tuple(line1),tuple(line2))
+            draw.ellipse(line, fill=(255,0,255), outline=(255,0,255))
 
     data = np.array(img)[::-1]  # invert the y-axis, to upper origin
 
