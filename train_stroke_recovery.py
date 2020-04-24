@@ -215,6 +215,9 @@ def graph(batch, config=None, preds=None, _type="test", save_folder="auto", epoc
 def build_data_loaders(folder, cnn, train_size, test_size, **kwargs):
     ## LOAD DATASET
     NUM_WORKERS = 5
+    if config.TESTING:
+        NUM_WORKERS=1
+
     if NUM_WORKERS==1:
         warnings.warn("ONLY 1 WORKER!!!")
         if not config.TESTING:

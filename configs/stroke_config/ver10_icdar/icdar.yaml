@@ -3,13 +3,14 @@
 # RELATIVE COORDS CONFIG
 
 # Load model
+TESTING: false # this is for debugging, do it on a small dataset
 load_path: /fslhome/tarch/fsl_groups/fslg_hwr/compute/taylor_simple_hwr/RESULTS/20200301-PRETRAIN/normal_preload_model.pt
 load_path: /media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_train_2.9/normal_preload_model.pt
 load_path: /fslhome/tarch/fsl_groups/fslg_hwr/compute/taylor_simple_hwr/RESULTS/20200301-PRETRAIN/normal_preload_model.pt
 load_path: "/home/taylor/github/simple_hwr/RESULTS/ver5/March 10/normal_v4_model.part"
 load_path: /home/taylor/github/simple_hwr/RESULTS/pretrained/normal_SOS_EOS_ORDERED_brodie_model.pt
-TESTING: false # this is for debugging, do it on a small dataset
 load_path: /home/taylor/shares/brodie/home/taylor/github/simple_hwr/RESULTS/ver8/20200406_131747-dtw_adaptive_new2_restartLR_RESUME/RESUME_model.pt
+load_path: false
 
 load_optimizer: true # load LR and per-parameter LR's from saved state
 reset_LR: false # reset the global LR if loading optimizer
@@ -24,12 +25,12 @@ gpu_if_available: true
 output_folder: ./results
 epochs_to_run: 1000
 update_freq: 100 # print out updates, update graphs etc. after this many updates
-save_freq: 1     # save the model every X epochs
+save_freq: 20 # change to 10    # save the model every X epochs
 use_visdom: true
 debug: off
 
 dataset:
-  img_height: 61
+  img_height: 121
   include_synthetic: false
   num_of_channels: 1
   image_prep: no_warp_distortion
@@ -115,7 +116,7 @@ loss_fns2:
     cross_entropy_indices: # SIGMOID TAKEN DURING LOSS
       - stroke_number
     relativefy_cross_entropy_gt: true #
-    window_size: 40
+    window_size: null
     barron: false
 
 #  - name: l1_

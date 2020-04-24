@@ -82,7 +82,7 @@ INPUT_PATH = "/home/mason/Desktop/redis_stroke_recovery/raw"
 failed = defaultdict(int)
 give_up = []
 def wait(model):
-    #     img_path = "/home/mason/Desktop/redis_stroke_recovery/data/a01-000u-00.png"
+    #     output_image_path = "/home/mason/Desktop/redis_stroke_recovery/data/a01-000u-00.png"
     while True:
         try:
             completed_files = [x.stem for x in Path(OUTPUT_PATH).rglob("*.png")]

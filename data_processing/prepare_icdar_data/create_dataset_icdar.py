@@ -2,27 +2,33 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
 import json
+from pathlib import Path
 
-data_path = "../../data/icdar/unnormalized_data.csv"
+INPUT = Path("../../data/ICDAR_strokes")
+OUTPUT = Path("online_coordinate_data/ICDAR")
 
 train_data = []
 test_data = []
-df = pd.read_csv(data_path)
+df = pd.read_csv(INPUT / "unnormalized_data.csv")
 grouped = df.groupby('signature_id')
 
 for sig_id, group in grouped:
     info = {}
-    img_path = 'icdar/images/' + str(sig_id).zfill(4) + '.jpg'
-    img = plt.imread('../../data/' + img_path)
+    input_img_path = (INPUT / "images" / str(sig_id).zfill(4)).with_suffix('.jpg')
+    output_image_path = str(OUTPUT / f"images/{str(sig_id).zfill(4)}.jpg")
 
-    info['full_img_path'] = img_path
-    info['image_path'] = img_path
-    info['xml_path'] = data_path
+    img = plt.imread('../data' / input_img_path)
+
+    info['full_img_path'] = output_image_path
+    info['image_path'] = output_image_path
+    info['xml_path'] = INPUT.as_posix()
 
     x_raw = group['x'].values
     y_raw = group['y'].values
-    x = (x_raw-x_raw.min())/(y_raw.max()-y_raw.min())
-    y = (y_raw-y_raw.min())/(y_raw.max()-y_raw.min())
+    factor = y_raw.max()-y_raw.min()
+    x = (x_raw-x_raw.min())/factor
+    y = (y_raw-y_raw.min())/factor
+    y = y.max() - y
 
     info['x'] = x.astype('float').tolist()
     info['y'] = y.astype('float').tolist()
@@ -38,14 +44,16 @@ for sig_id, group in grouped:
     info['gt'] = np.stack([x, y, stroke_number, eos]).transpose([1, 0]).astype('float').tolist()
     info['number_of_samples'] = len(x)
 
-    if np.random.randn() < 0.9:
+    if np.random.randn() < 0.95:
         info['dataset'] = 'train'
         train_data.append(info)
     else:
         info['dataset'] = 'test'
         test_data.append(info)
 
-with open('../../data/icdar/train_online_coords.json', 'w') as fh:
+out = Path(f'../../data/{OUTPUT}/train_online_coords.json').resolve()
+print(out)
+with open(out, 'w') as fh:
     json.dump(train_data, fh)
-with open('../../data/icdar/test_online_coords.json', 'w') as fh:
+with open(f'../../data/{OUTPUT}/test_online_coords.json', 'w') as fh:
     json.dump(test_data, fh)

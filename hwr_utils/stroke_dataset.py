@@ -55,6 +55,8 @@ def read_img(image_path, num_of_channels=1, target_height=61, resize=True, add_d
     else:
         raise Exception("Unexpected number of channels")
     if img is None:
+        if not Path(image_path).exists():
+            raise Exception(f"{image_path} does not exist")
         logging.warning(f"Warning: image is None: {image_path}")
         return None
 
@@ -473,12 +475,13 @@ class StrokeRecoveryDataset(Dataset):
             # Check if the image is already loaded
             if "line_img" in item and not add_distortion:
                 img = item["line_img"]
+                assert not img is None
             else:
                 # Maybe delete this option
                 # The GTs will be the wrong size if the image isn't resized the same way as earlier
                 # Assuming e.g. we pass everything through the CNN every time etc.
                 img = read_img(image_path, add_distortion=add_distortion)
-
+                assert not img is None
         gt_reverse_strokes, sos_args = stroke_recovery.invert_each_stroke(gt)
         gt_reverse_strokes = np.array([])
 
@@ -648,7 +651,7 @@ def calculate_output_size(data, cnn):
         width_to_output_mapping[i] = shape[-1]
     return width_to_output_mapping
 
-def add_output_size_to_data(data, cnn, key="number_of_samples", root=None, img_height=61):
+def add_output_size_to_data_old(data, cnn, key="number_of_samples", root=None):
     """ Calculate how wide the GTs should be based on the output width of the CNN
     Args:
         data (list of dicts): 'full_img_path', 'xml_path', 'image_path',
@@ -708,14 +711,15 @@ def img_width_to_pred_mapping(width, cnn_type="default64"):
         raise Exception(f"Unknown CNN type {cnn_type}")
 
 
-def add_output_size_to_data(data, cnn, key="number_of_samples", root=None, img_height=61, max_width=2000):
+def add_output_size_to_data(data, cnn, key="number_of_samples", root=None, img_height=61, max_width=2000, force_redo=False):
     """ IMAGE SIZE TO NUMBER OF GTs
     """
     bad_indicies = []
     for i, instance in enumerate(data):
-        if not "shape" in instance: # HEIGHT, WIDTH, CHANNEL? 61x4037x3
+        image_path = root / instance['image_path']
+
+        if not "shape" in instance or force_redo: # HEIGHT, WIDTH, CHANNEL? 61x4037x3
             try:
-                image_path = root / instance['image_path']
                 img = read_img(image_path)
                 instance["shape"] = img.shape
             except:
@@ -724,11 +728,12 @@ def add_output_size_to_data(data, cnn, key="number_of_samples", root=None, img_h
                 instance["shape"] = [0, 0]
         width = instance["shape"][1]
         if width > max_width:
+            print("Too wide", width, image_path)
             bad_indicies.append(i)
         instance[key] = img_width_to_pred_mapping(width, cnn.cnn_type)
 
     for index in sorted(bad_indicies, reverse=True):
-        print("Deleting bad files", index)
+        print("Deleting bad file: ", index)
         del data[index]
 
     #return width_to_output_mapping
@@ -912,7 +917,7 @@ def collate_stroke_eval(batch, device="cpu"):
         "start_times": None,
     }
 
-if __name__=="__main__":
+def some_kind_of_test():
     # x = [np.array([[1,2,3,4],[4,5,3,5]]),np.array([[1,2,3],[4,5,3]]),np.array([[1,2],[4,5]])]
     from timeit import default_timer as timer
 
@@ -935,3 +940,14 @@ if __name__=="__main__":
     x = test_padding(the_list, pad)
     # y = test_padding(the_list, pad2)
     # assert np.allclose(x,y)
+
+
+if __name__=="__main__":
+    kwargs = {'img_height': 121, 'include_synthetic': False, 'num_of_channels': 1, 'image_prep': 'no_warp_distortion', 'gt_format': ['x', 'y', 'stroke_number'], 'batch_size': 28, 'extra_dataset': []}
+    dataset = StrokeRecoveryDataset(data_paths=['online_coordinate_data/ICDAR/train_online_coords.json'],
+                                    root="../data",
+                                    max_images_to_load = 10,
+                                    cnn=None,
+                                    **kwargs)
+    for i in dataset:
+        continue

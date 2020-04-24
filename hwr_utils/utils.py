@@ -333,11 +333,15 @@ def make_config_consistent_stroke(config):
     # if config.x_relative_positions not in (True, False):
     #     raise NotImplemented
     if config.TESTING:
-        config.dataset_folder = "online_coordinate_data/8_stroke_vSmall_16"
+        if "icdar" not in config.dataset_folder.lower():
+            config.dataset_folder = "online_coordinate_data/8_stroke_vSmall_16"
         config.update_freq = 1
         config.save_freq = 1
         config.first_loss_epochs = 1 # switch to other loss fast
         config.test_nn_loss_freq = 3
+        config.train_size = 35
+        config.test_size = 35
+
         if not config.gpu_if_available:
             config.batch_size = 2
             config.train_size = 2
