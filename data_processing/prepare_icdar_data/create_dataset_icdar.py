@@ -29,9 +29,9 @@ for sig_id, group in grouped:
     factor = y_raw.max()-y_raw.min()
     x = (x_raw-x_raw.min())/factor
     y = (y_raw-y_raw.min())/factor
-    y_raw = y
-    x_raw = x
-    
+    # y_raw = y
+    # x_raw = x
+    #
     #y = y.max() - y
 
     # plt.plot(x,y)

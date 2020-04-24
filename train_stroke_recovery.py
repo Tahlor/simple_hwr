@@ -41,7 +41,7 @@ def update_LR(config, training_loss=None):
         logger.info(f"LR decreased from {lr} to {new_lr}")
     config.learning_rate = new_lr
 
-def run_epoch(dataloader, report_freq=500):
+def run_epoch(dataloader, report_freq=500, plot_graphs=True):
     # for i in range(0, 16):
     #     line_imgs = torch.rand(batch, 1, 60, 60)
     #     targs = torch.rand(batch, 16, 5)
@@ -75,7 +75,7 @@ def run_epoch(dataloader, report_freq=500):
     logger.info(("Epoch duration:", end_time-start_time))
 
     # GRAPH
-    if not preds is None:
+    if not preds is None and plot_graphs:
         preds_to_graph = [p.permute([1, 0]) for p in preds]
         save_folder = graph(item, config=config, preds=preds_to_graph, _type="train", epoch=epoch)
         utils.write_out(save_folder, "example_data", f"GT {str(item['gt_list'][0])}"
@@ -367,7 +367,8 @@ def main(config_path, testing=False):
         epoch = i+1
         #config.counter.epochs = epoch
         config.counter.update(epochs=1)
-        loss = run_epoch(train_dataloader, report_freq=config.update_freq)
+        plot_graphs = True if epoch % config.test_freq == 0 else False
+        loss = run_epoch(train_dataloader, report_freq=config.update_freq, plot_graphs=plot_graphs)
         logger.info(f"Epoch: {epoch}, Training Loss: {loss}")
 
         # Test and save models
