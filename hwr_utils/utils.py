@@ -132,7 +132,8 @@ hwr_defaults = {"load_path":False,
             "exclude_offline": False,
             "validation_jsons": [],
             "elastic_transform": False,
-            "visdom_port": 9001
+            "visdom_port": 9001,
+            "test_freq": 1
             }
 
 stroke_defaults = {"SMALL_TRAINING": False,

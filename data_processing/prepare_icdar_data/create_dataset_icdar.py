@@ -25,10 +25,18 @@ for sig_id, group in grouped:
 
     x_raw = group['x'].values
     y_raw = group['y'].values
+    y_raw = y_raw.max() - y_raw
     factor = y_raw.max()-y_raw.min()
     x = (x_raw-x_raw.min())/factor
     y = (y_raw-y_raw.min())/factor
-    y = y.max() - y
+    y_raw = y
+    x_raw = x
+    
+    #y = y.max() - y
+
+    # plt.plot(x,y)
+    # plt.show()
+    # input()
 
     info['x'] = x.astype('float').tolist()
     info['y'] = y.astype('float').tolist()

@@ -25,9 +25,10 @@ gpu_if_available: true
 output_folder: ./results
 epochs_to_run: 1000
 update_freq: 100 # print out updates, update graphs etc. after this many updates
-save_freq: 20 # change to 10    # save the model every X epochs
+save_freq: 1 # change to 10    # save the model every X epochs
 use_visdom: true
 debug: off
+test_freq: 10
 
 dataset:
   img_height: 121
