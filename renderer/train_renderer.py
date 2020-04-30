@@ -18,8 +18,6 @@ from models import start_points, stroke_model
 from hwr_utils.stroke_plotting import *
 from hwr_utils.utils import update_LR, reset_LR, plot_loss
 from hwr_utils.stroke_plotting import draw_from_gt
-import sys
-sys.path.append("..")
 
 ## Change CWD to the folder containing this script
 ROOT_DIR = Path(os.path.dirname(os.path.realpath(__file__))).parent
@@ -41,7 +39,7 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
     for i, item in enumerate(dataloader):
         current_batch_size = item["line_imgs"].shape[0]
         instances += current_batch_size
-        loss, preds, *_ = trainer.train(item, train=True)
+        loss, pred_image, predicted_strokes, *_ = trainer.train(item, train=True)
 
         if loss is None:
             continue
@@ -54,7 +52,7 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
             logger.info(("update: ", config.counter.updates, "combined loss: ", training_loss))
 
         if epoch == 1 and i == 0:
-            logger.info(("Preds", preds[0]))
+            # logger.info(("Preds", preds[0]))
             logger.info(("GTs", item["gt_list"][0]))
 
         update_LR(config)
@@ -62,10 +60,35 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
     end_time = timer()
     logger.info(("Epoch duration:", end_time - start_time))
 
+    ## Draw the pred image, draw the pred stroke_gt, draw the
+    if False:
+        if predicted_strokes:
+            save_stroke_images(pred_image, predicted_strokes, path, suffix="pred_with_strokes")
+        else:
+            save_images(pred_image, path, suffix="pred")
+
+        # Save GTs
+        if item["predicted_strokes_gt_batch"][0]:
+            save_stroke_images(item["line_imgs"], item["predicted_strokes_gt_batch"], path, suffix)
+        else:
+            save_images(item["line_imgs"], path, suffix)
 
     # config.scheduler.step()
     training_loss = config.stats["Actual_Loss_Function_train"].get_last_epoch()
     return training_loss
+
+def save_images(list_of_images, path):
+    for i, image in enumerate(list_of_images):
+        path = None
+
+    pass
+
+### THIS SHOULD BE AN OVERLAY UGHH
+def save_stroke_images(list_of_images, path):
+    for i, image in enumerate(list_of_images):
+        draw_from_gt()
+
+    pass
 
 
 def test(dataloader):
@@ -157,7 +180,7 @@ def load_stroke_model(config_path, model_path=None):
 
     model = StrokeRecoveryModel(vocab_size=vocab_size, device=device, cnn_type=config.cnn_type,
                                 first_conv_op=config.coordconv, first_conv_opts=config.coordconv_opts).to(device)
-
+    config.model = model
     utils.load_model_strokes(config)  # should be load_model_strokes??????
     model = model.to(device)
     model.eval()

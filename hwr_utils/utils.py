@@ -178,6 +178,14 @@ def debugger(func):
             globals().update(locals())
     return wrapper
 
+def fix_dict(d):
+    for k in d:
+        if isinstance(d[k], str) and d[k].lower() == "none":
+            d[k] = None
+        elif isinstance(d[k], dict):
+            d[k] = fix_dict(d[k])
+    return d
+
 def load_config(config_path, hwr=True, testing=False, results_dir_override=None, subpath=None):
     config_path = Path(config_path)
     project_path = Path(os.path.realpath(__file__)).parent.parent.absolute()
@@ -215,6 +223,9 @@ def load_config(config_path, hwr=True, testing=False, results_dir_override=None,
     for k in defaults.keys():
         if k not in config.keys():
             config[k] = defaults[k]
+
+    # Fix
+    config = fix_dict(config)
 
     # Main output folder
     # If override specified
@@ -889,11 +900,11 @@ def load_model_strokes(config, load_optimizer=True, device="cuda"):
 
     logger.info(f"Total updates from loaded model: {config.global_counter}")
     logger.info(f"Epochs from loaded model: {config.current_epoch}")
-    if "scheduler" in old_state and load_optimizer:
+    if "scheduler" in old_state and load_optimizer and "scheduler" in config:
         print("Loading saved scheduler...")
         config.scheduler.load_state_dict(old_state["scheduler"])
 
-    elif load_optimizer: # if there is no saved schedule state, rebuild it
+    elif load_optimizer and "scheduler" in config: # if there is no saved schedule state, rebuild it
         config.scheduler = new_scheduler(config.optimizer, old_batch_size, gamma=config.scheduler_gamma, last_epoch=config.counter.updates)
 
     # Launch visdom

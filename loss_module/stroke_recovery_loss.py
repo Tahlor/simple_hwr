@@ -184,8 +184,6 @@ class StrokeLoss:
                 logger.error(f"{loss} {loss_fn}")
                 continue
 
-
-
             if not self.master_loss_defintion[loss_name]["monitor_only"]:
                 # losses[i] = torch.max(loss_tensor, 5)
                 losses[i] = loss_tensor

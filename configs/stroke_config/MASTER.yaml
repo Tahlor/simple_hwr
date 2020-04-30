@@ -38,7 +38,7 @@ dataset:
   image_prep: pil_with_distortion # keywords: distortion (anywhere), pil (starts with), no_warp (anywhere)
   #gt_format - specified elsewhere
   #batch_size - specified elsewhere
-  adapted_gt_path: None
+  adapted_gt_path: null
 
 # LR schedule
 learning_rate: 5e-4          # LR

@@ -1,6 +1,7 @@
 
 # Load model
 TESTING: false # this is for debugging, do it on a small dataset
+use_visdom: false
 load_path: false # ./results/baseline/20190622_155031-lr_0.001_bs_16_warp_False_arch_basic_encoder/baseline_model.pt # or false
 test_only: false # Do not train
 offline_pred: false
@@ -19,7 +20,6 @@ epochs_to_run: 1000
 update_freq: 100 # print out updates, update graphs etc. after this many updates
 save_freq: 1     # save the model every X epochs
 test_freq: 10    # test, save the graphs
-use_visdom: true
 debug: off
 
 # Training data
@@ -34,7 +34,7 @@ dataset:
   include_synthetic: false
   num_of_channels: 1
   image_prep: pil # keywords: distortion (anywhere), pil (starts with), no_warp (anywhere)
-  adapted_gt_path: None
+  adapted_gt_path: null
 
 # LR schedule
 learning_rate: 5e-4          # LR
@@ -94,14 +94,13 @@ loss_fns:
     gts:
       - x
       - y
-      - stroke_number
     dtw_mapping_basis:
       - x
       - y
-    cross_entropy_indices: # BCEWITHLOGITS TAKEN DURING LOSS, NO SUBCOEF
-      - sos
-    relativefy_cross_entropy: true # this will take cross_entropy_indices GTS ONLY and relativefy it; this will find the "true" first stroke point
-    subcoef: 1,1,.1 # ONLY APPLIES TO GT-index list
+    cross_entropy_indices: # SIGMOID TAKEN DURING LOSS
+      - stroke_number
+    relativefy_cross_entropy_gt: true # this will take cross_entropy_indices GTS ONLY and relativefy it; this will find the "true" first stroke point
+    subcoef: 1,1 # ONLY APPLIES TO GT-index list
 
 first_loss_epochs: 0
 

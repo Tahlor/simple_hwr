@@ -150,7 +150,7 @@ class DTWLoss(CustomLoss):
             logger.info("Relativefying stroke number + BCE!!!")
             self.relativefy = True
         else:
-            self.barron = False
+            self.relativefy = False
 
         if "low_level_dtw_alg" in kwargs and kwargs["low_level_dtw_alg"]=="invert":
             logger.info("Using INVERT low-level DTW")
@@ -227,18 +227,14 @@ class DTWLoss(CustomLoss):
 
             pred = preds[i][a, :][:, self.loss_indices]
             targ = _gt[b, :][:, :2]
-
-            loss += (abs(pred - targ) * self.subcoef).sum()  # AVERAGE pointwise loss for 1 image
+            loss_by_point = (abs(pred - targ)* self.subcoef).sum(axis=1)
+            if self.barron:
+                loss += (self.barron(pred - targ)).sum() * self.subcoef  # AVERAGE pointwise loss for 1 image
+            else:
+                loss += loss_by_point.sum()  # AVERAGE pointwise loss for 1 image
 
             if self.cross_entropy_indices:
-                pred2 = preds[i][a, :][:, self.cross_entropy_indices]
-                targ2 = targs[i][b, :][:, self.cross_entropy_indices]
-
-                pred2 = torch.clamp(pred2, -4, 4)
-                if self.relativefy:
-                    targ2 = relativefy_torch(targ2, default_value=1)  # default=1 ensures first point is a 1 (SOS);
-                    targ2[targ2 != 0] = 1 # everywhere it's not zero, there was a stroke change
-                loss += BCEWithLogitsLoss(pred2, targ2).sum() * .1  # AVERAGE pointwise loss for 1 image
+                loss += self.cross_entropy_loss(preds, targs, a, b, i, loss_by_point) # THIS IS IMPACTED BY SUBCOEF!
 
         return loss  # , to_value(loss)
 
@@ -261,24 +257,39 @@ class DTWLoss(CustomLoss):
             else:
                 raise NotImplemented
 
-            ## !!! DELETE THIS
+            loss_by_point = abs(pred - targ).sum(axis=1)
+
             if self.barron:
                 loss += (self.barron(pred - targ) * self.subcoef).sum()  # AVERAGE pointwise loss for 1 image
             elif True:
-                loss += (abs(pred - targ) * self.subcoef).sum()  # AVERAGE pointwise loss for 1 image
+                loss += loss_by_point.sum()*self.subcoef  # AVERAGE pointwise loss for 1 image
 
             if self.cross_entropy_indices:
+
                 pred2 = preds[i][a, :][:, self.cross_entropy_indices]
                 targ2 = targs[i][b, :][:, self.cross_entropy_indices]
-
                 pred2 = torch.clamp(pred2, -4, 4)
                 if self.relativefy:
                     targ2 = relativefy_torch(targ2, default_value=1)  # default=1 ensures first point is a 1 (SOS);
                     targ2[targ2 != 0] = 1  # everywhere it's not zero, there was a stroke change
+                    targ2[loss_by_point>.1] = 0 # if not sufficiently close to new point, don't make it a start point
+
                 loss += BCEWithLogitsLoss(pred2, targ2).sum() * .1  # AVERAGE pointwise loss for 1 image
         return loss  # , to_value(loss)
 
-    def dtw_sos_eos(self, preds, targs, label_lengths, item, **kwargs):
+    def dtw_sos_eos_DEPRECATED(self, preds, targs, label_lengths, item, **kwargs):
+        """ Extra weight placed on SOS and EOS points -- not bad in concept though
+
+        Args:
+            preds:
+            targs:
+            label_lengths:
+            item:
+            **kwargs:
+
+        Returns:
+
+        """
         loss = 0
         item = add_preds_numpy(preds, item)
 
@@ -317,7 +328,7 @@ class DTWLoss(CustomLoss):
                 loss += (4*abs(pred[combined_points] - targ[combined_points]) * self.subcoef).sum()
         return loss  # , to_value(loss)
 
-    def dtw_sos_eos_L2(self, preds, targs, label_lengths, item, **kwargs):
+    def dtw_sos_eos_L2_DEPRECATED(self, preds, targs, label_lengths, item, **kwargs):
         loss = 0
         item = add_preds_numpy(preds, item)
 
@@ -374,22 +385,32 @@ class DTWLoss(CustomLoss):
             else:
                 raise NotImplemented
 
-            ## !!! DELETE THIS
+            loss_by_point = (abs(pred - targ)* self.subcoef).sum(axis=1)
             if self.barron:
-                loss += (self.barron(pred - targ) * self.subcoef).sum()  # AVERAGE pointwise loss for 1 image
-            elif True:
-                loss += (abs(pred - targ) * self.subcoef).sum()  # AVERAGE pointwise loss for 1 image
+                loss += (self.barron(pred - targ)).sum() * self.subcoef  # AVERAGE pointwise loss for 1 image
+            else:
+                loss += loss_by_point.sum()  # AVERAGE pointwise loss for 1 image
 
             if self.cross_entropy_indices:
-                pred2 = preds[i][a, :][:, self.cross_entropy_indices]
-                targ2 = targs[i][b, :][:, self.cross_entropy_indices]
+                loss += self.cross_entropy_loss(preds, targs, a, b, i, loss_by_point) # THIS IS IMPACTED BY SUBCOEF!
 
-                pred2 = torch.clamp(pred2, -4,4)
-                if self.relativefy:
-                    targ2 = relativefy_torch(targ2, default_value=1) # default=1 ensures first point is a 1 (SOS);
-                    targ2[targ2 != 0] = 1  # everywhere it's not zero, there was a stroke change
-                loss += BCEWithLogitsLoss(pred2, targ2).sum() * .1  # AVERAGE pointwise loss for 1 image
         return loss  # , to_value(loss)
+
+
+    def cross_entropy_loss(self, preds, targs, a, b, i, loss_by_point=None):
+        """ Preds: 0/1 SOS
+            Targs: 1,1,1,2,2... Stroke number
+            Align Preds/Targs, calculate GT SOS from stroke number using relativefy
+
+        """
+        pred2 = preds[i][a, :][:, self.cross_entropy_indices]
+        targ2 = targs[i][b, :][:, self.cross_entropy_indices]
+        pred2 = torch.clamp(pred2, -4, 4)
+        if self.relativefy:
+            targ2 = relativefy_torch(targ2, default_value=1)  # default=1 ensures first point is a 1 (SOS);
+            targ2[targ2 != 0] = 1  # everywhere it's not zero, there was a stroke change
+            targ2[loss_by_point > .1] = 0  # if not sufficiently close to new point, don't make it a start point
+        return BCEWithLogitsLoss(pred2, targ2).sum() * .1  # AVERAGE pointwise loss for 1 image
 
     def dtw_reverse(self, preds, targs, label_lengths, item, **kwargs):
         loss = 0
