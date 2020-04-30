@@ -16,6 +16,8 @@ from models import start_points, stroke_model
 from hwr_utils.stroke_plotting import *
 from hwr_utils.utils import update_LR, reset_LR, plot_loss
 from hwr_utils.stroke_plotting import draw_from_gt
+import sys
+sys.path.append("..")
 
 ## Change CWD to the folder containing this script
 ROOT_DIR = Path(os.path.dirname(os.path.realpath(__file__))).parent
