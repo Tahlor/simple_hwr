@@ -13,7 +13,7 @@ from hwr_utils.hwr_logger import logger
 from loss_module import losses
 from models import start_points, stroke_model
 from hwr_utils.stroke_plotting import *
-
+from hwr_utils.utils import update_LR, reset_LR
 from hwr_utils.stroke_plotting import draw_from_gt
 
 ## Change CWD to the folder containing this script
@@ -33,13 +33,6 @@ def parse_args():
     opts = parser.parse_args()
     return opts
 
-def update_LR(config, training_loss=None):
-    lr = next(iter(config.optimizer.param_groups))['lr']
-    config.scheduler.step(training_loss)
-    new_lr = next(iter(config.optimizer.param_groups))['lr']
-    if new_lr != lr:
-        logger.info(f"LR decreased from {lr} to {new_lr}")
-    config.learning_rate = new_lr
 
 def run_epoch(dataloader, report_freq=500, plot_graphs=True):
     # for i in range(0, 16):
@@ -121,15 +114,6 @@ def test(dataloader):
 
     return config.stats["Actual_Loss_Function_test"].get_last()
 
-def reset_LR(config, lr):
-    for param_group in config.optimizer.param_groups:
-        param_group['lr'] = lr
-
-    # Create new scheduler too!
-    # config.scheduler_step - deprecated
-    config.scheduler = utils.new_scheduler(config.optimizer, config.batch_size,
-                                           gamma=config.scheduler_gamma, last_epoch=config.scheduler.last_epoch)
-    logger.info(("Scheduler Gamma", config.scheduler.gamma))
 
 def graph(batch, config=None, preds=None, _type="test", save_folder="auto", epoch="current", show=False, plot_points=True):
     if save_folder == "auto":

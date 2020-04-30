@@ -163,6 +163,9 @@ stroke_defaults = {"SMALL_TRAINING": False,
                     "model": {"nHidden": 128, "num_layers": 2},
                     "reset_LR": True,
                     "load_optimizer": False,
+                    "stroke_model_pt_override": None,
+                    "stroke_model_config": None,
+
                     }
 
 def debugger(func):
@@ -175,10 +178,13 @@ def debugger(func):
             globals().update(locals())
     return wrapper
 
-def load_config(config_path, hwr=True, testing=False, results_dir_override=None):
+def load_config(config_path, hwr=True, testing=False, results_dir_override=None, subpath=None):
     config_path = Path(config_path)
     project_path = Path(os.path.realpath(__file__)).parent.parent.absolute()
     config_root = project_path / "configs"
+
+    subpath = config_root / subpath if subpath else config_root
+
 
     # Path was specified, but not found
     # if config_root not in config_path.absolute().parents:
@@ -191,7 +197,8 @@ def load_config(config_path, hwr=True, testing=False, results_dir_override=None)
     # Go search for it
     if not config_path.exists():
         print(f"{config_path} does not exist")
-        config_path = find_config(config_path.name, config_root)
+
+        config_path = find_config(config_path.name, config_root=subpath)
 
     config = edict(read_config(config_path))
     config["name"] = Path(config_path).stem  ## OVERRIDE NAME WITH THE NAME OF THE YAML FILE
@@ -1359,6 +1366,48 @@ def npy_loader(path):
         return np.load(path)
     else:
         raise Exception(f"Unexpected file type {Path(path).suffix}")
+
+def update_LR(config, training_loss=None):
+    lr = next(iter(config.optimizer.param_groups))['lr']
+    config.scheduler.step(training_loss)
+    new_lr = next(iter(config.optimizer.param_groups))['lr']
+    if new_lr != lr:
+        logger.info(f"LR decreased from {lr} to {new_lr}")
+    config.learning_rate = new_lr
+
+
+def reset_LR(config, lr):
+    for param_group in config.optimizer.param_groups:
+        param_group['lr'] = lr
+
+    # Create new scheduler too!
+    # config.scheduler_step - deprecated
+    config.scheduler = new_scheduler(config.optimizer, config.batch_size,
+                                           gamma=config.scheduler_gamma, last_epoch=config.scheduler.last_epoch)
+    logger.info(("Scheduler Gamma", config.scheduler.gamma))
+
+def plot_loss(config, loss):
+    try:
+        # Print recent snapshot
+        plt.plot(config.stats[f"{loss}"].x[-100:], config.stats[f"{loss}"].y[-100:])
+        plt.savefig(config.image_dir / f"{loss}")
+        plt.clf()
+        plt.close('all')
+
+        # Print entire graph
+        max_length = min(len(config.stats[f"{loss}"].x), len(config.stats[f"{loss}"].y))
+        plt.plot(config.stats[f"{loss}"].x[-max_length:], config.stats[f"{loss}"].y[-max_length:])
+        plt.savefig(config.image_dir / f"{loss}_complete")
+        plt.clf()
+        plt.close('all')
+    except Exception as e:
+        logger.info(f"Problem graphing: {e}")
+        pass
+
+def graph_generated_img():
+    # save the image and save the GT image next to it
+    # save
+    pass
 
 if __name__=="__main__":
     from hwr_utils.visualize import Plot

@@ -534,7 +534,8 @@ class StrokeRecoveryDataset(Dataset):
             "gt_format": self.gt_format,
             "start_points": start_points,
             "kdtree": kdtree, # Will force preds to get nearer to nearest GTs; really want GTs forced to nearest pred; this will finish strokes better
-            "gt_idx": idx
+            "gt_idx": idx,
+            "predicted_strokes": None
         }
 
 def create_gts_from_raw_dict(item, interval, noise, gt_format=None):

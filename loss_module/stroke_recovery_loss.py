@@ -138,7 +138,7 @@ class StrokeLoss:
         for key, item in master_loss_defintion.items():
             logger.info(f"Loss {key}: {item}")
 
-    def main_loss(self, preds, item, suffix):
+    def main_loss(self, preds, item, suffix, targ_key="gt_list"):
         """ Preds: BATCH, TIME, VOCAB SIZE
                     VOCAB: x, y, start stroke, end_of_sequence
         Args:
@@ -152,7 +152,7 @@ class StrokeLoss:
 
         """
         label_lengths = item["label_lengths"]
-        targs = item["gt_list"]
+        targs = item[targ_key]
 
         losses = torch.zeros(len(self.master_loss_defintion), requires_grad=False)
         batch_size = len(preds)

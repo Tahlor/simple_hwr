@@ -353,3 +353,54 @@ def flatten_params(parameters):
         s += size
     flat = torch.cat(l).view(-1, 1)
     return {"params": flat, "indices": indices}
+
+
+class GeneratorTrainer(Trainer):
+    def __init__(self, model, optimizer, config, stroke_model, loss_criterion=None, training_dataset=None, **kwargs):
+        super().__init__(model, optimizer, config, loss_criterion)
+        self.loss_criterion = loss_criterion
+        self.stroke_model = stroke_model
+        self.training_dataset = training_dataset
+
+    def get_strokes(self, img):
+        #line_imgs = line_imgs.to(device)
+        pred_logits = self.stroke_model(img).cpu()
+        return pred_logits.permute(1, 0, 2) # Width,Batch,Vocab -> Batch, Width, Vocab
+
+    def test(self, item, **kwargs):
+        self.model.eval()
+        image = self.eval(item, train=False, **kwargs)
+        return image
+
+    def eval(self, input, **kwargs):
+        image = self.model(input) # different widths
+        return image
+
+    def train(self, item, **kwargs):
+        gt_strokes = item["gt_list"]
+        gt_image = item["line_imgs"]
+        image = self.eval(gt_strokes)
+
+        ## Truncate images to be compared to GT images
+        ## Relativefy
+
+        self.loss_criterion()
+        # if self.loss_criterion.name=="MSE":
+        #     self.loss_criterion(image, gt_image) # compare the images
+        #
+        # elif self.loss_criterion.name.lower()=="sm2sm":
+        #     # Compare stroke-model strokes predicted by GT image and synthetic image
+        #     predicted_strokes = self.stroke_model(gt_image)
+        #
+        #     # Create predicted strokes as needed
+        #     if item["predicted_strokes"][0] is None:
+        #         predicted_strokes = self.get_strokes(gt_image)
+        #         for batch_idx, data_idx in enumerate(item["gt_idx"]):
+        #             self.training_dataset[data_idx]["predicted_strokes"] = predicted_strokes[batch_idx]
+        #             item["predicted_strokes"] = predicted_strokes
+        #     self.loss_criterion.loss(predicted_strokes, item["predicted_strokes"])
+        #
+        # elif self.loss_criterion.name.lower()=="sm2gt":
+        #     # Compare predicted strokes and GT strokes
+        #     predicted_strokes = self.stroke_model(gt_image)
+        #     self.loss_criterion.loss(predicted_strokes, gt_strokes)

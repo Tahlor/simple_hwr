@@ -52,6 +52,7 @@ logger = logging.getLogger("root."+__name__)
 class CustomLoss(nn.Module):
     def __init__(self, loss_indices, device="cuda", **kwargs):
         super().__init__()
+        self.name = self.__class__.__name__
         self.loss_indices = loss_indices
         self.device = "cpu"  # I guess this needs to be CPU? IDK
         self.__dict__.update(**kwargs)
@@ -199,17 +200,6 @@ class DTWLoss(CustomLoss):
                                                         swapping=self.swapping
                                                         )
 
-            # a3, b3 = self.dtw_single((item["preds_numpy"][i], item["gt_numpy"][i]), dtw_mapping_basis=self.dtw_mapping_basis, window_size=self.window_size)
-            # dist, cost, a2, b2 = constrained_dtw2d2(np.ascontiguousarray(item["preds_numpy"][i][:,:2]),
-            #                                         np.ascontiguousarray(item["gt_numpy"][i][:,:2]),
-            #                                         constraint=self.window_size)
-            # print(f"new1 {i}", a)
-            # print(f"new2 {i}", b)
-            # print(f"old {i}", a3)
-            # assert all([_a == _b for _a, _b in zip(a, a3)])
-            # assert all([_a == _b for _a, _b in zip(a2, a3)])
-            # assert all([_a == _b for _a, _b in zip(b2, b3)])
-
             ## Reverse the original GT
             if adaptive_instr_dict:
                 if suffix != "_test":
@@ -253,7 +243,7 @@ class DTWLoss(CustomLoss):
         return loss  # , to_value(loss)
 
 
-    def dtw_l1_swapper(self, preds, targs, label_lengths, item, **kwargs):
+    def dtw_l1_swapper_DEPRECATED(self, preds, targs, label_lengths, item, **kwargs):
         loss = 0
         item = add_preds_numpy(preds, item)
         for i in range(len(preds)):  # loop through BATCH
