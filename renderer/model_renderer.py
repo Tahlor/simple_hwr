@@ -9,16 +9,16 @@ import numpy as np
 MAX_LENGTH = 64
 
 class Renderer(nn.Module):
-    def __init__(self, vocab_size=3, device="cuda", cnn_type="default", first_conv_op=CoordConv, first_conv_opts=None, **kwargs):
+    def __init__(self, input_vocab_size=3, device="cuda", cnn_type="default64", **kwargs):
         super().__init__()
         self.__dict__.update(kwargs)
-        self.uncnn = UNCNN(nc=1)
+        self.cnn = self.uncnn = UNCNN(nc=1, cnn_type=cnn_type)
 
         hidden_size = 1024
         bidirectional = True
         hidden_size = int(hidden_size / 2) if bidirectional else hidden_size
         self.encoder = nn.LSTM(input_size=1024, hidden_size=hidden_size, bidirectional=bidirectional, dropout=.5, num_layers=2)
-        self.linear = nn.Linear(vocab_size, 1024)
+        self.linear = nn.Linear(input_vocab_size, 1024)
         self.device = device
 
     def forward(self, input):
@@ -58,7 +58,7 @@ class Renderer(nn.Module):
         return image
 
 class UNCNN(nn.Module):
-    def __init__(self, cnnInSize=1024, nc=1, ngf=64):
+    def __init__(self, cnnInSize=1024, nc=1, ngf=64, cnn_type="default64"):
         """ Channels, CNN_IN_SIZE=1024
 
         Args:
@@ -69,7 +69,8 @@ class UNCNN(nn.Module):
         """
         super().__init__()
         self.cnnInSize = cnnInSize
-        late_stride = 2 if type=="default64" else [2,1]
+        self.cnn_type = cnn_type
+        late_stride = 2 if cnn_type=="default" else [2,1]
         self.main = nn.Sequential(
             # input is Z, going into a convolution, 16, 512, 2, 451
             # originally: 64, nz, 1, 1,
@@ -78,11 +79,11 @@ class UNCNN(nn.Module):
             nn.BatchNorm2d(ngf * 8),
             nn.ReLU(True),
             # state size. (ngf*8) x 4 x 4
-            nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 2, bias=False),
+            nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, late_stride, 2, bias=False),
             nn.BatchNorm2d(ngf * 4),
             nn.ReLU(True),
             # state size. (ngf*4) x 8 x 8
-            nn.ConvTranspose2d( ngf * 4, ngf * 2, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d( ngf * 4, ngf * 2, 4, late_stride, 1, bias=False),
             nn.BatchNorm2d(ngf * 2),
             nn.ReLU(True),
             # state size. (ngf*2) x 16 x 16
@@ -91,7 +92,7 @@ class UNCNN(nn.Module):
             nn.ReLU(True),
             # state size. (ngf) x 32 x 32
             nn.ConvTranspose2d( ngf, nc, 4, late_stride, 1, bias=False),
-            nn.Tanh()
+            nn.Sigmoid() # Tanh, Sigmoid
             # state size. (nc) x 64 x 64
             # OUTPUT: BATCH 61 x 1 x H=60 x W
 
@@ -127,5 +128,5 @@ def test_renderer():
     print(out.shape)
 
 if __name__=='__main__':
-    test_uncnn()
+    #test_uncnn()
     test_renderer()

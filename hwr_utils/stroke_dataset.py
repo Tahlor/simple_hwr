@@ -6,7 +6,6 @@ import multiprocessing
 import torch
 from torch.utils.data import Dataset
 from scipy.spatial import KDTree
-
 import os
 import cv2
 import numpy as np

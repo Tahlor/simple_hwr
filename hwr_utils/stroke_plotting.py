@@ -270,7 +270,7 @@ def gt_to_raw(instance):
     return output
 
 
-def gt_to_list_of_strokes(instance, stroke_number=True, has_start_points=True):
+def gt_to_list_of_strokes(instance, stroke_number=True, has_start_points=True, sos_error_check=False):
     """
 
     Args:
@@ -296,7 +296,7 @@ def gt_to_list_of_strokes(instance, stroke_number=True, has_start_points=True):
             l = l[1:]
         else:
             warnings.warn("First item should have been empty")
-        if np.any(start_points < 0):
+        if np.any(start_points < 0) and sos_error_check:
             raise Exception("Start points are less than 0")
         return l
     else:

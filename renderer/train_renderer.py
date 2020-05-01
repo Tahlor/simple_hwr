@@ -4,7 +4,7 @@ from hwr_utils import visualize
 from torch.utils.data import DataLoader
 from torch import nn
 from loss_module.stroke_recovery_loss import StrokeLoss
-from trainers import TrainerStrokeRecovery, TrainerStartPoints
+from trainers import TrainerStrokeRecovery, TrainerStartPoints, GeneratorTrainer
 from models.stroke_model import StrokeRecoveryModel
 from hwr_utils.stroke_dataset import StrokeRecoveryDataset
 from hwr_utils.stroke_recovery import *
@@ -18,6 +18,7 @@ from models import start_points, stroke_model
 from hwr_utils.stroke_plotting import *
 from hwr_utils.utils import update_LR, reset_LR, plot_loss
 from hwr_utils.stroke_plotting import draw_from_gt
+import model_renderer
 
 numpify = lambda x : x.detach().cpu().numpy()
 
@@ -67,14 +68,14 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
     path.mkdir(parents=True, exist_ok=True)
     if True:
         print(predicted_strokes)
-        if predicted_strokes:
+        if predicted_strokes is not None:
             save_stroke_images(pred_image,
                                predicted_strokes, path, is_gt=False)
         else:
             save_images(pred_image, path, is_gt=False)
 
         # Save GTs
-        if "predicted_strokes_gt" in item and item["predicted_strokes_gt"][0]:
+        if "predicted_strokes_gt" in item and item["predicted_strokes_gt"][0] is not None:
             save_stroke_images(item["line_imgs"],
                                item["predicted_strokes_gt"], path, is_gt=True)
         else:
@@ -178,7 +179,7 @@ def build_data_loaders(folder, cnn, train_size, test_size, **kwargs):
     return train_dataloader, test_dataloader
 
 def load_stroke_model(config_path, model_path=None):
-    config = utils.load_config(config_path, hwr=False)
+    config = utils.load_config(config_path, hwr=False, create_logger=False)
 
     # Supercede the YAML model if one specified
     if not model_path is None:
@@ -227,21 +228,17 @@ def main(config_path, testing=False):
     output.mkdir(parents=True, exist_ok=True)
     folder = Path(config.dataset_folder)
 
-    model_kwargs = {"vocab_size": vocab_size,
-                    "device": device,
-                    "cnn_type": config.cnn_type,
-                    "first_conv_op": config.coordconv,
-                    "first_conv_opts": config.coordconv_opts,
-                    **config.model}
+    model_kwargs = {**config.model_definition}
 
     model_dict = {"start_point_lstm": start_points.StartPointModel,
                   "start_point_lstm2": start_points.StartPointModel2,
                   "start_point_attn": start_points.StartPointAttnModel,
                   "start_point_attn_deep": start_points.StartPointAttnModelDeep,
                   "start_point_attn_full": start_points.StartPointAttnModelFull,
-                  "normal": stroke_model.StrokeRecoveryModel}
+                  "normal": stroke_model.StrokeRecoveryModel,
+                  "Renderer": model_renderer.Renderer}
 
-    model_class = model_dict[config.model_name]
+    model_class = model_dict[config.model_definition.model_name]
     model = model_class(**model_kwargs).to(device)
 
     cnn = model.cnn  # if set to a cnn object, then it will resize the GTs to be the same size as the CNN output
@@ -271,10 +268,11 @@ def main(config_path, testing=False):
     # config.scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.7, patience=80, verbose=False,
     #                                             threshold=0.00005, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)
 
-    if config.model_name != "normal":
-        trainer = TrainerStartPoints(model, optimizer, config=config, loss_criterion=config.loss_obj)
-    else:
-        trainer = TrainerStrokeRecovery(model, optimizer, config=config, loss_criterion=config.loss_obj)
+    trainer = GeneratorTrainer(model, optimizer,
+                               stroke_model=config.stroke_model,
+                               config=config,
+                               loss_criterion=config.loss_obj,
+                               training_dataset=config.training_dataset.data)
 
     config.optimizer = optimizer
     config.trainer = trainer

@@ -79,7 +79,7 @@ def find_config(config_name, config_root="./configs"):
     elif len(found_paths) < 1:
         raise Exception("{} config not found".format(config_name))
 
-def incrementer(root, base):
+def incrementer(root, base, make_folder=True):
     new_folder = Path(root / base)
     increment = 0
     increment_string = ""
@@ -186,7 +186,11 @@ def fix_dict(d):
             d[k] = fix_dict(d[k])
     return d
 
-def load_config(config_path, hwr=True, testing=False, results_dir_override=None, subpath=None):
+def load_config(config_path, hwr=True,
+                testing=False,
+                results_dir_override=None,
+                subpath=None,
+                create_logger=True):
     config_path = Path(config_path)
     project_path = Path(os.path.realpath(__file__)).parent.parent.absolute()
     log_print("Project path", project_path)
@@ -236,10 +240,9 @@ def load_config(config_path, hwr=True, testing=False, results_dir_override=None,
         experiment = config.experiment
 
         # Backup some stuff
-        backup = incrementer(output_root, "backup")
-        backup.mkdir(exist_ok=True, parents=True)
-        print(backup)
         for f in itertools.chain(output_root.glob("*.json"),output_root.glob("*.log")):
+            backup = incrementer(output_root, "backup")
+            print(backup)
             shutil.copy(str(f), backup)
         output_root = output_root.as_posix()
     elif results_dir_override or ("results_dir_override" in config and config.results_dir_override):
@@ -322,9 +325,12 @@ def load_config(config_path, hwr=True, testing=False, results_dir_override=None,
     else:
         config = make_config_consistent_stroke(config)
 
-    logger = hwr_logger.setup_logging(folder=config["log_dir"], level=config["logging"].upper())
+    if create_logger:
+        logger = hwr_logger.setup_logging(folder=config["log_dir"], level=config["logging"].upper())
+        log_print(f"Effective logging level: {logger.getEffectiveLevel()}")
+    else:
+        logger = None
 
-    log_print(f"Effective logging level: {logger.getEffectiveLevel()}")
     log_print("Using config file", config_path)
     #log_print(json.dumps(config, indent=2))
 

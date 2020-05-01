@@ -1,6 +1,6 @@
 
 # Load model
-TESTING: false # this is for debugging, do it on a small dataset
+TESTING: true # this is for debugging, do it on a small dataset
 use_visdom: false
 load_path: false # ./results/baseline/20190622_155031-lr_0.001_bs_16_warp_False_arch_basic_encoder/baseline_model.pt # or false
 test_only: false # Do not train
@@ -9,6 +9,12 @@ logging: info
 gpu_if_available: true
 load_optimizer: false # load LR and per-parameter LR's from saved state
 reset_LR: true # reset the global LR if loading optimizer
+
+model_definition:
+  model_name: Renderer
+  input_vocab_size: 3
+  device: cuda
+  cnn_type: default64
 
 # Stroke model
 stroke_model_pt_override: "./renderer/stroke_models/RESUME_model.pt"
@@ -50,7 +56,7 @@ scheduler_gamma: .95          # LR decay rate
 
 test_size: null
 train_size: null
-batch_size: 32
+batch_size: 16
 
 ## GTs
 # All options include:
@@ -66,11 +72,9 @@ gt_format: # if relative etc., specify that here; e.g., opts:rel
   - x
   - y
   - stroke_number
-  - eos
 
 # NOT IMPLEMENTED
 gt_opts:
-  - null
   - null
   - null
   - null
@@ -81,7 +85,6 @@ pred_opts: # if relative etc., specify that here; e.g., opts:rel opts:cumsum etc
   - null
   - null
   - cumsum sigmoid # THIS IS APPLIED AFTER THE LOSS
-  - sigmoid # THIS IS APPLIED AFTER
 
 ## Loss function
 # l1, dtw, ssl, cross_entropy

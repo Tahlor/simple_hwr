@@ -359,9 +359,11 @@ class GeneratorTrainer(Trainer):
     def __init__(self, model, optimizer, config, stroke_model, loss_criterion=None, training_dataset=None, **kwargs):
         super().__init__(model, optimizer, config, loss_criterion)
         self.loss_criterion = loss_criterion
+        self.generator_model = model
         self.stroke_model = stroke_model
         self.training_dataset = training_dataset
         self.loss_version = "SM2SM"
+        self.device = self.config.device
 
     def get_strokes(self, img):
         #line_imgs = line_imgs.to(device)
@@ -375,13 +377,18 @@ class GeneratorTrainer(Trainer):
         return image
 
     def eval(self, input, **kwargs):
-        image = self.model(input) # different widths
+        image = self.generator_model(input) # different widths
         return image
+
+    def stroke_eval(self, input):
+        pred_logits = self.stroke_model(input).cpu()
+        return pred_logits.permute(1, 0, 2)
 
     def train(self, item, train=True, **kwargs):
         gt_strokes = item["gt_list"]
         gt_image = item["line_imgs"]
-        pred_image = self.eval(gt_strokes)
+        pred_image = self.eval(item["gt"].to(self.config.device)) # BATCH x 1 x H x W
+
         predicted_strokes = None
 
         ## Truncate images to be compared to GT images
@@ -395,14 +402,14 @@ class GeneratorTrainer(Trainer):
 
         elif self.loss_version.lower()=="sm2sm":
             # Compare stroke-model strokes predicted by GT image and synthetic image
-            predicted_strokes = self.stroke_model(pred_image)
+            predicted_strokes = self.stroke_eval(pred_image[:, :, 1:62])
 
             # Create predicted strokes as needed
             #### Convert both sets of Y to be relative
 
             if item["predicted_strokes_gt"][0] is None:
                 with torch.no_grad(): # don't need gradients for predicted GT strokes
-                    predicted_strokes_gt_batch = self.get_strokes(gt_image).detach()
+                    predicted_strokes_gt_batch = self.stroke_eval(gt_image.to(self.config.device)).detach()
 
                     ## Adjust GT SOS to Stroke Number
                     #### SOS SHOULD BE STRAIGHT UP COMPARED TO SOS ON THE DTW SINCE BOTH ARE PREDICTED ### ???
@@ -416,9 +423,9 @@ class GeneratorTrainer(Trainer):
                 for batch_idx, data_idx in enumerate(item["gt_idx"]):
                     self.training_dataset[data_idx]["predicted_strokes_gt"] = predicted_strokes_gt_batch[batch_idx]
 
-                item["predicted_strokes_gt"] = predicted_strokes_gt_batch
+                item["predicted_strokes_gt"] = predicted_strokes_gt_batch #.to(self.device)
 
-            loss_tensor, loss = self.loss_criterion.main_loss(predicted_strokes, item, suffix="_train", targ_key="predicted_strokes_gt_batch")
+            loss_tensor, loss = self.loss_criterion.main_loss(predicted_strokes, item, suffix="_train", targ_key="predicted_strokes_gt")
 
         elif self.loss_version.lower()=="sm2gt":
             # Compare predicted strokes and GT strokes
@@ -434,3 +441,4 @@ class GeneratorTrainer(Trainer):
             self.optimizer.step()
 
         return loss, pred_image, predicted_strokes
+

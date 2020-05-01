@@ -385,7 +385,7 @@ class DTWLoss(CustomLoss):
             else:
                 raise NotImplemented
 
-            loss_by_point = (abs(pred - targ)* self.subcoef).sum(axis=1)
+            loss_by_point = (abs(pred - targ)* self.subcoef).sum(axis=1) # targ is CPU, pred is GPU
             if self.barron:
                 loss += (self.barron(pred - targ)).sum() * self.subcoef  # AVERAGE pointwise loss for 1 image
             else:

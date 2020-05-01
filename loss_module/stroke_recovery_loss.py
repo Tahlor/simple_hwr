@@ -170,7 +170,7 @@ class StrokeLoss:
                 logger.error(e)
                 logger.error(f"{loss_fn}")
                 logger.error(traceback.format_exc())
-                #loss_tensor = loss_fn(preds, targs, label_lengths, item=item)
+                loss_tensor = loss_fn(preds, targs, label_lengths, item=item, suffix=suffix)
                 continue
 
             loss = to_value(loss_tensor)
