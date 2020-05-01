@@ -74,9 +74,9 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
             save_images(pred_image, path, is_gt=False)
 
         # Save GTs
-        if item["predicted_strokes_gt_batch"][0]:
+        if "predicted_strokes_gt" in item and item["predicted_strokes_gt"][0]:
             save_stroke_images(item["line_imgs"],
-                               item["predicted_strokes_gt_batch"], path, is_gt=True)
+                               item["predicted_strokes_gt"], path, is_gt=True)
         else:
             save_images(item["line_imgs"], path, is_gt=False)
 
