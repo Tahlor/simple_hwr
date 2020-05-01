@@ -61,35 +61,37 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
     logger.info(("Epoch duration:", end_time - start_time))
 
     ## Draw the pred image, draw the pred stroke_gt, draw the
-    if False:
+    path = (config.image_dir / config.epoch / "train")
+    if True:
         if predicted_strokes:
-            save_stroke_images(pred_image, predicted_strokes, path, suffix="pred_with_strokes")
+            save_stroke_images(pred_image, predicted_strokes, path, is_gt=False)
         else:
-            save_images(pred_image, path, suffix="pred")
+            save_images(pred_image, path)
 
         # Save GTs
         if item["predicted_strokes_gt_batch"][0]:
-            save_stroke_images(item["line_imgs"], item["predicted_strokes_gt_batch"], path, suffix)
+            save_stroke_images(item["line_imgs"], item["predicted_strokes_gt_batch"], path, is_gt=True)
         else:
-            save_images(item["line_imgs"], path, suffix)
+            save_images(item["line_imgs"], path)
 
     # config.scheduler.step()
     training_loss = config.stats["Actual_Loss_Function_train"].get_last_epoch()
     return training_loss
 
-def save_images(list_of_images, path):
-    for i, image in enumerate(list_of_images):
-        path = None
 
-    pass
+def save_images(list_of_images, path, is_gt, normalized=True):
+    rescale = lambda x: (x + 1) * 127.5 if normalized else lambda x: x
+    for i, image in enumerate(list_of_images):
+        new_img = Image.fromarray(np.uint8(rescale(np.squeeze(image))), 'L')
+        file_name = f"i_{'gt' if is_gt else 'pred'}.tif"
+        new_img.save(path / file_name)
 
 ### THIS SHOULD BE AN OVERLAY UGHH
-def save_stroke_images(list_of_images, path):
+def save_stroke_images(list_of_images, list_of_coords, path, is_gt):
     for i, image in enumerate(list_of_images):
-        draw_from_gt()
-
-    pass
-
+        file_name = f"i_{'gt' if is_gt else 'pred'}.tif"
+        coords_i = utils.prep_coords_to_graph(config, list_of_coords[i], is_gt=True)
+        img = overlay_images(background_img=list_of_images[i].numpy(), foreground_gt=coords_i.transpose(), save_path = path / file_name)
 
 def test(dataloader):
     preds_to_graph = None

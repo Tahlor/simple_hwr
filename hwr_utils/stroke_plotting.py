@@ -589,7 +589,7 @@ def random_pad(gt, vpad=10, hpad=10, height=61):
     return new_gt
 
 
-def overlay_images(background_img=None, foreground_gt=None, normalized=True):
+def overlay_images(background_img=None, foreground_gt=None, normalized=True, save_path=None):
     """
 
     Args:
@@ -606,6 +606,8 @@ def overlay_images(background_img=None, foreground_gt=None, normalized=True):
         img = img.convert("RGB")
         if foreground_gt is None:
             return img
+    # elif isinstance(background_img, np.ndarray):
+    #     img = Image.fromarray(background_img, "RGB")
 
     if foreground_gt is not None:
         red_img = draw_from_gt(foreground_gt, show=False, linewidth=1, color=[255, 0, 0], alpha=True)
@@ -620,4 +622,6 @@ def overlay_images(background_img=None, foreground_gt=None, normalized=True):
     bg = Image.new('RGB', (width, height), (255, 255, 255))
     bg.paste(img, (0, 0))
     bg.paste(red_img, (0, 0), red_img)
+    if save_path:
+        bg.save(save_path)
     return bg

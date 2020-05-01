@@ -25,7 +25,7 @@ from hwr_utils import hwr_logger
 from subprocess import Popen, DEVNULL, STDOUT, check_output
 from hwr_utils.base_utils import *
 from torch.optim import lr_scheduler
-
+from hwr_utils.stroke_recovery import relativefy_numpy
 
 def read_config(config):
     config = Path(config)
@@ -189,6 +189,7 @@ def fix_dict(d):
 def load_config(config_path, hwr=True, testing=False, results_dir_override=None, subpath=None):
     config_path = Path(config_path)
     project_path = Path(os.path.realpath(__file__)).parent.parent.absolute()
+    log_print("Project path", project_path)
     config_root = project_path / "configs"
 
     subpath = config_root / subpath if subpath else config_root
@@ -1419,6 +1420,36 @@ def graph_generated_img():
     # save the image and save the GT image next to it
     # save
     pass
+
+
+def prep_coords_to_graph(config, coords, is_gt=True):
+    """
+
+    Args:
+        config:
+        coords: 1 set of coords (not batch)
+        is_gt:
+
+    Returns:
+
+    """
+    if not is_gt:
+        coords = to_numpy(coords)
+
+        if "stroke_number" in config.gt_format:
+            idx = config.gt_format.index("stroke_number")
+            if config.pred_opts[idx]=="cumsum": # are the PREDS also CUMSUM?? or just the GTs
+                coords[idx] = relativefy_numpy(coords[idx], reverse=False)
+
+        # Round the SOS, EOS etc. items
+        coords[2:, :] = np.round(coords[2:, :]) # VOCAB SIZE, LENGTH
+    else:
+        coords = to_numpy(coords).transpose() # LENGTH, VOCAB => VOCAB SIZE, LENGTH
+
+        if "stroke_number" in config.gt_format:
+            idx = config.gt_format.index("stroke_number")
+            coords[idx] = relativefy_numpy(coords[idx], reverse=False)
+    return coords
 
 if __name__=="__main__":
     from hwr_utils.visualize import Plot
