@@ -64,20 +64,21 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
 
     ## Draw the pred image, draw the pred stroke_gt, draw the
     path = (config.image_dir / str(config.counter.epochs) / "train")
+    path.mkdir(parents=True, exist_ok=True)
     if True:
         print(predicted_strokes)
         if predicted_strokes:
-            save_stroke_images(numpify(pred_image),
-                               numpify(predicted_strokes), path, is_gt=False)
+            save_stroke_images(pred_image,
+                               predicted_strokes, path, is_gt=False)
         else:
-            save_images(numpify(pred_image), path, is_gt=False)
+            save_images(pred_image, path, is_gt=False)
 
         # Save GTs
         if item["predicted_strokes_gt_batch"][0]:
-            save_stroke_images(numpify(item["line_imgs"]),
-                               numpify(item["predicted_strokes_gt_batch"]), path, is_gt=True)
+            save_stroke_images(item["line_imgs"],
+                               item["predicted_strokes_gt_batch"], path, is_gt=True)
         else:
-            save_images(numpify(item["line_imgs"]), path, is_gt=False)
+            save_images(item["line_imgs"], path, is_gt=False)
 
     # config.scheduler.step()
     training_loss = config.stats["Actual_Loss_Function_train"].get_last_epoch()
@@ -87,16 +88,23 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
 def save_images(list_of_images, path, is_gt, normalized=True):
     rescale = lambda x: (x + 1) * 127.5 if normalized else lambda x: x
     for i, image in enumerate(list_of_images):
+        if isinstance(image, Tensor):
+            image = numpify(image)
         new_img = Image.fromarray(np.uint8(rescale(np.squeeze(image))), 'L')
-        file_name = f"i_{'gt' if is_gt else 'pred'}.tif"
+        file_name = f"{i}_{'gt' if is_gt else 'pred'}.tif"
         new_img.save(path / file_name)
 
 ### THIS SHOULD BE AN OVERLAY UGHH
 def save_stroke_images(list_of_images, list_of_coords, path, is_gt):
     for i, image in enumerate(list_of_images):
+        if isinstance(image, Tensor):
+            image = numpify(image)
+        if isinstance(list_of_coords[i], Tensor):
+            coords = numpify(list_of_coords[i])
+
         file_name = f"i_{'gt' if is_gt else 'pred'}.tif"
-        coords_i = utils.prep_coords_to_graph(config, list_of_coords[i], is_gt=True)
-        img = overlay_images(background_img=list_of_images[i].numpy(), foreground_gt=coords_i.transpose(), save_path = path / file_name)
+        coords_i = utils.prep_coords_to_graph(config, coords, is_gt=True)
+        img = overlay_images(background_img=image, foreground_gt=coords_i.transpose(), save_path = path / file_name)
 
 def test(dataloader):
     preds_to_graph = None
