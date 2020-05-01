@@ -2,8 +2,6 @@ from torch import nn
 import torch
 import sys
 sys.path.append("..")
-from basic import CNN, BidirectionalRNN, Interpolate, PrintLayer
-from CoordConv import CoordConv
 import numpy as np
 
 MAX_LENGTH = 64
