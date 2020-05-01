@@ -19,6 +19,8 @@ from hwr_utils.stroke_plotting import *
 from hwr_utils.utils import update_LR, reset_LR, plot_loss
 from hwr_utils.stroke_plotting import draw_from_gt
 
+numpify = lambda x : x.detach().cpu().numpy()
+
 ## Change CWD to the folder containing this script
 ROOT_DIR = Path(os.path.dirname(os.path.realpath(__file__))).parent
 
@@ -61,18 +63,21 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
     logger.info(("Epoch duration:", end_time - start_time))
 
     ## Draw the pred image, draw the pred stroke_gt, draw the
-    path = (config.image_dir / config.epoch / "train")
+    path = (config.image_dir / str(config.counter.epochs) / "train")
     if True:
+        print(predicted_strokes)
         if predicted_strokes:
-            save_stroke_images(pred_image, predicted_strokes, path, is_gt=False)
+            save_stroke_images(numpify(pred_image),
+                               numpify(predicted_strokes), path, is_gt=False)
         else:
-            save_images(pred_image, path)
+            save_images(numpify(pred_image), path, is_gt=False)
 
         # Save GTs
         if item["predicted_strokes_gt_batch"][0]:
-            save_stroke_images(item["line_imgs"], item["predicted_strokes_gt_batch"], path, is_gt=True)
+            save_stroke_images(numpify(item["line_imgs"]),
+                               numpify(item["predicted_strokes_gt_batch"]), path, is_gt=True)
         else:
-            save_images(item["line_imgs"], path)
+            save_images(numpify(item["line_imgs"]), path, is_gt=False)
 
     # config.scheduler.step()
     training_loss = config.stats["Actual_Loss_Function_train"].get_last_epoch()
