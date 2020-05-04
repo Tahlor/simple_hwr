@@ -66,24 +66,25 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
     ## Draw the pred image, draw the pred stroke_gt, draw the
     path = (config.image_dir / str(config.counter.epochs) / "train")
     path.mkdir(parents=True, exist_ok=True)
-    if True:
-        print(predicted_strokes)
-        if predicted_strokes is not None:
-            save_stroke_images(pred_image,
-                               predicted_strokes, path, is_gt=False)
-        else:
-            save_images(pred_image, path, is_gt=False)
-
-        # Save GTs
-        if "predicted_strokes_gt" in item and item["predicted_strokes_gt"][0] is not None:
-            save_stroke_images(item["line_imgs"],
-                               item["predicted_strokes_gt"], path, is_gt=True)
-        else:
-            save_images(item["line_imgs"], path, is_gt=False)
-
+    save_out(item, predicted_strokes, pred_image, path)
     # config.scheduler.step()
     training_loss = config.stats["Actual_Loss_Function_train"].get_last_epoch()
     return training_loss
+
+def save_out(item, predicted_strokes, pred_image, path):
+    print(predicted_strokes)
+    if predicted_strokes is not None:
+        save_stroke_images(pred_image,
+                           predicted_strokes, path, is_gt=False)
+    else:
+        save_images(pred_image, path, is_gt=False)
+
+    # Save GTs
+    if "predicted_strokes_gt" in item and item["predicted_strokes_gt"][0] is not None:
+        save_stroke_images(item["line_imgs"],
+                           item["predicted_strokes_gt"], path, is_gt=True)
+    else:
+        save_images(item["line_imgs"], path, is_gt=False)
 
 
 def save_images(list_of_images, path, is_gt, normalized=True):
@@ -110,13 +111,20 @@ def save_stroke_images(list_of_images, list_of_coords, path, is_gt):
 def test(dataloader):
     preds_to_graph = None
     for i, item in enumerate(dataloader):
-        loss, preds, *_ = trainer.test(item)
+        loss, pred_image, predicted_strokes, *_ = trainer.test(item)
         if loss is None:
             continue
         if i == 0:
             preds_to_graph = [p.permute([1, 0]) for p in preds]
             item_to_graph = item
         config.stats["Actual_Loss_Function_test"].accumulate(loss)
+
+    # Save images
+    path = (config.image_dir / str(config.counter.epochs) / "test")
+    path.mkdir(parents=True, exist_ok=True)
+    save_out(item, predicted_strokes, pred_image, path)
+
+
 
     utils.reset_all_stats(config, keyword="_test")
 
