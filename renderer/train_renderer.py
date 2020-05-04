@@ -218,8 +218,11 @@ def main(config_path, testing=False):
 
     config = utils.load_config(config_path, hwr=False, testing=testing, subpath="renderer")
 
-    config.stroke_model = load_stroke_model(config.stroke_model_config, config.stroke_model_pt_override)
-    
+    if config.trainer_args.loss_type.lower() in ["sm2sm"]:
+        config.stroke_model = load_stroke_model(config.stroke_model_config, config.stroke_model_pt_override)
+    else:
+        config.stroke_model = None
+
     test_size = config.test_size
     train_size = config.train_size
     batch_size = config.batch_size
@@ -280,7 +283,8 @@ def main(config_path, testing=False):
                                stroke_model=config.stroke_model,
                                config=config,
                                loss_criterion=config.loss_obj,
-                               training_dataset=config.training_dataset.data)
+                               training_dataset=config.training_dataset.data,
+                               **config.trainer_args)
 
     config.optimizer = optimizer
     config.trainer = trainer

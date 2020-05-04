@@ -794,6 +794,21 @@ class L2(CustomLoss):
                         1 / 2)
         return loss  # , to_value(loss)
 
+class ImageL2(CustomLoss):
+    """ Use opts to specify "variable_L1" (resample to get the same number of GTs/preds)
+    """
+
+    def __init__(self, loss_indices, **kwargs):
+        """
+        """
+        # parse the opts - this will include opts regarding the DTW basis
+        # loss_indices - the loss_indices to calculate the actual loss
+        super().__init__(loss_indices, **kwargs)
+        self.lossfun = self.l2
+
+    def l2(self, pred_imgs, true_imgs, label_lengths, **kwargs):
+        return torch.sum((pred_imgs - true_imgs) ** 2)
+
 
 class CrossEntropy(nn.Module):
     """ Use opts to specify "variable_L1" (resample to get the same number of GTs/preds

@@ -35,15 +35,8 @@ data_root_fsl: ../hw_data/strokes
 data_root_local: data
 dataset_folder: online_coordinate_data/3_stroke_64_v2
 
-# MAKE THIS BETTER
 trainer_args:
   loss_type: mse
-loss_fns:
-  - name: ImageL2 # dtw_sos_eos, dtw_reverse
-    gts: # doesn't actually do anything except make syntax checkers happy
-      - x
-      - y
-
 
 dataset:
   img_height: 61
@@ -100,6 +93,20 @@ pred_opts: # if relative etc., specify that here; e.g., opts:rel opts:cumsum etc
 # l1, dtw, ssl, cross_entropy
 # can also add activation functions here NOT IMPLEMENTED
 # LOSS FNs WITH THE SAME NAME WILL BE CONSIDERED THE SAME!
+
+loss_fns:
+  - name: dtw # dtw_sos_eos, dtw_reverse
+    coef: 1
+    gts:
+      - x
+      - y
+    dtw_mapping_basis:
+      - x
+      - y
+    cross_entropy_indices: # SIGMOID TAKEN DURING LOSS
+      - stroke_number
+    relativefy_cross_entropy_gt: true # this will take cross_entropy_indices GTS ONLY and relativefy it; this will find the "true" first stroke point
+    subcoef: 1,1 # ONLY APPLIES TO GT-index list
 
 first_loss_epochs: 0
 

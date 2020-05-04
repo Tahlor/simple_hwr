@@ -75,6 +75,8 @@ class StrokeLoss:
             if "swapper" in loss_name:
                 l1.lossfun = l1.l1_swapper
             loss_fn = l1.lossfun
+        elif loss_name.startswith("imagel2"):
+            loss_fn = ImageL2(**loss, device=self.device).lossfun
         elif loss_name.startswith("l2"):
             loss_fn = L2(**loss, device=self.device).lossfun
         elif loss_name.startswith("dtw_adaptive"):
@@ -164,13 +166,13 @@ class StrokeLoss:
 
             # Try calculating the loss
             try:
-                loss_tensor = loss_fn(preds, targs, label_lengths, item=item, suffix=suffix)
+                loss_tensor = loss_fn(preds, targs, label_lengths=label_lengths, item=item, suffix=suffix)
             except Exception as e:
                 losses[i] = torch.zeros(1, requires_grad=True)
                 logger.error(e)
                 logger.error(f"{loss_fn}")
                 logger.error(traceback.format_exc())
-                loss_tensor = loss_fn(preds, targs, label_lengths, item=item, suffix=suffix)
+                loss_tensor = loss_fn(preds, targs, label_lengths=label_lengths, item=item, suffix=suffix)
                 continue
 
             loss = to_value(loss_tensor)

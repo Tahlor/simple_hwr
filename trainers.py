@@ -362,7 +362,7 @@ class GeneratorTrainer(Trainer):
         self.generator_model = model
         self.stroke_model = stroke_model
         self.training_dataset = training_dataset
-        self.loss_version = "SM2SM"
+        self.loss_version = kwargs["loss_type"] if "loss_type" in kwargs else "SM2SM"
         self.device = self.config.device
 
     def get_strokes(self, img):
@@ -397,8 +397,7 @@ class GeneratorTrainer(Trainer):
         ## make sure you're comparing apples to apples
 
         if self.loss_version.lower()=="mse":
-            self.loss_criterion(pred_image, gt_image) # compare the images
-            loss_tensor, loss = self.loss_criterion.main_loss(pred_image, item, suffix="_train", targ_key="gt_list")
+            loss_tensor, loss = self.loss_criterion.main_loss(pred_image, item, suffix="_train", targ_key="line_imgs")
 
         elif self.loss_version.lower()=="sm2sm":
             # Compare stroke-model strokes predicted by GT image and synthetic image
@@ -408,7 +407,8 @@ class GeneratorTrainer(Trainer):
             #### Convert both sets of Y to be relative
 
             if item["predicted_strokes_gt"][0] is None:
-                with torch.no_grad(): # don't need gradients for predicted GT strokes
+                if True:
+                #with torch.no_grad(): # don't need gradients for predicted GT strokes
                     predicted_strokes_gt_batch = self.stroke_eval(gt_image.to(self.config.device)).detach()
 
                     ## Adjust GT SOS to Stroke Number
