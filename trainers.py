@@ -251,6 +251,7 @@ class GeneratorTrainer(Trainer):
         gt_image = item["line_imgs"]
         # Truncate the pred image
         pred_image = self.eval(item["rel_gt"].to(self.config.device))[:,:,:,:gt_image.shape[-1]] # BATCH x 1 x H x W
+        self.config.counter.update(epochs=0, instances=gt_image.shape[0], updates=1)
 
         predicted_strokes = None
 
