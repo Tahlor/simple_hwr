@@ -291,9 +291,11 @@ def main(config_path, testing=False):
     config.trainer = trainer
     config.model = model
     logger.info(f"LR before loading model: {next(iter(config.optimizer.param_groups))['lr']}")
-    if config.load_path and not utils.no_gpu_testing():  # don't load model if not using GPU
-        utils.load_model_strokes(config, config.load_optimizer)  # should be load_model_strokes??????
-        print(config.counter.epochs)
+
+    # Loading not supported yet
+    # if config.load_path and not utils.no_gpu_testing():  # don't load model if not using GPU
+    #     utils.load_model_strokes(config, config.load_optimizer)
+    #     print(config.counter.epochs)
 
     if config.reset_LR:
         logger.info("Resetting LR")
