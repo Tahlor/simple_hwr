@@ -4,7 +4,7 @@ from hwr_utils import visualize
 from torch.utils.data import DataLoader
 from torch import nn
 from loss_module.stroke_recovery_loss import StrokeLoss
-from trainers import TrainerStrokeRecovery, TrainerStartPoints, GeneratorTrainer
+from trainers import TrainerStrokeRecovery, GeneratorTrainer
 from models.stroke_model import StrokeRecoveryModel
 from hwr_utils.stroke_dataset import StrokeRecoveryDataset
 from hwr_utils.stroke_recovery import *
@@ -72,6 +72,7 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
     return training_loss
 
 def save_out(item, predicted_strokes, pred_image, path):
+    print("Saving graphs...")
     print(predicted_strokes)
     if predicted_strokes is not None:
         save_stroke_images(pred_image,
