@@ -85,7 +85,7 @@ def save_out(item, predicted_strokes, pred_image, path):
         save_stroke_images(item["line_imgs"],
                            item["predicted_strokes_gt"], path, is_gt=True)
     else:
-        save_images(item["line_imgs"], path, is_gt=False)
+        save_images(item["line_imgs"], path, is_gt=True)
 
 
 def save_images(list_of_images, path, is_gt, normalized=True):

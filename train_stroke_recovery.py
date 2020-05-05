@@ -2,7 +2,7 @@ from hwr_utils import visualize
 from torch.utils.data import DataLoader
 from torch import nn
 from loss_module.stroke_recovery_loss import StrokeLoss
-from trainers import TrainerStrokeRecovery, TrainerStartPoints
+from trainers import TrainerStrokeRecovery #, TrainerStartPoints
 from hwr_utils.stroke_dataset import StrokeRecoveryDataset
 from hwr_utils.stroke_recovery import *
 from hwr_utils import utils
