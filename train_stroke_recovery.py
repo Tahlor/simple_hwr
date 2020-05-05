@@ -2,7 +2,7 @@ from hwr_utils import visualize
 from torch.utils.data import DataLoader
 from torch import nn
 from loss_module.stroke_recovery_loss import StrokeLoss
-from trainers import TrainerStrokeRecovery, TrainerStartPoints
+from trainers import TrainerStrokeRecovery #, TrainerStartPoints
 from hwr_utils.stroke_dataset import StrokeRecoveryDataset
 from hwr_utils.stroke_recovery import *
 from hwr_utils import utils
@@ -302,7 +302,8 @@ def main(config_path, testing=False):
     cnn = model.cnn # if set to a cnn object, then it will resize the GTs to be the same size as the CNN output
     logger.info(("Current dataset: ", folder))
 
-    train_dataloader, test_dataloader = build_data_loaders(folder, cnn, train_size, test_size, **config.dataset, config=config)
+    train_dataloader, test_dataloader = build_data_loaders(folder, cnn, train_size, test_size, **config.dataset,
+                                            config=config)
 
     # example = next(iter(test_dataloader)) # BATCH, WIDTH, VOCAB
     # input_vocab_size = example["gt"].shape[-1]

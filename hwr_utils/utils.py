@@ -165,7 +165,8 @@ stroke_defaults = {"SMALL_TRAINING": False,
                     "load_optimizer": False,
                     "stroke_model_pt_override": None,
                     "stroke_model_config": None,
-
+                    "truncate": True,
+                    "test_freq": 1
                     }
 
 def debugger(func):

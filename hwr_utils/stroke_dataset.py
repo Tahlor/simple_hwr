@@ -356,6 +356,7 @@ class StrokeRecoveryDataset(Dataset):
 
         if "gt" not in data[0].keys():
             data = self.resample_data(data, parallel=True)
+
         logger.debug(("Done resampling", len(data)))
         return data
 
@@ -389,11 +390,11 @@ class StrokeRecoveryDataset(Dataset):
         """
         image_width = gts_to_image_size(len(gt))
         # Returns image in upper origin format
-        padded_gt = random_pad(gt,vpad=3, hpad=5) # pad top, left, bottom
-        padded_gt = StrokeRecoveryDataset.shrink_gt(padded_gt, width=image_width) # shrink to fit
+        padded_gt_img = random_pad(gt,vpad=3, hpad=5) # pad top, left, bottom
+        padded_gt_img = StrokeRecoveryDataset.shrink_gt(padded_gt_img, width=image_width) # shrink to fit
         # padded_gt = StrokeRecoveryDataset.enlarge_gt(padded_gt, width=image_width)  # enlarge to fit - needs to be at least as big as GTs
 
-        img = draw_from_gt(padded_gt, show=False, save_path=None, min_width=None, height=img_height,
+        img = draw_from_gt(padded_gt_img, show=False, save_path=None, min_width=None, height=img_height,
                            right_padding="random", linewidth=None, max_width=8, use_stroke_number=use_stroke_number)
 
         # img = img[::-1] # convert to lower origin format
@@ -409,7 +410,7 @@ class StrokeRecoveryDataset(Dataset):
         # Add trivial channel dimension
         img = img[:, :, np.newaxis]
 
-        return img, padded_gt
+        return img, padded_gt_img
 
     def __len__(self):
         return len(self.data)
@@ -481,8 +482,9 @@ class StrokeRecoveryDataset(Dataset):
                 # Assuming e.g. we pass everything through the CNN every time etc.
                 img = read_img(image_path, add_distortion=add_distortion)
                 assert not img is None
-        gt_reverse_strokes, sos_args = stroke_recovery.invert_each_stroke(gt)
-        gt_reverse_strokes = np.array([])
+        #gt_reverse_strokes, sos_args = stroke_recovery.invert_each_stroke(gt)
+        gt_reverse_strokes = None
+        sos_args = stroke_recovery.get_sos_args(gt[:, 2], stroke_numbers=True)
 
         # Assumes dimension 2 is start points, 3 is EOS
         # START POINT MODEL
@@ -579,7 +581,7 @@ def create_gts(x_func, y_func, start_times, number_of_samples, gt_format, noise=
 
     # Put it together
     gt = []
-
+    padding_constant = []
     for i,el in enumerate(gt_format):
         if el == "x":
             gt.append(x)
@@ -821,36 +823,48 @@ def collate_stroke(batch, device="cpu"):
     start_points = []
 
     # Make input square (variable vidwth
-    input_batch = np.full((batch_size, dim0, dim1, dim2), PADDING_CONSTANT).astype(TYPE)
+    imgs_gt = np.full((batch_size, dim0, dim1, dim2), PADDING_CONSTANT).astype(TYPE)
     max_label = max([b['gt'].shape[0] for b in batch]) # width
-    labels = np.full((batch_size, max_label, vocab_size), PADDING_CONSTANT).astype(TYPE)
+
+    stroke_points_gt = np.full((batch_size, max_label, vocab_size), PADDING_CONSTANT).astype(TYPE)
+    stroke_points_rel = np.full((batch_size, max_label, vocab_size), [0,0,0]).astype(TYPE)
 
     # Loop through instances in batch
     for i in range(len(batch)):
         b_img = batch[i]['line_img']
-        input_batch[i,:,: b_img.shape[1],:] = b_img
+        imgs_gt[i,:,: b_img.shape[1],:] = b_img
 
         l = batch[i]['gt']
         #all_labels.append(l)
         label_lengths.append(len(l))
         ## ALL LABELS - list of desired_num_of_strokes batch size; arrays LENGTH, VOCAB SIZE
-        labels[i,:len(l), :] = l
+        stroke_points_gt[i,:len(l), :] = l
+        stroke_points_gt[i, len(l):, :] = l[-1] # just repeat the last element; this works when using ABS coords for GTs (default)
+
+        # Relative version
+        rel_x = stroke_recovery.relativefy_numpy(l[:,0:1])
+        stroke_points_rel[i, :len(l), 0] = rel_x
+        stroke_points_rel[i, :, 1:2] = stroke_points_gt[i, :, 1:2]
+        stroke_points_rel[i, batch[i]['sos_args'], 2] = 1
+
         all_labels_numpy.append(l)
         start_points.append(torch.from_numpy(batch[i]['start_points'].astype(TYPE)).to(device))
 
     label_lengths = np.asarray(label_lengths)
 
-    line_imgs = input_batch.transpose([0,3,1,2]) # batch, channel, h, w
+    line_imgs = imgs_gt.transpose([0,3,1,2]) # batch, channel, h, w
     line_imgs = torch.from_numpy(line_imgs).to(device)
 
-    labels = torch.from_numpy(labels.astype(TYPE)).to(device)
+    stroke_points_gt = torch.from_numpy(stroke_points_gt.astype(TYPE)).to(device)
     label_lengths = torch.from_numpy(label_lengths.astype(np.int32)).to(device)
+    stroke_points_gt_rel = torch.from_numpy(stroke_points_rel.astype(TYPE)).to(device)
 
     return_d = {
         "line_imgs": line_imgs,
-        "gt": labels, # Numpy Array, with padding
+        "gt": stroke_points_gt, # Numpy Array, with padding
+        "rel_gt": stroke_points_gt_rel,
         "gt_list": [torch.from_numpy(l.astype(TYPE)).to(device) for l in all_labels_numpy], # List of numpy arrays
-        "gt_reverse_strokes": [torch.from_numpy(b["gt_reverse_strokes"].astype(TYPE)).to(device) for b in batch],
+        #"gt_reverse_strokes": [torch.from_numpy(b["gt_reverse_strokes"].astype(TYPE)).to(device) for b in batch],
         "gt_numpy": all_labels_numpy,
         "start_points": start_points,  # List of numpy arrays
         "gt_format": [batch[0]["gt_format"]]*batch_size,

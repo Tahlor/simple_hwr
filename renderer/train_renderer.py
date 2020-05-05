@@ -4,7 +4,7 @@ from hwr_utils import visualize
 from torch.utils.data import DataLoader
 from torch import nn
 from loss_module.stroke_recovery_loss import StrokeLoss
-from trainers import TrainerStrokeRecovery, TrainerStartPoints, GeneratorTrainer
+from trainers import TrainerStrokeRecovery, GeneratorTrainer
 from models.stroke_model import StrokeRecoveryModel
 from hwr_utils.stroke_dataset import StrokeRecoveryDataset
 from hwr_utils.stroke_recovery import *
@@ -72,6 +72,7 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
     return training_loss
 
 def save_out(item, predicted_strokes, pred_image, path):
+    print("Saving graphs...")
     print(predicted_strokes)
     if predicted_strokes is not None:
         save_stroke_images(pred_image,
@@ -84,7 +85,7 @@ def save_out(item, predicted_strokes, pred_image, path):
         save_stroke_images(item["line_imgs"],
                            item["predicted_strokes_gt"], path, is_gt=True)
     else:
-        save_images(item["line_imgs"], path, is_gt=False)
+        save_images(item["line_imgs"], path, is_gt=True)
 
 
 def save_images(list_of_images, path, is_gt, normalized=True):
@@ -290,9 +291,11 @@ def main(config_path, testing=False):
     config.trainer = trainer
     config.model = model
     logger.info(f"LR before loading model: {next(iter(config.optimizer.param_groups))['lr']}")
-    if config.load_path and not utils.no_gpu_testing():  # don't load model if not using GPU
-        utils.load_model_strokes(config, config.load_optimizer)  # should be load_model_strokes??????
-        print(config.counter.epochs)
+
+    # Loading not supported yet
+    # if config.load_path and not utils.no_gpu_testing():  # don't load model if not using GPU
+    #     utils.load_model_strokes(config, config.load_optimizer)
+    #     print(config.counter.epochs)
 
     if config.reset_LR:
         logger.info("Resetting LR")

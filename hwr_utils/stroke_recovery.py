@@ -447,10 +447,17 @@ def relativefy_numpy(x, reverse=False):
     Returns:
 
     """
-    if reverse:
-        return np.cumsum(x,axis=0)
-    else:
-        return np.insert(x[1:]-x[:-1], 0, x[0])
+    if len(x.shape)==1:
+        if reverse:
+            return np.cumsum(x,axis=0)
+        else:
+            return np.insert(x[1:]-x[:-1], 0, x[0])
+    elif len(x.shape)==2:
+        assert x.shape[-1] <= 4
+        if reverse:
+            return np.cumsum(x,axis=0)
+        else:
+            return np.insert(x[1:]-x[:-1], 0, x[0])
 
 def relativefy_torch(x, reverse=False, default_value=0):
     """ Make the x-coordinate relative to the previous one
@@ -958,10 +965,7 @@ def invert_each_stroke(gt, stroke_numbers=True):
         GTs with strokes inverted
         SOS arg numbers (0,5,11...)
     """
-    if not (gt[:, 2] <= 1).all() or stroke_numbers:
-        stroke_starts = np.argwhere(relativefy_numpy(gt[:, 2])).flatten()
-    else:
-        stroke_starts = np.argwhere(gt[:, 2]).flatten()
+    stroke_starts = get_sos_args(gt[:, 2], stroke_numbers=stroke_numbers)
     return np.concatenate([np.vstack([x[::-1] for x in np.split(gt[:,:2], stroke_starts) if x.size]), gt[:,2:]], axis=1), stroke_starts
 
 

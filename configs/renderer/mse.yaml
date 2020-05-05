@@ -83,8 +83,12 @@ gt_format: # if relative etc., specify that here; e.g., opts:rel
   - y
   - stroke_number
 
-# NOT IMPLEMENTED
-gt_opts:
+stroke_input_opts: # these are now the inputs
+  - rel  # input x-coordinates should be relative!
+  - null
+  - rel # these should be SOS etc.
+
+gt_opts: # These are always nothing; always ABSOLUTE and either SOS or stroke_number (depending on above)
   - null
   - null
   - null

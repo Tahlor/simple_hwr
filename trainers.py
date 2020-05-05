@@ -40,7 +40,7 @@ class Trainer:
             self.logger = config.logger
 
     @staticmethod
-    def truncate(preds, label_lengths):
+    def _truncate(preds, label_lengths):
         """ Take in rectangular GT tensor, return as list where each element in batch has been truncated
 
         Args:
@@ -74,6 +74,7 @@ class TrainerStrokeRecovery(Trainer):
         self.model = model
         self.optimizer = optimizer
         self.config = config
+        self.truncate = config.truncate
         self.loss_criterion = loss_criterion
         if config is None:
             self.logger = utils.setup_logging()
@@ -88,22 +89,6 @@ class TrainerStrokeRecovery(Trainer):
 
     def default(self, o):
         return None
-
-    @staticmethod
-    def truncate(preds, label_lengths):
-        """ Return a list
-
-        Args:
-            preds:
-            label_lengths:
-
-        Returns:
-
-        """
-
-        preds = [preds[i][:label_lengths[i], :] for i in range(0, len(label_lengths))]
-        #targs = [targs[i][:label_lengths[i], :] for i in range(0, len(label_lengths))]
-        return preds
 
     def train(self,  item, train=True, **kwargs):
         return self._train(item, train=train, **kwargs)
@@ -136,7 +121,8 @@ class TrainerStrokeRecovery(Trainer):
             #print(self.config.stats[])
 
         preds = self.eval(line_imgs, self.model, label_lengths=label_lengths, relative_indices=self.relative_indices,
-                          device=self.config.device, gt=item["gt"], train=train, convolve=self.convolve)  # This evals and permutes result, Width,Batch,Vocab -> Batch, Width, Vocab
+                          device=self.config.device, gt=item["gt"], train=train, convolve=self.convolve,
+                          truncate=self.truncate)  # This evals and permutes result, Width,Batch,Vocab -> Batch, Width, Vocab
 
         loss_tensor, loss = self.loss_criterion.main_loss(preds, item, suffix)
 
@@ -166,7 +152,8 @@ class TrainerStrokeRecovery(Trainer):
 
     @staticmethod
     def eval(line_imgs, model, label_lengths=None, relative_indices=None, device="cuda",
-             gt=None, train=False, convolve=None, sigmoid_activations=None, relu_activations=None):
+             gt=None, train=False, convolve=None, sigmoid_activations=None, relu_activations=None,
+             truncate=True):
         """ For offline data, that doesn't have ground truths
         """
         line_imgs = line_imgs.to(device)
@@ -183,9 +170,8 @@ class TrainerStrokeRecovery(Trainer):
                 preds = convolve(pred_rel=preds, indices=relative_indices, gt=gt)
 
         ## Shorten - label lengths currently = width of image after CNN
-        if not label_lengths is None:
-            preds = TrainerStrokeRecovery.truncate(preds, label_lengths) # Convert square torch object to a list, removing predictions related to padding
-
+        if not label_lengths is None and truncate:
+            preds = TrainerStrokeRecovery._truncate(preds, label_lengths) # Convert square torch object to a list, removing predictions related to padding
 
         # THIS IS A "PRE" ACTIVATION, MUST NOT BE DONE DURING TRAINING!
         if (sigmoid_activations or relu_activations) and not train:
@@ -211,130 +197,6 @@ class TrainerStrokeRecovery(Trainer):
         if (self.config.training_nn_loss and train) or (self.config.test_nn_loss and not train) \
                 and self.config.counter.epochs % self.config.test_nn_loss_freq==0:
             self.config.stats["nn"+suffix].accumulate(loss_metrics.calculate_nn_distance(item, preds))
-
-
-class TrainerStartPoints(Trainer):
-    def __init__(self, model, optimizer, config, loss_criterion=None):
-        super().__init__(model, optimizer, config, loss_criterion)
-        self.opts = None
-        self.relative = self.get_relative_indices(config.pred_opts)
-
-    def train(self, item, train=True, **kwargs):
-        """ Item is the whole thing from the dataloader
-
-        Args:
-            loss_fn:
-            item:
-            train: train/update the model
-            **kwargs:
-
-        Returns:
-
-        """
-        line_imgs = item["line_imgs"].to(self.config.device)
-        label_lengths = item["label_lengths"]
-        gt = item["start_points"]
-        suffix = "_train" if train else "_test"
-
-        ## Filter GTs to just the start points and the EOS point; the EOS point will be the finish point of the last stroke
-        if train:
-            self.model.train()
-            self.config.counter.update(epochs=0, instances=line_imgs.shape[0], updates=1)
-
-        preds = self.eval(line_imgs, gt, self.model, label_lengths=label_lengths,
-                          device=self.config.device, train=train, relative_indices=self.relative_indices,
-                          activation=self.sigmoid_indices)  # This evals and permutes result, Width,Batch,Vocab -> Batch, Width, Vocab
-
-	# Shorten pred to be the desired_num_of_strokes of the ground truth
-        pred_list = []
-        for i, pred in enumerate(preds):
-            pred_list.append(pred[:len(gt[i])])
-
-        loss_tensor, loss = self.loss_criterion.main_loss(preds, item, suffix)
-
-        if train:
-            self.optimizer.zero_grad()
-            loss_tensor.backward()
-            self.optimizer.step()
-        return loss, pred_list, None
-
-    @staticmethod
-    def eval(line_imgs, gt, model, label_lengths=None, device="cuda", train=False, convolve=None,
-             relative_indices=None, activation=None):
-        """ For offline data, that doesn't have ground truths
-        """
-        line_imgs = line_imgs.to(device)
-        pred_logits = model(line_imgs, gt).cpu()
-        preds = pred_logits.permute(1, 0, 2) # Width,Batch,Vocab -> Batch, Width, Vocab
-
-        if relative_indices:
-            preds = relativefy_batch_torch(preds, reverse=True, indices=relative_indices)  # assume they were in relative positions, convert to absolute
-
-        if activation:
-            preds[:, :, activation] = SIGMOID(preds[:, :, activation])
-        return preds
-
-class TrainerStartEndStroke(Trainer):
-    def __init__(self, model, optimizer, config, loss_criterion=None):
-        super().__init__(model, optimizer, config, loss_criterion)
-        self.opts = None
-        self.relative = self.get_relative_indices(config.pred_opts)
-
-    def train(self, item, train=True, **kwargs):
-        """ Item is the whole thing from the dataloader
-
-        Args:
-            loss_fn:
-            item:
-            train: train/update the model
-            **kwargs:
-
-        Returns:
-
-        """
-        line_imgs = item["line_imgs"].to(self.config.device)
-        label_lengths = item["label_lengths"]
-        gt = item["start_points"]
-        start_end_points = item["start_points"] # these are the start and end points
-        suffix = "_train" if train else "_test"
-
-        if train:
-            self.model.train()
-            self.config.counter.update(epochs=0, instances=line_imgs.shape[0], updates=1)
-
-        preds = self.eval(start_end_points, line_imgs, self.model, label_lengths=label_lengths,
-                          device=self.config.device, train=train, relative_indices=self.relative_indices,
-                          activation=self.sigmoid_indices)  # This evals and permutes result, Width,Batch,Vocab -> Batch, Width, Vocab
-
-	# Shorten pred to be the desired_num_of_strokes of the ground truth
-        pred_list = []
-        for i, pred in enumerate(preds):
-            pred_list.append(pred[:len(gt[i])])
-
-        loss_tensor, loss = self.loss_criterion.main_loss(preds, item, suffix)
-
-        if train:
-            self.optimizer.zero_grad()
-            loss_tensor.backward()
-            self.optimizer.step()
-        return loss, pred_list, None
-
-    @staticmethod
-    def eval(start_end_points, line_imgs, model, label_lengths=None, device="cuda", train=False, convolve=None,
-             relative_indices=None, activation=None):
-        """ For offline data, that doesn't have ground truths
-        """
-        line_imgs = line_imgs.to(device)
-        pred_logits = model(line_imgs).cpu()
-        preds = pred_logits.permute(1, 0, 2) # Width,Batch,Vocab -> Batch, Width, Vocab
-
-        if relative_indices:
-            preds = relativefy_batch_torch(preds, reverse=True, indices=relative_indices)  # assume they were in relative positions, convert to absolute
-        if activation:
-            preds[:, :, activation] = SIGMOID(preds[:, :, activation])
-        return preds
-
-
 
 def flatten_params(parameters):
     """
@@ -377,7 +239,7 @@ class GeneratorTrainer(Trainer):
         return image
 
     def eval(self, input, **kwargs):
-        image = self.generator_model(input) # different widths
+        image = self.generator_model(input).cpu()
         return image
 
     def stroke_eval(self, input):
@@ -387,7 +249,9 @@ class GeneratorTrainer(Trainer):
     def train(self, item, train=True, **kwargs):
         gt_strokes = item["gt_list"]
         gt_image = item["line_imgs"]
-        pred_image = self.eval(item["gt"].to(self.config.device)) # BATCH x 1 x H x W
+        # Truncate the pred image
+        pred_image = self.eval(item["rel_gt"].to(self.config.device))[:,:,:,:gt_image.shape[-1]] # BATCH x 1 x H x W
+        self.config.counter.update(epochs=0, instances=gt_image.shape[0], updates=1)
 
         predicted_strokes = None
 
@@ -401,7 +265,7 @@ class GeneratorTrainer(Trainer):
 
         elif self.loss_version.lower()=="sm2sm":
             # Compare stroke-model strokes predicted by GT image and synthetic image
-            predicted_strokes = self.stroke_eval(pred_image[:, :, 1:62])
+            predicted_strokes = self.stroke_eval(pred_image[:, :, :])
 
             # Create predicted strokes as needed
             #### Convert both sets of Y to be relative
