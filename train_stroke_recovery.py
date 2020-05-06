@@ -279,10 +279,10 @@ def main(config_path, testing=False):
     if config.model_name != "normal":
         # SOS will still be the 2 index, just ignore it!
         # config.input_vocab_size = 3
-        # input_vocab_size = 3
+        #input_vocab_size = 3
         pass
 
-    model_kwargs = {"input_vocab_size":vocab_size,
+    model_kwargs = {"vocab_size":vocab_size,
                     "device":device,
                     "cnn_type":config.cnn_type,
                     "first_conv_op":config.coordconv,
@@ -336,7 +336,7 @@ def main(config_path, testing=False):
     config.trainer=trainer
     config.model = model
     logger.info(f"LR before loading model: {next(iter(config.optimizer.param_groups))['lr']}")
-    if config.load_path and not utils.no_gpu_testing(): # don't load model if not using GPU
+    if config.load_path: #and not utils.no_gpu_testing(): # don't load model if not using GPU
         utils.load_model_strokes(config, config.load_optimizer)  # should be load_model_strokes??????
         print(config.counter.epochs)
 
