@@ -25,7 +25,7 @@ output_folder: ./results
 epochs_to_run: 1000
 update_freq: 100 # print out updates, update graphs etc. after this many updates
 save_freq: 1     # save the model every X epochs
-test_freq: 10    # test, save the graphs
+test_freq: 1    # test, save the graphs
 debug: off
 
 # Training data

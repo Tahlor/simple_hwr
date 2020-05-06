@@ -313,9 +313,7 @@ def main(config_path, testing=False):
         logger.info(f"Epoch: {epoch}, Training Loss: {loss}")
 
         # Test and save models
-        print(epoch, config.test_freq)
         if epoch % config.test_freq == 0:
-            print("here")
             test_loss = test(test_dataloader)
             logger.info(f"Epoch: {epoch}, Test Loss: {test_loss}")
             check_epoch_build_loss(config)
