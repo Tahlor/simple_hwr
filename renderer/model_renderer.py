@@ -85,11 +85,11 @@ class UNCNN(nn.Module):
             nn.BatchNorm2d(ngf * 2),
             nn.ReLU(True),
             # state size. (ngf*2) x 16 x 16
-            nn.ConvTranspose2d( ngf * 2, ngf, 4, late_stride, 2, bias=False),
+            nn.ConvTranspose2d( ngf * 2, ngf, 4, late_stride, 1, bias=False),
             nn.BatchNorm2d(ngf),
             nn.ReLU(True),
             # state size. (ngf) x 32 x 32
-            nn.ConvTranspose2d( ngf, nc, 5, late_stride, 1, bias=False),
+            nn.ConvTranspose2d( ngf, nc, 1, late_stride, 1, bias=False),
             nn.Sigmoid() # Tanh, Sigmoid
             # state size. (nc) x 64 x 64
             # OUTPUT: BATCH 61 x 1 x H=60 x W
@@ -128,3 +128,32 @@ def test_renderer():
 if __name__=='__main__':
     #test_uncnn()
     test_renderer()
+
+    # self.main = nn.Sequential(
+    #     # input is Z, going into a convolution, 16, 512, 2, 451
+    #     # originally: 64, nz, 1, 1,
+    #     ### in_channels, out_channels, kernel_size, stride=1, padding=0, output_padding=0,
+    #     nn.ConvTranspose2d(int(self.cnnInSize / 2), ngf * 8, 4, 1, 0, bias=False),  # increasing stride doubles output
+    #     nn.BatchNorm2d(ngf * 8),
+    #     nn.ReLU(True),
+    #     # state size. (ngf*8) x 4 x 4
+    #     nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, late_stride, 2, bias=False),
+    #     nn.BatchNorm2d(ngf * 4),
+    #     nn.ReLU(True),
+    #     # state size. (ngf*4) x 8 x 8
+    #     nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, late_stride, 1, bias=False),
+    #     nn.BatchNorm2d(ngf * 2),
+    #     nn.ReLU(True),
+    #     # state size. (ngf*2) x 16 x 16
+    #     nn.ConvTranspose2d(ngf * 2, ngf, 4, late_stride, 2, bias=False),
+    #     nn.BatchNorm2d(ngf),
+    #     nn.ReLU(True),
+    #     # state size. (ngf) x 32 x 32
+    #     nn.ConvTranspose2d(ngf, nc, 5, late_stride, 1, bias=False),
+    #     nn.Sigmoid()  # Tanh, Sigmoid
+    #     # state size. (nc) x 64 x 64
+    #     # OUTPUT: BATCH 61 x 1 x H=60 x W
+    #
+    #     # Default64: max pools on first one, upsamples after last one
+    #     # Default: max pools on first 2 convs
+    # )
