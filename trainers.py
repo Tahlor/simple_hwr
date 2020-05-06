@@ -122,7 +122,7 @@ class TrainerStrokeRecovery(Trainer):
 
         preds = self.eval(line_imgs, self.model, label_lengths=label_lengths, relative_indices=self.relative_indices,
                           device=self.config.device, gt=item["gt"], train=train, convolve=self.convolve,
-                          truncate_window=self.truncate_window)  # This evals and permutes result, Width,Batch,Vocab -> Batch, Width, Vocab
+                          truncate=self.truncate)  # This evals and permutes result, Width,Batch,Vocab -> Batch, Width, Vocab
 
         loss_tensor, loss = self.loss_criterion.main_loss(preds, item, suffix)
 
@@ -153,7 +153,7 @@ class TrainerStrokeRecovery(Trainer):
     @staticmethod
     def eval(line_imgs, model, label_lengths=None, relative_indices=None, device="cuda",
              gt=None, train=False, convolve=None, sigmoid_activations=None, relu_activations=None,
-             truncate_window=0):
+             truncate=0):
         """ For offline data, that doesn't have ground truths
         """
         line_imgs = line_imgs.to(device)
@@ -170,8 +170,9 @@ class TrainerStrokeRecovery(Trainer):
                 preds = convolve(pred_rel=preds, indices=relative_indices, gt=gt)
 
         ## Shorten - label lengths currently = width of image after CNN
+        truncate_window = 0 if truncate else 20
         if not label_lengths is None: #and truncate_window >= 0:
-            preds = TrainerStrokeRecovery._truncate(preds, label_lengths, window=20) # Convert square torch object to a list, removing predictions related to padding
+            preds = TrainerStrokeRecovery._truncate(preds, label_lengths, window=truncate_window) # Convert square torch object to a list, removing predictions related to padding
 
         # THIS IS A "PRE" ACTIVATION, MUST NOT BE DONE DURING TRAINING!
         if (sigmoid_activations or relu_activations) and not train:
