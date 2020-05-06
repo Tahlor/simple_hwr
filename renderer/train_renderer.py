@@ -24,6 +24,7 @@ numpify = lambda x : x.detach().cpu().numpy()
 
 ## Change CWD to the folder containing this script
 ROOT_DIR = Path(os.path.dirname(os.path.realpath(__file__))).parent
+os.chdir(ROOT_DIR)
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -124,8 +125,6 @@ def test(dataloader):
     path = (config.image_dir / str(config.counter.epochs) / "test")
     path.mkdir(parents=True, exist_ok=True)
     save_out(item, predicted_strokes, pred_image, path)
-
-
 
     utils.reset_all_stats(config, keyword="_test")
 
