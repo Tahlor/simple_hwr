@@ -33,7 +33,8 @@ debug: off
 #dataset_folder: online_coordinate_data/8_stroke_vFull
 data_root_fsl: ../hw_data/strokes
 data_root_local: data
-dataset_folder: online_coordinate_data/3_stroke_64_v2
+#dataset_folder: online_coordinate_data/3_stroke_64_v2
+dataset_folder: online_coordinate_data/MAX_stroke_vlargeTrnSetFull
 
 # MAKE THIS BETTER
 trainer_args:
