@@ -116,9 +116,6 @@ def test(dataloader):
         loss, pred_image, predicted_strokes, *_ = trainer.test(item)
         if loss is None:
             continue
-        if i == 0:
-            preds_to_graph = [p.permute([1, 0]) for p in preds]
-            item_to_graph = item
         config.stats["Actual_Loss_Function_test"].accumulate(loss)
 
     # Save images

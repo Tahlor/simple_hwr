@@ -234,9 +234,17 @@ class GeneratorTrainer(Trainer):
 
     def test(self, item, **kwargs):
         self.model.eval()
-        image = self.eval(item, train=False, **kwargs)
-        loss = self.loss_criterion.main_loss(image, item, suffix="_test", targ_key="gt_list")
-        return image
+        suffix="_test"
+        gt_image = item["line_imgs"]
+        # Truncate the pred image
+        pred_image = self.eval(item["rel_gt"].to(self.config.device))[:,:,:,:gt_image.shape[-1]] # BATCH x 1 x H x W
+        #loss = self.loss_criterion.main_loss(pred_image, item, suffix="_test", targ_key="gt_list")
+        predicted_strokes = None
+        # loss_tensor, loss = self.loss_criterion.main_loss(predicted_strokes, item, suffix="_test",
+        #                                                   targ_key="predicted_strokes_gt")
+        loss_tensor, loss = self.loss_criterion.main_loss(pred_image, item, suffix=suffix, targ_key="line_imgs")
+
+        return loss, pred_image, predicted_strokes
 
     def eval(self, input, **kwargs):
         image = self.generator_model(input).cpu()
@@ -247,6 +255,7 @@ class GeneratorTrainer(Trainer):
         return pred_logits.permute(1, 0, 2)
 
     def train(self, item, train=True, **kwargs):
+        self.model.train()
         gt_strokes = item["gt_list"]
         gt_image = item["line_imgs"]
         # Truncate the pred image
