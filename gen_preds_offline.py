@@ -232,6 +232,7 @@ def eval_only(dataloader, model):
     logger.info(f"Output size: {len(final_out)}")
     logger.info("ALL DONE")
 
+# Loading GTs for offline data
 def load_all_gts(gt_path):
     global GT_DATA
     from hwr_utils.hw_dataset import HwDataset
