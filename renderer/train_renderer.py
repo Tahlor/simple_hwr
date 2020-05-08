@@ -36,7 +36,7 @@ def parse_args():
     opts = parser.parse_args()
     return opts
 
-def run_epoch(dataloader, report_freq=500, plot_graphs=True):
+def run_epoch(dataloader, epoch, report_freq=500, plot_graphs=True):
     instances = 0
     start_time = timer()
     logger.info(("Epoch: ", epoch))
@@ -56,10 +56,10 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
             training_loss = config.stats["Actual_Loss_Function_train"].get_last()
             logger.info(("update: ", config.counter.updates, "combined loss: ", training_loss))
 
-        if epoch == 1 and i == 0:
+        if epoch == 0 and i == 0:
             # logger.info(("Preds", preds[0]))
             logger.info(("GTs", item["gt_list"][0]))
-
+            break
         update_LR(config)
 
     end_time = timer()
@@ -301,13 +301,16 @@ def main(config_path, testing=False):
     logger.info(f"Starting LR is {next(iter(config.optimizer.param_groups))['lr']}")
 
     check_epoch_build_loss(config, loss_exists=False)
-    current_epoch = config.counter.epochs
-    for i in range(current_epoch, config.epochs_to_run):
-        epoch = i + 1
-        # config.counter.epochs = epoch
+
+    # Add epoch if resuming
+    if config.counter.epochs > 0:
         config.counter.update(epochs=1)
+
+    current_epoch = config.counter.epochs
+
+    for epoch in range(current_epoch, config.epochs_to_run):
         plot_graphs = True if epoch % config.test_freq == 0 else False
-        loss = run_epoch(train_dataloader, report_freq=config.update_freq, plot_graphs=plot_graphs)
+        loss = run_epoch(train_dataloader, epoch, report_freq=config.update_freq, plot_graphs=plot_graphs)
         logger.info(f"Epoch: {epoch}, Training Loss: {loss}")
 
         # Test and save models
@@ -322,6 +325,8 @@ def main(config_path, testing=False):
             utils.save_model_stroke(config, bsf=False)  # also saves stats
         else:
             utils.save_stats_stroke(config, bsf=False)
+
+        config.counter.update(epochs=1)
 
     ## Bezier curve
     # Have network predict whether it has reached the end of a stroke or not
