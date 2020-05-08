@@ -1,6 +1,6 @@
 
 # Load model
-TESTING: true # this is for debugging, do it on a small dataset
+TESTING: false # this is for debugging, do it on a small dataset
 use_visdom: false
 load_path: false # ./results/baseline/20190622_155031-lr_0.001_bs_16_warp_False_arch_basic_encoder/baseline_model.pt # or false
 test_only: false # Do not train

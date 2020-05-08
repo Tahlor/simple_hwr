@@ -1,4 +1,5 @@
 import sys
+sys.path.append(".")
 sys.path.append("..")
 from hwr_utils import visualize
 from torch.utils.data import DataLoader
