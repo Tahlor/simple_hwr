@@ -3,8 +3,12 @@ sys.path.append("..")
 sys.path.append(".")
 import pickle, json 
 from pathlib import Path 
-import os 
-from visdom import Visdom 
+import os
+import socket
+
+if not "byu.edu" in socket.gethostname():
+    from visdom import Visdom
+
 import numpy as np 
 import torch 
 import warnings 
