@@ -233,6 +233,8 @@ class GeneratorTrainer(Trainer):
         self.loss_version = kwargs["loss_type"] if "loss_type" in kwargs else "SM2SM"
         self.device = self.config.device
 
+        self.white_bias = 
+
     def get_strokes(self, img):
         #line_imgs = line_imgs.to(device)
         pred_logits = self.stroke_model(img).cpu()

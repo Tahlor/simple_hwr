@@ -75,6 +75,8 @@ class StrokeLoss:
             if "swapper" in loss_name:
                 l1.lossfun = l1.l1_swapper
             loss_fn = l1.lossfun
+        elif loss_name == "white_bias":
+            loss_fn = BiasLoss(**loss, device=self.device).lossfun
         elif loss_name.startswith("imagel2"):
             loss_fn = ImageL2(**loss, device=self.device).lossfun
         elif loss_name.startswith("l2"):

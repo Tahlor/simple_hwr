@@ -795,6 +795,37 @@ class L2(CustomLoss):
                         1 / 2)
         return loss  # , to_value(loss)
 
+class BiasLoss(CustomLoss):
+    """ Use opts to specify "variable_L1" (resample to get the same number of GTs/preds)
+    """
+
+    def __init__(self, loss_indices, **kwargs):
+        """
+        """
+        # parse the opts - this will include opts regarding the DTW basis
+        # loss_indices - the loss_indices to calculate the actual loss
+        super().__init__(loss_indices, **kwargs)
+        self.lossfun = self.loss
+
+    @staticmethod
+    def loss(preds, targs, label_lengths, **kwargs):
+        """ Bias toward 1's (whiteness)
+
+        Args:
+            preds:
+            targs:
+            label_lengths:
+            **kwargs:
+
+        Returns:
+        """
+        loss = 0
+        for pred in preds:
+            loss += abs(1-pred)
+        return loss
+
+
+
 class ImageL2(CustomLoss):
     """ Use opts to specify "variable_L1" (resample to get the same number of GTs/preds)
     """
