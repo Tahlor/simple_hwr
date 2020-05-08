@@ -265,6 +265,7 @@ class GeneratorTrainer(Trainer):
             with torch.no_grad(): # don't need gradients for predicted GT strokes
                 predicted_strokes_gt_batch = self.stroke_eval(gt_image.to(self.config.device)).detach()
 
+                predicted_strokes_gt_batch = relativefy_batch_torch(predicted_strokes_gt_batch, reverse=True, indices=0)  # sum the x-axis
                 ## Adjust GT SOS to Stroke Number
                 #### SOS SHOULD BE STRAIGHT UP COMPARED TO SOS ON THE DTW SINCE BOTH ARE PREDICTED ### ???
                 if True:
