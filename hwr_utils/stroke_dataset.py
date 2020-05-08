@@ -796,9 +796,12 @@ def test_padding(pad_list, func):
     return x #[0,0]
 
 TYPE = np.float32 #np.float16
-def collate_stroke(batch, device="cpu"):
+def collate_stroke(batch, device="cpu", gt_opts=None):
     """ Pad ground truths with 0's
         Report lengths to get accurate average loss
+
+        stroke_points_gt : padded with repeated last point
+        stroke_points_rel : rel_x, abs_y, SOS, 0's
 
     Args:
         batch:
@@ -830,7 +833,7 @@ def collate_stroke(batch, device="cpu"):
     max_label = max([b['gt'].shape[0] for b in batch]) # width
 
     stroke_points_gt = np.full((batch_size, max_label, vocab_size), PADDING_CONSTANT).astype(TYPE)
-    stroke_points_rel = np.full((batch_size, max_label, vocab_size), [0,0,0]).astype(TYPE)
+    stroke_points_rel = np.full((batch_size, max_label, vocab_size), 0).astype(TYPE)
 
     # Loop through instances in batch
     for i in range(len(batch)):

@@ -85,7 +85,7 @@ gt_opts:
   - null
   - null
   - null
-  - null
+  - cumsum
 
 # stroke_number is the cumsum of sos; gt_format, gt_opts, pred_opts: "sos", "cumsum", "cumsum" = "start_stroke", "null", "cumsum"
 # E.g. cumsum will predict RELATIVE positions; if "null" is specified for gt, it will compare to absolute values

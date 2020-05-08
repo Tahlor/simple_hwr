@@ -5,6 +5,7 @@ from hwr_utils import utils
 from hwr_utils.stroke_recovery import relativefy_batch_torch, conv_weight, conv_window, PredConvolver
 import logging
 from loss_module import loss_metrics
+from loss_module import losses
 
 logger = logging.getLogger("root."+__name__)
 
@@ -233,7 +234,7 @@ class GeneratorTrainer(Trainer):
         self.loss_version = kwargs["loss_type"] if "loss_type" in kwargs else "SM2SM"
         self.device = self.config.device
 
-        self.white_bias =
+        self.white_bias = losses.BiasLoss().lossfun
 
     def get_strokes(self, img):
         #line_imgs = line_imgs.to(device)
@@ -291,6 +292,7 @@ class GeneratorTrainer(Trainer):
 
         loss_tensor, loss = self.loss_criterion.main_loss(predicted_strokes, item, suffix="_train",
                                                           targ_key="predicted_strokes_gt")
+        loss_tensor += self.white_bias(pred_image) * .1 # bias toward whiteness
         return loss_tensor, loss, predicted_strokes
 
 
