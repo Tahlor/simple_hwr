@@ -158,7 +158,9 @@ stroke_defaults = {"SMALL_TRAINING": False,
                                 "image_prep": "pil_with_distortion",
                                 "num_of_channels": 1,
                                 "include_synthetic": True,
-                                "adapted_gt_path": None},
+                                "adapted_gt_path": None,
+                                "linewidth": None,
+                                },
                     "coordconv_method": "y_abs",
                     "model": {"nHidden": 128, "num_layers": 2},
                     "reset_LR": True,
@@ -186,6 +188,14 @@ def fix_dict(d):
         elif isinstance(d[k], dict):
             d[k] = fix_dict(d[k])
     return d
+
+def recursive_default(d, defaults):
+    for k in defaults.keys():
+        if k not in d.keys():
+            d[k] = defaults[k]
+        elif isinstance(d[k], dict):
+            recursive_default(d[k], defaults[k])
+
 
 def load_config(config_path, hwr=True,
                 testing=False,
@@ -226,9 +236,10 @@ def load_config(config_path, hwr=True,
         config.TESTING = True
 
     defaults = hwr_defaults if hwr else stroke_defaults
-    for k in defaults.keys():
-        if k not in config.keys():
-            config[k] = defaults[k]
+    recursive_default(config, defaults)
+    # for k in defaults.keys():
+    #     if k not in config.keys():
+    #         config[k] = defaults[k]
 
     # Fix
     config = fix_dict(config)

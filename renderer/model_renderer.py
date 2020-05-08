@@ -89,8 +89,8 @@ class UNCNN(nn.Module):
             nn.BatchNorm2d(ngf),
             nn.ReLU(True),
             # state size. (ngf) x 32 x 32
-            nn.ConvTranspose2d( ngf, nc, 1, late_stride, 1, bias=False),
-            nn.Sigmoid() # Tanh, Sigmoid
+            nn.ConvTranspose2d( ngf, nc, 3, late_stride, 2, bias=False),
+            nn.Tanh() # Tanh, Sigmoid
             # state size. (nc) x 64 x 64
             # OUTPUT: BATCH 61 x 1 x H=60 x W
 
@@ -150,10 +150,18 @@ if __name__=='__main__':
     #     nn.ReLU(True),
     #     # state size. (ngf) x 32 x 32
     #     nn.ConvTranspose2d(ngf, nc, 5, late_stride, 1, bias=False),
-    #     nn.Sigmoid()  # Tanh, Sigmoid
+    #     nn.Tanh()  # Tanh, Sigmoid
     #     # state size. (nc) x 64 x 64
     #     # OUTPUT: BATCH 61 x 1 x H=60 x W
     #
     #     # Default64: max pools on first one, upsamples after last one
     #     # Default: max pools on first 2 convs
     # )
+
+
+# NO GOOD:
+# nn.ConvTranspose2d(ngf * 2, ngf, 4, late_stride, 1, bias=False),
+# nn.BatchNorm2d(ngf),
+# nn.ReLU(True),
+# # state size. (ngf) x 32 x 32
+# nn.ConvTranspose2d(ngf, nc, 1, late_stride, 1, bias=False),

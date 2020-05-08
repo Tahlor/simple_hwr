@@ -224,6 +224,11 @@ class GeneratorTrainer(Trainer):
         self.loss_criterion = loss_criterion
         self.generator_model = model
         self.stroke_model = stroke_model
+
+        self.stroke_model.training = True # turn on gradients
+        self.stroke_model.use_gradient_override = True
+        self.stroke_model.eval() # eval() do dropout etc. as needed
+
         self.training_dataset = training_dataset
         self.loss_version = kwargs["loss_type"] if "loss_type" in kwargs else "SM2SM"
         self.device = self.config.device
@@ -235,28 +240,55 @@ class GeneratorTrainer(Trainer):
 
     def test(self, item, **kwargs):
         self.model.eval()
-        suffix="_test"
-        gt_image = item["line_imgs"]
-        # Truncate the pred image
-        pred_image = self.eval(item["rel_gt"].to(self.config.device))[:,:,:,:gt_image.shape[-1]] # BATCH x 1 x H x W
-        #loss = self.loss_criterion.main_loss(pred_image, item, suffix="_test", targ_key="gt_list")
-        predicted_strokes = None
-        # loss_tensor, loss = self.loss_criterion.main_loss(predicted_strokes, item, suffix="_test",
-        #                                                   targ_key="predicted_strokes_gt")
-        loss_tensor, loss = self.loss_criterion.main_loss(pred_image, item, suffix=suffix, targ_key="line_imgs")
-
-        return loss, pred_image, predicted_strokes
+        return self.train(item, train=False, **kwargs)
 
     def eval(self, input, **kwargs):
-        image = self.generator_model(input).cpu()
+        image = self.generator_model(input)
         return image
 
     def stroke_eval(self, input):
         pred_logits = self.stroke_model(input).cpu()
         return pred_logits.permute(1, 0, 2)
 
+    def sm2sm(self, item, pred_image, gt_image):
+        # Compare stroke-model strokes predicted by GT image and synthetic image
+        self.stroke_model.train()
+        predicted_strokes = self.stroke_eval(pred_image[:, :, :])
+
+        # Create predicted strokes as needed
+        #### Convert both sets of Y to be relative
+
+        if item["predicted_strokes_gt"][0] is None:
+            self.stroke_model.eval()
+            with torch.no_grad(): # don't need gradients for predicted GT strokes
+                predicted_strokes_gt_batch = self.stroke_eval(gt_image.to(self.config.device)).detach()
+
+                ## Adjust GT SOS to Stroke Number
+                #### SOS SHOULD BE STRAIGHT UP COMPARED TO SOS ON THE DTW SINCE BOTH ARE PREDICTED ### ???
+                if True:
+                    # GT approximation should be in stroke number format (for now)
+                    predicted_strokes_gt_batch = relativefy_batch_torch(predicted_strokes_gt_batch, reverse=True,
+                                                                        indices=2)
+
+                    # Needs to be rounded to work correctly
+                    predicted_strokes_gt_batch[:, :, 2] = predicted_strokes_gt_batch[:, :, 2].round()
+
+            for batch_idx, data_idx in enumerate(item["gt_idx"]):
+                self.training_dataset[data_idx]["predicted_strokes_gt"] = predicted_strokes_gt_batch[batch_idx]
+
+            item["predicted_strokes_gt"] = predicted_strokes_gt_batch  # .to(self.device)
+
+        loss_tensor, loss = self.loss_criterion.main_loss(predicted_strokes, item, suffix="_train",
+                                                          targ_key="predicted_strokes_gt")
+        return loss_tensor, loss
+
+
     def train(self, item, train=True, **kwargs):
-        self.model.train()
+        if train:
+            self.model.train()
+        else:
+            self.model.eval()
+
         gt_strokes = item["gt_list"]
         gt_image = item["line_imgs"]
         # Truncate the pred image
@@ -271,35 +303,10 @@ class GeneratorTrainer(Trainer):
         ## make sure you're comparing apples to apples
 
         if self.loss_version.lower()=="mse":
-            loss_tensor, loss = self.loss_criterion.main_loss(pred_image, item, suffix="_train", targ_key="line_imgs")
+            loss_tensor, loss = self.loss_criterion.main_loss(pred_image.cpu(), item, suffix="_train", targ_key="line_imgs")
 
         elif self.loss_version.lower()=="sm2sm":
-            # Compare stroke-model strokes predicted by GT image and synthetic image
-            predicted_strokes = self.stroke_eval(pred_image[:, :, :])
-
-            # Create predicted strokes as needed
-            #### Convert both sets of Y to be relative
-
-            if item["predicted_strokes_gt"][0] is None:
-                if True:
-                #with torch.no_grad(): # don't need gradients for predicted GT strokes
-                    predicted_strokes_gt_batch = self.stroke_eval(gt_image.to(self.config.device)).detach()
-
-                    ## Adjust GT SOS to Stroke Number
-                    #### SOS SHOULD BE STRAIGHT UP COMPARED TO SOS ON THE DTW SINCE BOTH ARE PREDICTED ### ???
-                    if True:
-                        # GT approximation should be in stroke number format (for now)
-                        predicted_strokes_gt_batch = relativefy_batch_torch(predicted_strokes_gt_batch, reverse=True, indices=2)
-
-                        # Needs to be rounded to work correctly
-                        predicted_strokes_gt_batch[:,:,2] = predicted_strokes_gt_batch[:,:,2].round()
-
-                for batch_idx, data_idx in enumerate(item["gt_idx"]):
-                    self.training_dataset[data_idx]["predicted_strokes_gt"] = predicted_strokes_gt_batch[batch_idx]
-
-                item["predicted_strokes_gt"] = predicted_strokes_gt_batch #.to(self.device)
-
-            loss_tensor, loss = self.loss_criterion.main_loss(predicted_strokes, item, suffix="_train", targ_key="predicted_strokes_gt")
+            loss_tensor, loss = self.sm2sm(item, pred_image, gt_image)
 
         elif self.loss_version.lower()=="sm2gt":
             # Compare predicted strokes and GT strokes

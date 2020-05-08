@@ -52,6 +52,7 @@ dataset:
   num_of_channels: 1
   image_prep: pil # keywords: distortion (anywhere), pil (starts with), no_warp (anywhere)
   adapted_gt_path: null
+  linewidth: 1
 
 # LR schedule
 learning_rate: 5e-4          # LR

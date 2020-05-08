@@ -403,7 +403,7 @@ def rnd_width(w, on=True):
 
 def draw_from_gt(gt, show=True, save_path=None, min_width=None, height=61,
                  right_padding="random", linewidth=None, max_width=5, color=0, alpha=False,
-                 use_stroke_number=None, plot_points=False, bonus_points=None):
+                 use_stroke_number=None, plot_points=False, bonus_points=None, **kwargs):
     """ RETURNS DATA IN "LOWER" origin format!!!
         GT is a WIDTH x VOCAB size numpy array
         Start strokes are inferred by [:,2], which should be 1 when the point starts a new stroke

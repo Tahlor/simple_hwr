@@ -377,7 +377,7 @@ class StrokeRecoveryDataset(Dataset):
         return gt
 
     @staticmethod
-    def prep_image(gt, img_height=61, add_distortion=True, use_stroke_number=None):
+    def prep_image(gt, img_height=61, add_distortion=True, use_stroke_number=None, **kwargs):
         """ Important that this modifies the actual GT so that plotting afterward still works
 
         Randomly SQUEEZE OR STRETCH? Would have to change GT length...???
@@ -395,7 +395,7 @@ class StrokeRecoveryDataset(Dataset):
         # padded_gt = StrokeRecoveryDataset.enlarge_gt(padded_gt, width=image_width)  # enlarge to fit - needs to be at least as big as GTs
 
         img = draw_from_gt(padded_gt_img, show=False, save_path=None, min_width=None, height=img_height,
-                           right_padding="random", linewidth=None, max_width=8, use_stroke_number=use_stroke_number)
+                           right_padding="random", max_width=8, use_stroke_number=use_stroke_number, **kwargs)
 
         # img = img[::-1] # convert to lower origin format
         if add_distortion:
@@ -405,7 +405,7 @@ class StrokeRecoveryDataset(Dataset):
         #Image.fromarray(img.astype(np.uint8), 'L').show()
 
         # Normalize
-        img = img / 127.5 - 1.0
+        img = img / 127.5 - 1.0 # range: -1, 1
 
         # Add trivial channel dimension
         img = img[:, :, np.newaxis]
@@ -470,7 +470,10 @@ class StrokeRecoveryDataset(Dataset):
         # Render image
         add_distortion = "distortion" in self.image_prep.lower() and not self.test_dataset # don't distort the test data
         if self.image_prep.lower().startswith("pil"):
-            img, gt = self.prep_image(gt, img_height=self.img_height, add_distortion=add_distortion, use_stroke_number=("stroke_number" in self.gt_format))
+            img, gt = self.prep_image(gt, img_height=self.img_height,
+                                      add_distortion=add_distortion,
+                                      use_stroke_number=("stroke_number" in self.gt_format),
+                                      linewidth=None if self.config.dataset.linewidth is None else self.config.dataset.linewidth)
         else:
             # Check if the image is already loaded
             if "line_img" in item and not add_distortion:
@@ -853,8 +856,11 @@ def collate_stroke(batch, device="cpu"):
     label_lengths = np.asarray(label_lengths)
 
     line_imgs = imgs_gt.transpose([0,3,1,2]) # batch, channel, h, w
-    line_imgs = torch.from_numpy(line_imgs).to(device)
+    # print(np.min(line_imgs))
+    # plt.hist(line_imgs.flatten())
+    # plt.show()
 
+    line_imgs = torch.from_numpy(line_imgs).to(device)
     stroke_points_gt = torch.from_numpy(stroke_points_gt.astype(TYPE)).to(device)
     label_lengths = torch.from_numpy(label_lengths.astype(np.int32)).to(device)
     stroke_points_gt_rel = torch.from_numpy(stroke_points_rel.astype(TYPE)).to(device)

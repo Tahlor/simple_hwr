@@ -8,6 +8,7 @@ class StrokeRecoveryModel(nn.Module):
     def __init__(self, vocab_size=5, device="cuda", cnn_type="default64", first_conv_op=CoordConv, first_conv_opts=None, **kwargs):
         super().__init__()
         self.__dict__.update(kwargs)
+        self.use_gradient_override = False
         if not "nHidden" in kwargs:
             self.nHidden = 128
         if not "num_layers" in kwargs:
@@ -26,7 +27,7 @@ class StrokeRecoveryModel(nn.Module):
             print("DALAi!!!!")
 
     def forward(self, input):
-        if self.training:
+        if self.training or self.use_gradient_override:
             #print("TRAINING MODE")
             return self._forward(input)
         else:

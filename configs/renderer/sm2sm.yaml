@@ -33,10 +33,11 @@ debug: off
 #dataset_folder: online_coordinate_data/8_stroke_vFull
 data_root_fsl: ../hw_data/strokes
 data_root_local: data
-dataset_folder: online_coordinate_data/3_stroke_64_v2
+#dataset_folder: online_coordinate_data/3_stroke_64_v2
+dataset_folder: online_coordinate_data/MAX_stroke_vlargeTrnSetFull
 
 trainer_args:
-  loss_type: mse
+  loss_type: sm2sm
 
 dataset:
   img_height: 61
@@ -44,6 +45,7 @@ dataset:
   num_of_channels: 1
   image_prep: pil # keywords: distortion (anywhere), pil (starts with), no_warp (anywhere)
   adapted_gt_path: null
+  linewidth: 1
 
 # LR schedule
 learning_rate: 5e-4          # LR
@@ -76,8 +78,12 @@ gt_format: # if relative etc., specify that here; e.g., opts:rel
   - y
   - stroke_number
 
-# NOT IMPLEMENTED
-gt_opts:
+stroke_input_opts: # these are now the inputs
+  - rel  # input x-coordinates should be relative!
+  - null
+  - rel # these should be SOS etc.
+
+gt_opts: # These are always nothing; always ABSOLUTE and either SOS or stroke_number (depending on above)
   - null
   - null
   - null
