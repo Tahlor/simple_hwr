@@ -255,6 +255,8 @@ class GeneratorTrainer(Trainer):
         self.stroke_model.train()
         predicted_strokes = self.stroke_eval(pred_image[:, :, :])
 
+        predicted_strokes = relativefy_batch_torch(predicted_strokes, reverse=True, indices=0) # sum the x-axis
+
         # Create predicted strokes as needed
         #### Convert both sets of Y to be relative
 
@@ -270,7 +272,8 @@ class GeneratorTrainer(Trainer):
                     predicted_strokes_gt_batch = relativefy_batch_torch(predicted_strokes_gt_batch, reverse=True,
                                                                         indices=2)
 
-                    # Needs to be rounded to work correctly
+                    # Needs to be rounded to work correctly - since new strokes are determined by not equalling previous
+                    # This logic can be updated
                     predicted_strokes_gt_batch[:, :, 2] = predicted_strokes_gt_batch[:, :, 2].round()
 
             for batch_idx, data_idx in enumerate(item["gt_idx"]):

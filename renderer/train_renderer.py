@@ -107,7 +107,7 @@ def save_stroke_images(list_of_images, list_of_coords, path, is_gt):
         if isinstance(list_of_coords[i], Tensor):
             coords = numpify(list_of_coords[i])
 
-        file_name = f"i_{'gt' if is_gt else 'pred'}.tif"
+        file_name = f"{i}_{'gt' if is_gt else 'pred'}.tif"
         coords_i = utils.prep_coords_to_graph(config, coords, is_gt=True)
         img = overlay_images(background_img=image, foreground_gt=coords_i.transpose(), save_path = path / file_name)
 

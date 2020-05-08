@@ -4,7 +4,8 @@ import torch
 # from sdtw import SoftDTW
 import torch.multiprocessing as multiprocessing
 import torch.nn as nn
-from taylor_dtw import custom_dtw as dtw
+#from taylor_dtw import custom_dtw as dtw
+from pydtw import dtw
 from scipy.spatial import KDTree
 from torch import Tensor, tensor
 from robust_loss_pytorch import AdaptiveLossFunction
