@@ -126,6 +126,7 @@ loss_fns2:
     gts:
       - eos
     activation: sigmoid
+    targ_key_override: gt
 
 #  - name: l1_
 #    coef: .05

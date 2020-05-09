@@ -55,6 +55,7 @@ class CustomLoss(nn.Module):
         super().__init__()
         self.name = self.__class__.__name__
         self.loss_indices = loss_indices
+        self.targ_key_override = False
         self.device = "cpu"  # I guess this needs to be CPU? IDK
         self.__dict__.update(**kwargs)
         SIGMOID.to(device)
@@ -842,7 +843,7 @@ class ImageL2(CustomLoss):
         return torch.sum((pred_imgs - true_imgs) ** 2)
 
 
-class CrossEntropy(nn.Module):
+class CrossEntropy(CustomLoss):
     """ Use opts to specify "variable_L1" (resample to get the same number of GTs/preds
     """
 
@@ -851,7 +852,7 @@ class CrossEntropy(nn.Module):
         """
         # parse the opts - this will include opts regarding the DTW basis
         # loss_indices - the loss_indices to calculate the actual loss
-        super().__init__()
+        super().__init__(loss_indices, **kwargs)
         self.__dict__.update(kwargs)
         self.loss_indices = loss_indices
         self.lossfun = self.cross_entropy
@@ -864,9 +865,12 @@ class CrossEntropy(nn.Module):
 
 
     def cross_entropy(self, preds, targs, label_lengths, **kwargs):
+        if self.targ_key_override:
+            targs = kwargs["item"][self.targ_key_override]
         loss = 0
         for i, pred in enumerate(preds):  # loop through batches, since they are not the same size
-            targ = targs[i]
+            targ = targs[i][:pred.shape[0]] # make sure they are the same length
+            pred = pred[:targ.shape[0]] # make sure pred isn't too long (sometimes longer by ~4 units)
             loss += self._loss(pred[:, self.loss_indices], targ[:, self.loss_indices])
         return loss  # , to_value(loss)
 

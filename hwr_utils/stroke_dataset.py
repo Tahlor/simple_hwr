@@ -576,8 +576,15 @@ def create_gts(x_func, y_func, start_times, number_of_samples, gt_format, noise=
     # [{'el': 'x', 'opts': None}, {'el': 'y', 'opts': None}, {'el': 'stroke_number', 'opts': None}, {'el': 'eos', 'opts': None}]
 
     # Sample from x/y functions
-    x, y, is_start_stroke = stroke_recovery.sample(x_func, y_func, start_times,
-                                                   number_of_samples=number_of_samples, noise=noise)
+    if False:
+        x, y, is_start_stroke = stroke_recovery.sample(x_func, y_func, start_times,
+                                                       number_of_samples=number_of_samples,
+                                                       noise=noise)
+    else:
+        x, y, is_start_stroke = stroke_recovery.sample(x_func, y_func, start_times[:-1],
+                                                       number_of_samples=number_of_samples,
+                                                       noise=noise,
+                                                       last_time=start_times[-1])
 
     # Make coordinates relative to previous one
     # x = stroke_recovery.relativefy(x)
