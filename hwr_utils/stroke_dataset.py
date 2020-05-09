@@ -116,6 +116,11 @@ def add_unormalized_distortion(img):
     return x
     #return img.astype(np.float64) # this one can really mess it up, def no bigger than 2
 
+def blur(img):
+    x = distortions.blur(img.astype(np.float32), max_intensity=1.0)
+    return x
+
+
 def fake_gt():
     gt2 = np.tile(np.array([1, 2, 3, 8, 7, 6, -3, -2, -1]), (4, 1)).transpose()
     gt2[-1, 1] = 10
@@ -326,7 +331,7 @@ class StrokeRecoveryDataset(Dataset):
         for data_path in data_paths: # loop through JSONs
             data_path = str(data_path)
             print(os.path.join(root, data_path))
-            new_data = npy_loader(os.path.join(root, data_path)) # load .npy file if it exists
+            new_data = npy_loader(os.path.join(root, data_path), save=True) # load .npy file if it exists
 
             if isinstance(new_data, dict):
                 new_data = [item for key, item in new_data.items()]
@@ -377,7 +382,7 @@ class StrokeRecoveryDataset(Dataset):
         return gt
 
     @staticmethod
-    def prep_image(gt, img_height=61, add_distortion=True, use_stroke_number=None, **kwargs):
+    def prep_image(gt, img_height=61, add_distortion=True, add_blur=False, use_stroke_number=None, **kwargs):
         """ Important that this modifies the actual GT so that plotting afterward still works
 
         Randomly SQUEEZE OR STRETCH? Would have to change GT length...???
@@ -400,7 +405,8 @@ class StrokeRecoveryDataset(Dataset):
         # img = img[::-1] # convert to lower origin format
         if add_distortion:
             img = add_unormalized_distortion(img)
-
+        elif add_blur:
+            img = blur(img)
         #from PIL import Image, ImageDraw
         #Image.fromarray(img.astype(np.uint8), 'L').show()
 
@@ -469,9 +475,11 @@ class StrokeRecoveryDataset(Dataset):
 
         # Render image
         add_distortion = "distortion" in self.image_prep.lower() and not self.test_dataset # don't distort the test data
+        add_blur = "blur" in self.image_prep.lower()
         if self.image_prep.lower().startswith("pil"):
             img, gt = self.prep_image(gt, img_height=self.img_height,
                                       add_distortion=add_distortion,
+                                      add_blur=add_blur,
                                       use_stroke_number=("stroke_number" in self.gt_format),
                                       linewidth=None if self.config.dataset.linewidth is None else self.config.dataset.linewidth)
         else:

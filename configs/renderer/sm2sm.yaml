@@ -17,7 +17,8 @@ model_definition:
   cnn_type: default64
 
 # Stroke model
-stroke_model_pt_override: "./renderer/stroke_models/RESUME_model.pt"
+#stroke_model_pt_override: "./renderer/stroke_models/RESUME_model.pt"
+stroke_model_pt_override: "/home/taylor/shares/brodie/home/taylor/github/simple_hwr/RESULTS/ver8/20200406_131747-dtw_adaptive_new2_restartLR_RESUME/RESUME_model.pt"
 stroke_model_config: "./renderer/stroke_models/RESUME.yaml"
 
 # General
@@ -43,7 +44,7 @@ dataset:
   img_height: 61
   include_synthetic: false
   num_of_channels: 1
-  image_prep: pil_no_warp # keywords: distortion (anywhere), pil (starts with), no_warp (anywhere)
+  image_prep: pil_no_warp_blur # keywords: distortion (anywhere), pil (starts with), no_warp (anywhere)
   adapted_gt_path: null
   linewidth: 2
 

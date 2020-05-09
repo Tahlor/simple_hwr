@@ -1388,8 +1388,8 @@ def get_index(l, item):
     else:
         return -1
 
-RECREATE_TIME = 1588984867.1351507
-def npy_loader(path):
+RECREATE_TIME = 1588984867
+def npy_loader(path, save=True):
     if Path(path).suffix == ".json":
         numpy_path = Path(path).with_suffix(".npy")
         if numpy_path.exists() and \
@@ -1400,7 +1400,8 @@ def npy_loader(path):
         else: # if json was updated, re-make the numpy version
             print(f"No npy file detected or too old, saving {numpy_path}")
             new_data = json.load(Path(path).open("r"))
-            np.save(numpy_path, new_data)
+            if save:
+                np.save(numpy_path, new_data)
             return new_data
     elif Path(path).suffix == ".npy":
         return np.load(path)

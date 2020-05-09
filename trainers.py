@@ -230,11 +230,13 @@ class GeneratorTrainer(Trainer):
         self.stroke_model.use_gradient_override = True
         self.stroke_model.eval() # eval() do dropout etc. as needed
 
+        self.m = self.stroke_model.cnn.cnn.conv1.weight.T.clone()
+
         self.training_dataset = training_dataset
         self.loss_version = kwargs["loss_type"] if "loss_type" in kwargs else "SM2SM"
         self.device = self.config.device
 
-        self.white_bias = losses.BiasLoss().lossfun
+        self.white_bias = losses.BiasLoss(loss_indices=None).lossfun
 
     def get_strokes(self, img):
         #line_imgs = line_imgs.to(device)
@@ -250,13 +252,15 @@ class GeneratorTrainer(Trainer):
         return image
 
     def stroke_eval(self, input):
-        pred_logits = self.stroke_model(input).cpu()
-        return pred_logits.permute(1, 0, 2)
-
+        pred_logits = self.stroke_model(input).cpu().permute(1, 0, 2)
+        return pred_logits
 
     def sm2sm(self, item, pred_image, gt_image):
         # Compare stroke-model strokes predicted by GT image and synthetic image
         self.stroke_model.train()
+        #white_loss_tensor = 0
+        white_loss_tensor = self.white_bias(pred_image, targs=1, label_lengths=None) * .01 # bias toward whiteness
+
         label_lengths = item["label_lengths"]
         predicted_strokes = self.stroke_eval(pred_image[:, :, :])
         predicted_strokes = relativefy_batch_torch(predicted_strokes, reverse=True, indices=0) # sum the x-axis
@@ -271,17 +275,18 @@ class GeneratorTrainer(Trainer):
             with torch.no_grad(): # don't need gradients for predicted GT strokes
                 predicted_strokes_gt_batch = self.stroke_eval(gt_image.to(self.config.device)).detach()
                 predicted_strokes_gt_batch = relativefy_batch_torch(predicted_strokes_gt_batch, reverse=True, indices=0)  # sum the x-axis
-
+                predicted_strokes_gt_batch[:,:,self.sigmoid_indices] = SIGMOID(predicted_strokes_gt_batch[:,:,self.sigmoid_indices])
                 ## Adjust GT SOS to Stroke Number
                 #### SOS SHOULD BE STRAIGHT UP COMPARED TO SOS ON THE DTW SINCE BOTH ARE PREDICTED ### ???
                 if True:
+                    # Needs to be rounded to work correctly - since new strokes are determined by not equalling previous
+                    # This logic can be updated
+                    predicted_strokes_gt_batch[:, :, 2] = predicted_strokes_gt_batch[:, :, 2].round()
+
                     # GT approximation should be in stroke number format (for now)
                     predicted_strokes_gt_batch = relativefy_batch_torch(predicted_strokes_gt_batch, reverse=True,
                                                                         indices=2)
 
-                    # Needs to be rounded to work correctly - since new strokes are determined by not equalling previous
-                    # This logic can be updated
-                    predicted_strokes_gt_batch[:, :, 2] = predicted_strokes_gt_batch[:, :, 2].round()
 
             # Truncate
             predicted_strokes_gt_batch = self._truncate(predicted_strokes_gt_batch, label_lengths, window=0)
@@ -292,8 +297,10 @@ class GeneratorTrainer(Trainer):
 
         loss_tensor, loss = self.loss_criterion.main_loss(predicted_strokes, item, suffix="_train",
                                                           targ_key="predicted_strokes_gt")
-        loss_tensor += self.white_bias(pred_image) * .1 # bias toward whiteness
-        return loss_tensor, loss, predicted_strokes
+
+        # Make sure stroke model isn't training
+        #assert torch.all(torch.eq(self.m, self.stroke_model.cnn.cnn.conv1.weight.T))
+        return loss_tensor+white_loss_tensor.cpu(), loss, predicted_strokes
 
 
     def train(self, item, train=True, **kwargs):
@@ -305,7 +312,7 @@ class GeneratorTrainer(Trainer):
             suffix="_test"
         gt_strokes = item["gt_list"]
         gt_image = item["line_imgs"]
-        # Truncate the pred image
+        # Truncate the pred image to be the size of the original (in square format)
         pred_image = self.eval(item["rel_gt"].to(self.config.device))[:,:,:,:gt_image.shape[-1]] # BATCH x 1 x H x W
         self.config.counter.update(epochs=0, instances=gt_image.shape[0], updates=1)
 

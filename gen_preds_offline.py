@@ -1,3 +1,4 @@
+import shutil
 from models.basic import CNN, BidirectionalRNN
 from torch import nn
 from models.CoordConv import CoordConv

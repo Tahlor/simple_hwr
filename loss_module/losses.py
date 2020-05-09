@@ -51,7 +51,7 @@ logger = logging.getLogger("root."+__name__)
 
 
 class CustomLoss(nn.Module):
-    def __init__(self, loss_indices, device="cuda", **kwargs):
+    def __init__(self, loss_indices=None, device="cuda", **kwargs):
         super().__init__()
         self.name = self.__class__.__name__
         self.loss_indices = loss_indices
@@ -64,7 +64,7 @@ class CustomLoss(nn.Module):
             if isinstance(subcoef, str):
                 subcoef = [float(s) for s in subcoef.split(",")]
             self.subcoef = Tensor(subcoef).to(self.device)
-        else:
+        elif not loss_indices is None:
             # MAY NOT ALWAYS BE 4!!!
             length = len(range(*loss_indices.indices(4))) if isinstance(loss_indices, slice) else len(loss_indices)
             self.subcoef = torch.ones(length).to(self.device)
@@ -809,7 +809,7 @@ class BiasLoss(CustomLoss):
         self.lossfun = self.loss
 
     @staticmethod
-    def loss(preds, targs, label_lengths, **kwargs):
+    def loss(preds, targs=None, label_lengths=None, **kwargs):
         """ Bias toward 1's (whiteness)
 
         Args:
@@ -822,7 +822,7 @@ class BiasLoss(CustomLoss):
         """
         loss = 0
         for pred in preds:
-            loss += abs(1-pred)
+            loss += abs(1-pred).sum()
         return loss
 
 
