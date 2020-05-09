@@ -168,6 +168,7 @@ class StrokeLoss:
 
             # Try calculating the loss
             try:
+                print("STROKE LOSS TRY", preds[0].shape)
                 loss_tensor = loss_fn(preds, targs, label_lengths=label_lengths, item=item, suffix=suffix)
             except Exception as e:
                 losses[i] = torch.zeros(1, requires_grad=True)
