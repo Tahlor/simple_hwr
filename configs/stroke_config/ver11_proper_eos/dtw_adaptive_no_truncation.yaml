@@ -35,7 +35,7 @@ dataset:
   include_synthetic: true
   num_of_channels: 1
   image_prep: pil_with_distortion
-  adapted_gt_path: ./RESULTS/pretrained/training_dataset.npy
+  #adapted_gt_path: ./RESULTS/pretrained/training_dataset.npy
 
 # Training data
 #dataset_folder: online_coordinate_data/8_stroke_vSmall_16
@@ -109,7 +109,7 @@ pred_opts: # if relative etc., specify that here; e.g., opts:rel opts:cumsum etc
 #      - y
 #    subcoef: 1,1
 loss_fns2:
-  - name: dtw
+  - name: dtw_adaptive
     coef: 1
     gts:
       - x

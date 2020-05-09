@@ -326,7 +326,7 @@ class StrokeRecoveryDataset(Dataset):
         for data_path in data_paths: # loop through JSONs
             data_path = str(data_path)
             print(os.path.join(root, data_path))
-            new_data = npy_loader(os.path.join(root, data_path))
+            new_data = npy_loader(os.path.join(root, data_path)) # load .npy file if it exists
 
             if isinstance(new_data, dict):
                 new_data = [item for key, item in new_data.items()]
