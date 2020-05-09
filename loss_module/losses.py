@@ -868,6 +868,8 @@ class CrossEntropy(CustomLoss):
         if self.targ_key_override:
             targs = kwargs["item"][self.targ_key_override]
         loss = 0
+        print("UGH!!!!", [pred.shape for pred in preds])
+
         for i, pred in enumerate(preds):  # loop through batches, since they are not the same size
             targ = targs[i][:pred.shape[0]] # make sure they are the same length
             print("HERE", pred.shape, targ.shape)
