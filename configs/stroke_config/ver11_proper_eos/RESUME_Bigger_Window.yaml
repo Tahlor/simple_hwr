@@ -1,0 +1,967 @@
+load_path: ./results/dtw_adaptive_no_truncation/20200508_190735-dtw_adaptive_no_truncation/dtw_adaptive_no_truncation_model.pt
+TESTING: false
+load_optimizer: true
+reset_LR: false
+results_dir_override: null
+test_only: false
+offline_pred: false
+logging: info
+gpu_if_available: true
+output_folder: ./results
+epochs_to_run: 1000
+update_freq: 100
+save_freq: 1
+use_visdom: false
+debug: false
+truncate: false
+dataset: !!python/object/new:easydict.EasyDict
+  state:
+    img_height: 61
+    include_synthetic: true
+    num_of_channels: 1
+    image_prep: pil_with_distortion
+    adapted_gt_path: ./results/dtw_adaptive_no_truncation/20200508_190735-dtw_adaptive_no_truncation/training_dataset.npy
+    linewidth: null
+    gt_format: &id001
+    - x
+    - y
+    - stroke_number
+    - eos
+    batch_size: 28
+    extra_dataset: &id002
+    - online_coordinate_data/MAX_stroke_vFullSynthetic100kFull/train_online_coords.json
+    - online_coordinate_data/MAX_stroke_vBoosted2_normal/train_online_coords.json
+    - online_coordinate_data/MAX_stroke_vBoosted2_random/train_online_coords.json
+  dictitems:
+    img_height: 61
+    include_synthetic: true
+    num_of_channels: 1
+    image_prep: pil_with_distortion
+    adapted_gt_path: ./results/dtw_adaptive_no_truncation/20200508_190735-dtw_adaptive_no_truncation/training_dataset.npy
+    linewidth: null
+    gt_format: *id001
+    batch_size: 28
+    extra_dataset: *id002
+data_root_fsl: ../hw_data/strokes
+data_root_local: data
+dataset_folder: online_coordinate_data/MAX_stroke_vlargeTrnSetFull
+warp: true
+learning_rate: 1.1083333333333335e-05
+scheduler_step: null
+scheduler_gamma: 0.95
+test_size: null
+train_size: null
+batch_size: 28
+gt_format:
+- x
+- y
+- stroke_number
+- eos
+gt_opts:
+- null
+- null
+- null
+- cumsum
+pred_opts:
+- cumsum
+- null
+- sigmoid
+- null
+convolve_func: cumsum
+cumsum_window_size: 21
+first_loss_epochs: 1
+training_nn_loss: false
+cnn_type: default64
+coordconv: true
+coordconv_method: y_abs
+coordconv_0_center: false
+visdom_port: 9001
+name: dtw_adaptive_no_truncation
+SMALL_TRAINING: false
+save_count: 0
+coord_conv: false
+test_nn_loss: true
+test_nn_loss_freq: 1
+start_of_stroke_method: normal
+interpolated_sos: normal
+model_name: normal
+stroke_model_pt_override: null
+stroke_model_config: null
+test_freq: 1
+experiment: dtw_adaptive_no_truncation
+full_specs: 20200508_190735-dtw_adaptive_no_truncation
+results_dir: ./results/dtw_adaptive_no_truncation/20200508_190735-dtw_adaptive_no_truncation
+output_predictions: false
+log_dir: ./results/dtw_adaptive_no_truncation/20200508_190735-dtw_adaptive_no_truncation
+coordconv_opts: !!python/object/new:easydict.EasyDict
+  state:
+    zero_center: false
+    method: y_abs
+  dictitems:
+    zero_center: false
+    method: y_abs
+data_root: ../hw_data/strokes
+pred_format:
+- x
+- y
+- stroke_number
+- eos
+vocab_size: 4
+loss_fns:
+- !!python/object/new:easydict.EasyDict
+  state:
+    name: dtw_adaptive
+    coef: 1
+    gts: &id003
+    - x
+    - y
+    dtw_mapping_basis: &id004
+    - 0
+    - 1
+    cross_entropy_indices: &id005
+    - 2
+    relativefy_cross_entropy_gt: true
+    window_size: 80
+    barron: false
+    loss_indices: &id006
+    - 0
+    - 1
+    monitor_only: false
+  dictitems:
+    name: dtw_adaptive
+    coef: 1
+    gts: *id003
+    dtw_mapping_basis: *id004
+    cross_entropy_indices: *id005
+    relativefy_cross_entropy_gt: true
+    window_size: 80
+    barron: false
+    loss_indices: *id006
+    monitor_only: false
+- !!python/object/new:easydict.EasyDict
+  state:
+    name: cross_entropy
+    gts: &id007
+    - eos
+    activation: sigmoid
+    targ_key_override: gt
+    loss_indices: &id008
+    - 3
+    coef: 1
+    monitor_only: false
+  dictitems:
+    name: cross_entropy
+    gts: *id007
+    activation: sigmoid
+    targ_key_override: gt
+    loss_indices: *id008
+    coef: 1
+    monitor_only: false
+loss_fns2: null
+pred_relativefy:
+- 0
+device: cuda
+stats: !!python/object/new:easydict.EasyDict
+  state:
+    Actual_Loss_Function_train: &id010 !!python/object:hwr_utils.stattrack.AutoStat
+      y:
+      - null
+      - 0.0019845960259967407
+      - 0.0018038872189707323
+      - 0.0018271021656463332
+      - 0.00183514852013357
+      - 0.001874096103223041
+      - 0.001762050796638112
+      - 0.0016781908016811112
+      - 0.001809807117149834
+      - 0.0017882994371476017
+      - 0.0018052611463184843
+      - 0.001787932993097764
+      - 0.0017338130880093893
+      - 0.0016642329383892286
+      - 0.0017466255587427826
+      - 0.0017631918436751862
+      - 0.0016790031007413494
+      - 0.0017064957727955738
+      - 0.001747792142917072
+      - 0.001690886756547439
+      - 0.0017499657738982712
+      - 0.0016509033537334382
+      - 0.0017540628654264996
+      - 0.00169978237572419
+      - 0.0016900207514342772
+      - 0.0017070922089067904
+      - 0.0017608815632728155
+      - 0.0017019258982894053
+      - 0.0017321169544924013
+      - 0.0016303877778763942
+      - 0.0016714791543711509
+      - 0.001649933727754885
+      - 0.001642685809320409
+      - 0.0017114661419117818
+      - 0.0017266715483128013
+      - 0.0017286525310103394
+      - 0.0016667777215773714
+      - 0.0017655104666458787
+      - 0.0016547356056564341
+      - 0.0016650161598880243
+      - 0.0016006603391614882
+      - 0.0016311250668852085
+      - 0.0016685859938557195
+      - 0.0016667550360907261
+      - 0.0017108209408318292
+      - 0.0016637536435626084
+      - 0.0017323774615585926
+      - 0.0016874990386003047
+      - 0.001661627971766894
+      - 0.0015775077986448932
+      - 0.0016175009642372153
+      - 0.001639256322174259
+      - 0.001666377961243627
+      - 0.0017441441391745235
+      - 0.0016338339800079126
+      - 0.0016677431506586101
+      - 0.0016716084002141463
+      - 0.00165712453479768
+      - 0.0017091072945251036
+      - 0.0016663921963674267
+      - 0.0016543573270208771
+      - 0.0015877601557537965
+      - 0.0016477287130307922
+      - 0.0016587796726370606
+      - 0.0016214362825534491
+      - 0.001763795665096512
+      - 0.001655253302886443
+      - 0.0016140598693685107
+      - 0.0016376255309180176
+      - 0.0017303068724606767
+      - 0.0016956844878490383
+      - 0.0016728956402870814
+      - 0.001645023817889704
+      - 0.0016254883328289831
+      - 0.0016303479541049208
+      - 0.0017170322381601004
+      - 0.0016530030715413931
+      - 0.001630410370810198
+      - 0.0016782555303140384
+      - 0.0016046434769104063
+      - 0.001673414136288365
+      - 0.0015815727388850248
+      - 0.0016129190479865208
+      - 0.0016266034355739113
+      - 0.0016546386883163294
+      - 0.001631955468760259
+      - 0.001583271942140978
+      - 0.0017261487584437245
+      - 0.0016369111612023995
+      - 0.0016277684411140577
+      - 0.0016228177850149325
+      x:
+      - 0
+      - 0.007768745070215979
+      - 0.018866952313381664
+      - 0.029965159556547348
+      - 0.04106336679971303
+      - 0.05216157404287872
+      - 0.0632597812860444
+      - 0.07435798852921008
+      - 0.08545619577237577
+      - 0.09655440301554145
+      - 0.10765261025870713
+      - 0.11875081750187282
+      - 0.1298490247450385
+      - 0.1409472319882042
+      - 0.15204543923136987
+      - 0.16314364647453555
+      - 0.17424185371770123
+      - 0.18534006096086691
+      - 0.19643826820403262
+      - 0.2075364754471983
+      - 0.21863468269036399
+      - 0.22973288993352967
+      - 0.24083109717669535
+      - 0.25192930441986106
+      - 0.26302751166302674
+      - 0.2741257189061924
+      - 0.2852239261493581
+      - 0.2963221333925238
+      - 0.30742034063568946
+      - 0.31851854787885514
+      - 0.3296167551220208
+      - 0.3407149623651865
+      - 0.3518131696083522
+      - 0.36291137685151786
+      - 0.37400958409468354
+      - 0.3851077913378492
+      - 0.3962059985810149
+      - 0.40730420582418064
+      - 0.4184024130673463
+      - 0.429500620310512
+      - 0.4405988275536777
+      - 0.45169703479684337
+      - 0.46279524204000905
+      - 0.47389344928317473
+      - 0.4849916565263404
+      - 0.4960898637695061
+      - 0.5071880710126718
+      - 0.5182862782558375
+      - 0.5293844854990032
+      - 0.5404826927421689
+      - 0.5515808999853345
+      - 0.5626791072285002
+      - 0.5737773144716659
+      - 0.5848755217148316
+      - 0.5959737289579973
+      - 0.607071936201163
+      - 0.6181701434443286
+      - 0.6292683506874943
+      - 0.64036655793066
+      - 0.6514647651738257
+      - 0.6625629724169914
+      - 0.673661179660157
+      - 0.6847593869033227
+      - 0.6958575941464884
+      - 0.7069558013896541
+      - 0.7180540086328198
+      - 0.7291522158759854
+      - 0.7402504231191511
+      - 0.7513486303623168
+      - 0.7624468376054825
+      - 0.7735450448486482
+      - 0.7846432520918138
+      - 0.7957414593349795
+      - 0.8068396665781452
+      - 0.8179378738213109
+      - 0.8290360810644766
+      - 0.8401342883076423
+      - 0.851232495550808
+      - 0.8623307027939737
+      - 0.8734289100371394
+      - 0.8845271172803051
+      - 0.8956253245234708
+      - 0.9067235317666364
+      - 0.9178217390098021
+      - 0.9289199462529678
+      - 0.9400181534961335
+      - 0.9511163607392992
+      - 0.9622145679824649
+      - 0.9733127752256305
+      - 0.9844109824687962
+      - 0.9955091897119619
+      current_weight: 0
+      current_sum: 895.1372507116298
+      accumlator_active: true
+      updated_since_plot: true
+      accumulator_freq: null
+      x_title: Epochs
+      y_title: Loss
+      ymax: null
+      name: Actual_Loss_Function_train
+      plot: true
+      plot_update_length: 1
+      last_weight_step: 121087880
+      x_counter: &id009 !!python/object:hwr_utils.stattrack.Counter
+        epochs: 136
+        updates: 540041
+        instances: 252293
+        instances_per_epoch: 252293
+        epoch_decimal: 1.0
+        training_pred_count: 121629972
+        test_instances: 501
+        test_pred_length_static: 256450
+        test_pred_count: 256450
+        validation_pred_length_static: 0
+      x_weight: training_pred_count
+      x_plot: epoch_decimal
+      train: true
+    nn_train: &id011 !!python/object:hwr_utils.stattrack.AutoStat
+      y:
+      - null
+      x:
+      - 0
+      current_weight: 0
+      current_sum: 0
+      accumlator_active: false
+      updated_since_plot: false
+      accumulator_freq: null
+      x_title: Epochs
+      y_title: Loss
+      ymax: null
+      name: nn_train
+      plot: true
+      plot_update_length: 1
+      last_weight_step: 0
+      x_counter: *id009
+      x_weight: training_pred_count
+      x_plot: epoch_decimal
+      train: true
+    point_count_train: &id012 !!python/object:hwr_utils.stattrack.AutoStat
+      y:
+      - null
+      x:
+      - 0
+      current_weight: 0
+      current_sum: 0
+      accumlator_active: false
+      updated_since_plot: false
+      accumulator_freq: null
+      x_title: Epochs
+      y_title: Points Predicted
+      ymax: null
+      name: point_count_train
+      plot: true
+      plot_update_length: 1
+      last_weight_step: 0
+      x_counter: *id009
+      x_weight: training_pred_count
+      x_plot: epoch_decimal
+      train: true
+    dtw_adaptive_train: &id013 !!python/object:hwr_utils.stattrack.AutoStat
+      y:
+      - null
+      - 0.055470720689896905
+      - 0.05042865183903262
+      - 0.05109219500371128
+      - 0.05132231400584809
+      - 0.052423522726612964
+      - 0.04928939401536821
+      - 0.04694614490263723
+      - 0.05063533197803723
+      - 0.05003683919958446
+      - 0.05051280232025196
+      - 0.05002866809530667
+      - 0.04851382282126787
+      - 0.046567038943178554
+      - 0.048876629328306824
+      - 0.04933932251458495
+      - 0.046982568950245614
+      - 0.04775253923090553
+      - 0.04891012092245742
+      - 0.04731609033840203
+      - 0.048970684080520625
+      - 0.04619631220925576
+      - 0.04908374867919649
+      - 0.04756501118530632
+      - 0.04729294866946964
+      - 0.04777081373438492
+      - 0.04927731233002315
+      - 0.047624520546425776
+      - 0.048471109728999255
+      - 0.045623142174698136
+      - 0.04677498996545898
+      - 0.04617021496548373
+      - 0.04596596335497109
+      - 0.047892051964989066
+      - 0.04831772499681258
+      - 0.04837482473714274
+      - 0.04664031749845069
+      - 0.04940558632479163
+      - 0.04630209634416829
+      - 0.04659088177418908
+      - 0.044790307208242945
+      - 0.04564346277331847
+      - 0.04669211573994466
+      - 0.046640694294659175
+      - 0.04787527516048992
+      - 0.04655676674564706
+      - 0.04847895823266406
+      - 0.04722226903411752
+      - 0.0464974327020336
+      - 0.0441409748037109
+      - 0.045261887389921825
+      - 0.045872410579178416
+      - 0.04662992824075586
+      - 0.04880551398396181
+      - 0.04571904772921079
+      - 0.046668001462128565
+      - 0.04677625398731719
+      - 0.046372946808135106
+      - 0.047828107900421094
+      - 0.046633167575503155
+      - 0.046294552188574374
+      - 0.04443063520997599
+      - 0.04611025394671922
+      - 0.04641900065929606
+      - 0.04537293036303165
+      - 0.049359951187489016
+      - 0.04632166307643977
+      - 0.0451686092186735
+      - 0.04582776155054796
+      - 0.04842241277069641
+      - 0.04745477267001502
+      - 0.04681567389401479
+      - 0.04603461737692888
+      - 0.04548750268695674
+      - 0.0456262596292127
+      - 0.048052161179682515
+      - 0.046257862695228
+      - 0.04562708816142983
+      - 0.04696801251959884
+      - 0.04490659244398075
+      - 0.04683016645288523
+      - 0.04426060082064604
+      - 0.045137220781654185
+      - 0.045520583387844614
+      - 0.04630570686347536
+      - 0.045670137773628224
+      - 0.04430755105014061
+      - 0.04830684069208878
+      - 0.04581008512434773
+      - 0.04555428538451244
+      - 0.04541469804216156
+      x:
+      - 0
+      - 0.007768745070215979
+      - 0.018866952313381664
+      - 0.029965159556547348
+      - 0.04106336679971303
+      - 0.05216157404287872
+      - 0.0632597812860444
+      - 0.07435798852921008
+      - 0.08545619577237577
+      - 0.09655440301554145
+      - 0.10765261025870713
+      - 0.11875081750187282
+      - 0.1298490247450385
+      - 0.1409472319882042
+      - 0.15204543923136987
+      - 0.16314364647453555
+      - 0.17424185371770123
+      - 0.18534006096086691
+      - 0.19643826820403262
+      - 0.2075364754471983
+      - 0.21863468269036399
+      - 0.22973288993352967
+      - 0.24083109717669535
+      - 0.25192930441986106
+      - 0.26302751166302674
+      - 0.2741257189061924
+      - 0.2852239261493581
+      - 0.2963221333925238
+      - 0.30742034063568946
+      - 0.31851854787885514
+      - 0.3296167551220208
+      - 0.3407149623651865
+      - 0.3518131696083522
+      - 0.36291137685151786
+      - 0.37400958409468354
+      - 0.3851077913378492
+      - 0.3962059985810149
+      - 0.40730420582418064
+      - 0.4184024130673463
+      - 0.429500620310512
+      - 0.4405988275536777
+      - 0.45169703479684337
+      - 0.46279524204000905
+      - 0.47389344928317473
+      - 0.4849916565263404
+      - 0.4960898637695061
+      - 0.5071880710126718
+      - 0.5182862782558375
+      - 0.5293844854990032
+      - 0.5404826927421689
+      - 0.5515808999853345
+      - 0.5626791072285002
+      - 0.5737773144716659
+      - 0.5848755217148316
+      - 0.5959737289579973
+      - 0.607071936201163
+      - 0.6181701434443286
+      - 0.6292683506874943
+      - 0.64036655793066
+      - 0.6514647651738257
+      - 0.6625629724169914
+      - 0.673661179660157
+      - 0.6847593869033227
+      - 0.6958575941464884
+      - 0.7069558013896541
+      - 0.7180540086328198
+      - 0.7291522158759854
+      - 0.7402504231191511
+      - 0.7513486303623168
+      - 0.7624468376054825
+      - 0.7735450448486482
+      - 0.7846432520918138
+      - 0.7957414593349795
+      - 0.8068396665781452
+      - 0.8179378738213109
+      - 0.8290360810644766
+      - 0.8401342883076423
+      - 0.851232495550808
+      - 0.8623307027939737
+      - 0.8734289100371394
+      - 0.8845271172803051
+      - 0.8956253245234708
+      - 0.9067235317666364
+      - 0.9178217390098021
+      - 0.9289199462529678
+      - 0.9400181534961335
+      - 0.9511163607392992
+      - 0.9622145679824649
+      - 0.9733127752256305
+      - 0.9844109824687962
+      - 0.9955091897119619
+      current_weight: 0
+      current_sum: 24642.189086914062
+      accumlator_active: true
+      updated_since_plot: true
+      accumulator_freq: null
+      x_title: Epochs
+      y_title: Loss
+      ymax: null
+      name: dtw_adaptive_train
+      plot: true
+      plot_update_length: 1
+      last_weight_step: 121087880
+      x_counter: *id009
+      x_weight: training_pred_count
+      x_plot: epoch_decimal
+      train: true
+    cross_entropy_train: &id014 !!python/object:hwr_utils.stattrack.AutoStat
+      y:
+      - null
+      - 9.796800824028712e-05
+      - 8.019038845122337e-05
+      - 6.666555533042565e-05
+      - 6.184425126365393e-05
+      - 5.116814405156193e-05
+      - 4.802813613900101e-05
+      - 4.319753321760093e-05
+      - 3.9267275041670146e-05
+      - 3.5545209559577833e-05
+      - 3.450984168351603e-05
+      - 3.345563997696113e-05
+      - 3.294362263591017e-05
+      - 3.148342089315175e-05
+      - 2.8886591412218244e-05
+      - 3.004901311496404e-05
+      - 2.9517847173990826e-05
+      - 2.934264349044308e-05
+      - 2.805906951283306e-05
+      - 2.873886749570927e-05
+      - 2.8357576156421766e-05
+      - 2.8981574697204955e-05
+      - 3.0011695007278448e-05
+      - 2.8895392945912933e-05
+      - 2.763227067477588e-05
+      - 2.7768303792078234e-05
+      - 2.7371572645370084e-05
+      - 2.9404469702504147e-05
+      - 2.8164954849174426e-05
+      - 2.771573153264347e-05
+      - 2.6426258565084224e-05
+      - 2.7929295674439068e-05
+      - 2.9239139543013584e-05
+      - 2.899985516263069e-05
+      - 2.9078307083166362e-05
+      - 2.744606609319262e-05
+      - 2.9458709434526812e-05
+      - 2.8706853959635955e-05
+      - 3.0500729419042913e-05
+      - 2.957061003763491e-05
+      - 2.818222855380477e-05
+      - 2.803916721484312e-05
+      - 2.8292127172175334e-05
+      - 2.844676475278155e-05
+      - 2.7711199386097825e-05
+      - 2.8335274227403262e-05
+      - 2.7610778325280225e-05
+      - 2.7704160611285137e-05
+      - 2.815058636544706e-05
+      - 2.9243551306708714e-05
+      - 2.8139774913154447e-05
+      - 2.676628123040213e-05
+      - 2.8654773107667742e-05
+      - 3.052211023182134e-05
+      - 2.830368304997848e-05
+      - 2.8806892336533598e-05
+      - 2.878111991283994e-05
+      - 2.654026123388698e-05
+      - 2.6896365558674383e-05
+      - 2.5813901356799977e-05
+      - 2.7452899347879193e-05
+      - 2.6649204387700803e-05
+      - 2.6149978482927634e-05
+      - 2.6830043422235004e-05
+      - 2.72855426823566e-05
+      - 2.632750315731824e-05
+      - 2.5429464230855495e-05
+      - 2.5067092162415075e-05
+      - 2.5753371927579208e-05
+      - 2.6179829196117213e-05
+      - 2.4392907330830436e-05
+      - 2.5404163992570736e-05
+      - 2.6049417832898188e-05
+      - 2.617038371761154e-05
+      - 2.348320530290035e-05
+      - 2.4741440496941117e-05
+      - 2.6223297319151727e-05
+      - 2.4402075573632663e-05
+      - 2.314224366733765e-05
+      - 2.3424977785362336e-05
+      - 2.542923532549998e-05
+      - 2.343605782072854e-05
+      - 2.4512461736812127e-05
+      - 2.4312700990239776e-05
+      - 2.417634185218904e-05
+      - 2.461534871101223e-05
+      - 2.406321082612883e-05
+      - 2.532484481687098e-05
+      - 2.3427446186138842e-05
+      - 2.323102620911216e-05
+      - 2.419997313541336e-05
+      x:
+      - 0
+      - 0.007768745070215979
+      - 0.018866952313381664
+      - 0.029965159556547348
+      - 0.04106336679971303
+      - 0.05216157404287872
+      - 0.0632597812860444
+      - 0.07435798852921008
+      - 0.08545619577237577
+      - 0.09655440301554145
+      - 0.10765261025870713
+      - 0.11875081750187282
+      - 0.1298490247450385
+      - 0.1409472319882042
+      - 0.15204543923136987
+      - 0.16314364647453555
+      - 0.17424185371770123
+      - 0.18534006096086691
+      - 0.19643826820403262
+      - 0.2075364754471983
+      - 0.21863468269036399
+      - 0.22973288993352967
+      - 0.24083109717669535
+      - 0.25192930441986106
+      - 0.26302751166302674
+      - 0.2741257189061924
+      - 0.2852239261493581
+      - 0.2963221333925238
+      - 0.30742034063568946
+      - 0.31851854787885514
+      - 0.3296167551220208
+      - 0.3407149623651865
+      - 0.3518131696083522
+      - 0.36291137685151786
+      - 0.37400958409468354
+      - 0.3851077913378492
+      - 0.3962059985810149
+      - 0.40730420582418064
+      - 0.4184024130673463
+      - 0.429500620310512
+      - 0.4405988275536777
+      - 0.45169703479684337
+      - 0.46279524204000905
+      - 0.47389344928317473
+      - 0.4849916565263404
+      - 0.4960898637695061
+      - 0.5071880710126718
+      - 0.5182862782558375
+      - 0.5293844854990032
+      - 0.5404826927421689
+      - 0.5515808999853345
+      - 0.5626791072285002
+      - 0.5737773144716659
+      - 0.5848755217148316
+      - 0.5959737289579973
+      - 0.607071936201163
+      - 0.6181701434443286
+      - 0.6292683506874943
+      - 0.64036655793066
+      - 0.6514647651738257
+      - 0.6625629724169914
+      - 0.673661179660157
+      - 0.6847593869033227
+      - 0.6958575941464884
+      - 0.7069558013896541
+      - 0.7180540086328198
+      - 0.7291522158759854
+      - 0.7402504231191511
+      - 0.7513486303623168
+      - 0.7624468376054825
+      - 0.7735450448486482
+      - 0.7846432520918138
+      - 0.7957414593349795
+      - 0.8068396665781452
+      - 0.8179378738213109
+      - 0.8290360810644766
+      - 0.8401342883076423
+      - 0.851232495550808
+      - 0.8623307027939737
+      - 0.8734289100371394
+      - 0.8845271172803051
+      - 0.8956253245234708
+      - 0.9067235317666364
+      - 0.9178217390098021
+      - 0.9289199462529678
+      - 0.9400181534961335
+      - 0.9511163607392992
+      - 0.9622145679824649
+      - 0.9733127752256305
+      - 0.9844109824687962
+      - 0.9955091897119619
+      current_weight: 0
+      current_sum: 13.864129014313221
+      accumlator_active: true
+      updated_since_plot: true
+      accumulator_freq: null
+      x_title: Epochs
+      y_title: Loss
+      ymax: null
+      name: cross_entropy_train
+      plot: true
+      plot_update_length: 1
+      last_weight_step: 121087880
+      x_counter: *id009
+      x_weight: training_pred_count
+      x_plot: epoch_decimal
+      train: true
+    Actual_Loss_Function_test: &id015 !!python/object:hwr_utils.stattrack.AutoStat
+      y:
+      - null
+      - 0.0020978586739465537
+      x:
+      - 0
+      - 1.0
+      current_weight: 0
+      current_sum: 0
+      accumlator_active: false
+      updated_since_plot: true
+      accumulator_freq: null
+      x_title: Epochs
+      y_title: Loss
+      ymax: null
+      name: Actual_Loss_Function_test
+      plot: true
+      plot_update_length: 1
+      last_weight_step: 0
+      x_counter: *id009
+      x_weight: test_pred_length_static
+      x_plot: epoch_decimal
+      train: false
+    nn_test: &id016 !!python/object:hwr_utils.stattrack.AutoStat
+      y:
+      - null
+      - !!python/object/apply:numpy.core.multiarray.scalar
+        - !!python/object/apply:numpy.dtype
+          args:
+          - f8
+          - 0
+          - 1
+          state: !!python/tuple
+          - 3
+          - <
+          - null
+          - null
+          - null
+          - -1
+          - -1
+          - 0
+        - !!binary |
+          mK/WTPnysD4=
+      x:
+      - 0
+      - 1.0
+      current_weight: 0
+      current_sum: 0
+      accumlator_active: false
+      updated_since_plot: true
+      accumulator_freq: null
+      x_title: Epochs
+      y_title: Loss
+      ymax: null
+      name: nn_test
+      plot: true
+      plot_update_length: 1
+      last_weight_step: 0
+      x_counter: *id009
+      x_weight: test_pred_length_static
+      x_plot: epoch_decimal
+      train: false
+    point_count_test: &id017 !!python/object:hwr_utils.stattrack.AutoStat
+      y:
+      - null
+      x:
+      - 0
+      current_weight: 0
+      current_sum: 0
+      accumlator_active: false
+      updated_since_plot: false
+      accumulator_freq: null
+      x_title: Epochs
+      y_title: Points Predicted
+      ymax: null
+      name: point_count_test
+      plot: true
+      plot_update_length: 1
+      last_weight_step: 0
+      x_counter: *id009
+      x_weight: test_pred_length_static
+      x_plot: epoch_decimal
+      train: false
+    dtw_adaptive_test: &id018 !!python/object:hwr_utils.stattrack.AutoStat
+      y:
+      - null
+      - 0.058213343182417075
+      x:
+      - 0
+      - 1.0
+      current_weight: 0
+      current_sum: 0
+      accumlator_active: false
+      updated_since_plot: true
+      accumulator_freq: null
+      x_title: Epochs
+      y_title: Loss
+      ymax: null
+      name: dtw_adaptive_test
+      plot: true
+      plot_update_length: 1
+      last_weight_step: 0
+      x_counter: *id009
+      x_weight: test_pred_length_static
+      x_plot: epoch_decimal
+      train: false
+    cross_entropy_test: &id019 !!python/object:hwr_utils.stattrack.AutoStat
+      y:
+      - null
+      - 0.0002967653671513061
+      x:
+      - 0
+      - 1.0
+      current_weight: 0
+      current_sum: 0
+      accumlator_active: false
+      updated_since_plot: true
+      accumulator_freq: null
+      x_title: Epochs
+      y_title: Loss
+      ymax: null
+      name: cross_entropy_test
+      plot: true
+      plot_update_length: 1
+      last_weight_step: 0
+      x_counter: *id009
+      x_weight: test_pred_length_static
+      x_plot: epoch_decimal
+      train: false
+  dictitems:
+    Actual_Loss_Function_train: *id010
+    nn_train: *id011
+    point_count_train: *id012
+    dtw_adaptive_train: *id013
+    cross_entropy_train: *id014
+    Actual_Loss_Function_test: *id015
+    nn_test: *id016
+    point_count_test: *id017
+    dtw_adaptive_test: *id018
+    cross_entropy_test: *id019
+n_train_instances: 252293
+n_test_instances: 501
+n_test_points: 256450
+global_counter: 531030
+starting_epoch: 135
+current_epoch: 135
+main_model_path: ./results/dtw_adaptive_no_truncation/20200508_190735-dtw_adaptive_no_truncation/dtw_adaptive_no_truncation_model.pt
