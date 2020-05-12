@@ -86,7 +86,7 @@ gt_opts:
   - null
   - null
   - null
-  - cumsum
+  - null
 
 # stroke_number is the cumsum of sos; gt_format, gt_opts, pred_opts: "sos", "cumsum", "cumsum" = "start_stroke", "null", "cumsum"
 # E.g. cumsum will predict RELATIVE positions; if "null" is specified for gt, it will compare to absolute values
@@ -94,7 +94,7 @@ pred_opts: # if relative etc., specify that here; e.g., opts:rel opts:cumsum etc
   - cumsum
   - null
   - sigmoid # THIS WILL BE A LOGIT
-  - null # 0 - sequence still going 1 - sequence has ended
+  - sigmoid # 0 - sequence still going 1 - sequence has ended
 
 ## Loss function
 # l1, dtw, ssl, cross_entropy
@@ -119,14 +119,10 @@ loss_fns2:
       - y
     cross_entropy_indices: # SIGMOID TAKEN DURING LOSS
       - stroke_number
+      - eos
     relativefy_cross_entropy_gt: true #
     window_size: 40
     barron: false
-  - name: cross_entropy
-    gts:
-      - eos
-    activation: sigmoid
-    targ_key_override: gt
 
 #  - name: l1_
 #    coef: .05

@@ -44,6 +44,7 @@ def main(config_path):
     load_path_override = "/home/taylor/shares/brodie/home/taylor/github/simple_hwr/RESULTS/ver8/20200406_131747-dtw_adaptive_new2_restartLR_RESUME/RESUME_model.pt"
     load_path_override = "/home/taylor/shares/brodie/home/taylor/github/simple_hwr/RESULTS/ver8/20200406_131747-dtw_adaptive_new2_restartLR_RESUME/RESUME_model.pt"
     load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/pretrained/with_EOS/dtw_adaptive_no_truncation_model.pt"
+    load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/pretrained/with_EOS/RESUME_Bigger_Window_model.pt"
 
     for load_path_override in [load_path_override
                                ]:
@@ -149,9 +150,11 @@ def post_process(pred,gt, calculate_distance=True, kd=None):
         return pred.numpy(), distances, kd
 
 KDTREE_PATH = "/media/data/GitHub/simple_hwr/RESULTS/OFFLINE_PREDS/kd_trees.npy"
+LOAD_KDTREE = False
 def eval_only(dataloader, model):
+    distances = []
     final_out = []
-    if Path(KDTREE_PATH).exists():
+    if Path(KDTREE_PATH).exists() and LOAD_KDTREE:
         kd_trees = np.load(KDTREE_PATH, allow_pickle=True).item()
     else:
         kd_trees = {}
@@ -213,11 +216,14 @@ def eval_only(dataloader, model):
         #np.save(output_path / f"{i}.npy", output)
         final_out += output
 
+        distances += [x["distance"] for x in output]
+        print(np.sum(distances < .1) / len(distance))
     #utils.pickle_it(final_out, output_path / f"all_data.pickle")
     np.save(output_path / f"all_data.npy", final_out)
 
     # Compute stats
-    distances = np.asarray([x["distance"] for x in final_out])
+    #distances = np.asarray([x["distance"] for x in final_out])
+    distances = np.asarray(distances)
     avg = np.average(distances)
     sd = np.std(distances)
     threshold = np.sum(distances < .01)
@@ -227,6 +233,7 @@ def eval_only(dataloader, model):
 
     with open(output_path / f"stats.txt", "w") as ff:
         ff.write(f"{avg}, {sd}, {threshold}")
+    plt.xlim(0,.015)
     plt.hist(distances)
     plt.savefig(output_path / f"stats.png")
     plt.close()

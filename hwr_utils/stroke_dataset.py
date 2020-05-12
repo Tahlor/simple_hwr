@@ -61,14 +61,14 @@ def read_img(image_path, num_of_channels=1, target_height=61, resize=True, add_d
 
     #vertical_pad = False # vertical pad makes the last predictions totally haywire!!
     if vertical_pad:
-        target_height -= 2
-    percent = float(target_height) / img.shape[0]
+        target_height -= 4
 
+    percent = float(target_height) / img.shape[0]
     if percent != 1 and resize:
         img = cv2.resize(img, (0, 0), fx=percent, fy=percent, interpolation=cv2.INTER_CUBIC)
 
     if vertical_pad:
-        img = cv2.copyMakeBorder(img, 0, 2, 0, 0, cv2.BORDER_CONSTANT,value=[255,255,255])
+        img = cv2.copyMakeBorder(img, 2, 2, 0, 0, cv2.BORDER_CONSTANT,value=[255,255,255])
 
     img = img.astype(np.float32)
 
@@ -863,9 +863,10 @@ def collate_stroke(batch, device="cpu", gt_opts=None):
 
         # Relative version
         rel_x = stroke_recovery.relativefy_numpy(l[:,0:1])
-        stroke_points_rel[i, :len(l), 0] = rel_x
-        stroke_points_rel[i, :, 1:2] = stroke_points_gt[i, :, 1:2]
-        stroke_points_rel[i, batch[i]['sos_args'], 2] = 1
+        stroke_points_rel[i, :len(l), 0] = rel_x # use relative coords for X, then 0's
+        stroke_points_rel[i, :len(l), 1:2] = stroke_points_gt[i, :, 1:2] # Copy the absolute ones for Y, then 0's
+        stroke_points_rel[i, batch[i]['sos_args'], 2] = 1 # all 0's => 1's where SOS are
+        # No EOS specified for rel_x
 
         all_labels_numpy.append(l)
         start_points.append(torch.from_numpy(batch[i]['start_points'].astype(TYPE)).to(device))

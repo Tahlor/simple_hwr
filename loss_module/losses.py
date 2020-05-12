@@ -403,15 +403,15 @@ class DTWLoss(CustomLoss):
         """ Preds: 0/1 SOS
             Targs: 1,1,1,2,2... Stroke number
             Align Preds/Targs, calculate GT SOS from stroke number using relativefy
-
+            loss_by_point: DEPRECATED - only make SOS points that are proximate to real SOS points
         """
         pred2 = preds[i][a, :][:, self.cross_entropy_indices]
         targ2 = targs[i][b, :][:, self.cross_entropy_indices]
         pred2 = torch.clamp(pred2, -4, 4)
-        if self.relativefy:
-            targ2 = relativefy_torch(targ2, default_value=1)  # default=1 ensures first point is a 1 (SOS);
+        if self.relativefy: # ONLY RELATIVEFY SOS TARG (NOT EOS); EOS should still be 000011111
+            targ2[:,0] = relativefy_torch(targ2[:,0], default_value=1)  # default=1 ensures first point is a 1 (SOS);
             targ2[targ2 != 0] = 1  # everywhere it's not zero, there was a stroke change
-            targ2[loss_by_point > .1] = 0  # if not sufficiently close to new point, don't make it a start point
+            #targ2[loss_by_point > .1] = 0  # if not sufficiently close to new point, don't make it a start point
         return BCEWithLogitsLoss(pred2, targ2).sum() * .1  # AVERAGE pointwise loss for 1 image
 
     def dtw_reverse(self, preds, targs, label_lengths, item, **kwargs):
