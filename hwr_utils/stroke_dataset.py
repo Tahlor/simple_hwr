@@ -858,8 +858,8 @@ def collate_stroke(batch, device="cpu", gt_opts=None):
         #all_labels.append(l)
         label_lengths.append(len(l))
         ## ALL LABELS - list of desired_num_of_strokes batch size; arrays LENGTH, VOCAB SIZE
-        stroke_points_gt[i,:len(l), :] = l
-        stroke_points_gt[i, len(l):, :] = l[-1] # just repeat the last element; this works when using ABS coords for GTs (default)
+        stroke_points_gt[i, :len(l), :] = l
+        stroke_points_gt[i, len(l):, :] = l[-1] # just repeat the last element; this works when using ABS coords for GTs (default) and EOS
 
         # Relative version
         rel_x = stroke_recovery.relativefy_numpy(l[:,0:1])
