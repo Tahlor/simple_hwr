@@ -39,13 +39,20 @@ class StrokeRecoveryModel(nn.Module):
                 #print("EVAL MODE")
                 return self._forward(input)
 
-    def _forward(self, input):
+    def _forward(self, input, lengths=None):
         cnn_output = self.cnn(input) # W, B, 1024
         # w,b,d = cnn_output.shape
         # width_positional = torch.arange(w).repeat(1, w, 1) / 60
         # sine_width_positional = torch.arange(w).repeat(1, w, 1) / 60
 
+        if lengths is not None:
+            cnn_output = torch.nn.utils.rnn.pack_padded_sequence(cnn_output, lengths, batch_first=True)
+
         rnn_output = self.rnn(cnn_output) # width, batch, alphabet
+
+        if lengths is not None:
+            rnn_output, _ = torch.nn.utils.rnn.pad_packed_sequence(rnn_output, batch_first=True)
+
         # sigmoids are done in the loss
         return rnn_output
 
@@ -166,19 +173,6 @@ class AttnStrokeSosEos(nn.Module):
         outputs = torch.cat(outputs, dim=0)
         return outputs
 
-class AlexGraves():
-    def __init__(self, vocab_size=5,
-                 device="cuda",
-                 cnn_type="default64",
-                 first_conv_op=CoordConv,
-                 first_conv_opts=None, **kwargs):
-        super().__init__()
-        self.__dict__.update(kwargs)
-
-        model = models.HandWritingSynthesisNet(hidden_size=400,
-                                        n_layers=3,
-                                        output_size=121,
-                                        window_size=vocab_size.vocab_size)
 
 class Synthesis_with_CNN(synth_models.HandWritingSynthesisNet):
     def __init__(self, hidden_size=400, n_layers=3, output_size=121, window_size=77):
@@ -187,7 +181,7 @@ class Synthesis_with_CNN(synth_models.HandWritingSynthesisNet):
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.n_layers = n_layers
-        self.text_mask = torch.ones(32, 64).to("cuda")
+        #self.text_mask = torch.ones(32, 64).to("cuda")
 
         K = 10
         self.EOS = False
@@ -381,3 +375,17 @@ class Synthesis_with_CNN(synth_models.HandWritingSynthesisNet):
     # Predict all first strokes
     # Predict all seconds strokes
     # If sequence runs out, decrement batch size
+
+class AlexGraves():
+    def __init__(self, vocab_size=5,
+                 device="cuda",
+                 cnn_type="default64",
+                 first_conv_op=CoordConv,
+                 first_conv_opts=None, **kwargs):
+        super().__init__()
+        self.__dict__.update(kwargs)
+
+        model = Synthesis_with_CNN(hidden_size=400,
+                                        n_layers=3,
+                                        output_size=121,
+                                        window_size=vocab_size.vocab_size)

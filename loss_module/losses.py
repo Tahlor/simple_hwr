@@ -10,12 +10,15 @@ from scipy.spatial import KDTree
 from torch import Tensor, tensor
 from robust_loss_pytorch import AdaptiveLossFunction
 import logging
-from hwr_utils.stroke_dataset import create_gts
+from hwr_utils.stroke_dataset import create_gts_from_fn
 from hwr_utils.utils import to_numpy
 from hwr_utils.stroke_recovery import relativefy_torch, swap_to_minimize_l1, get_number_of_stroke_pts_from_gt
 from loss_module.dev import adaptive_dtw, swap_strokes
 import sys
 sys.path.append("..")
+import torch.nn.functional as F
+import math
+
 from unittest import FunctionTestCase
 #pip install git+https://github.com/tahlor/pydtw
 
@@ -43,6 +46,7 @@ from pydtw import constrained_dtw2d as constrained_dtw2d2
 
 BCELoss = torch.nn.BCELoss()
 BCEWithLogitsLoss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.ones(1)*5)
+BCE = nn.BCEWithLogitsLoss(reduction='none')
 SIGMOID = torch.nn.Sigmoid()
 # DEVICE???
 # x.requires_grad = False
@@ -956,13 +960,78 @@ def resample_gt(preds, targs, gt_format):
     label_lengths = []
     for i in range(0, preds.shape[0]):
         pred_length = preds[i].shape[0]
-        t = create_gts(batch["x_func"][i], batch["y_func"][i], batch["start_times"][i],
-                       number_of_samples=pred_length, noise=None,
-                       gt_format=gt_format)  # .transpose([1,0])
+        t = create_gts_from_fn(batch["x_func"][i], batch["y_func"][i], batch["start_times"][i],
+                               number_of_samples=pred_length, noise=None,
+                               gt_format=gt_format)  # .transpose([1,0])
         t = torch.from_numpy(t.astype(np.float32)).to(device)
         targs.append(t)
         label_lengths.append(pred_length)
     return targs, label_lengths
+
+class SynthLoss(CustomLoss):
+    """ Use opts to specify "variable_L1" (resample to get the same number of GTs/preds)
+    """
+
+    def __init__(self, loss_indices, **kwargs):
+        """
+        """
+        # parse the opts - this will include opts regarding the DTW basis
+        # loss_indices - the loss_indices to calculate the actual loss
+        super().__init__(loss_indices, **kwargs)
+        self.lossfun = self.compute_nll_loss
+
+    def compute_nll_loss(self, y_hat, targets, label_lengths, item, M=20, **kwargs):
+        """
+
+        Args:
+            y_hat: 1 - EOS logit
+                   6 parameters x 20 distributions
+                   y[0]: EOS logit
+                   y[1:7]: dim: (mixture weights, mu1, mu2, std1, std2, rho), 20
+            mask:
+            M:
+            targets: width x (x,y,sos,eos)
+        Returns:
+
+        """
+        targets = targets[:,:-1]
+        mask = item["mask"]
+        epsilon = 1e-6
+        split_sizes = [1] + [20] * 6
+        y = torch.split(y_hat, split_sizes, dim=2)
+
+        sos_logit = y[0].squeeze()
+        log_mixture_weights = F.log_softmax(y[1], dim=2)
+
+        mu_1 = y[2]
+        mu_2 = y[3]
+
+        logstd_1 = y[4]
+        logstd_2 = y[5]
+
+        rho = torch.tanh(y[6])
+
+        log_constant = log_mixture_weights - math.log(2 * math.pi) - logstd_1 - \
+            logstd_2 - 0.5 * torch.log(epsilon + 1 - rho.pow(2))
+
+        x1 = targets[:, :, 0:1]
+        x2 = targets[:, :, 2:3]
+
+        std_1 = torch.exp(logstd_1) + epsilon
+        std_2 = torch.exp(logstd_2) + epsilon
+
+        X1 = ((x1 - mu_1) / std_1).pow(2)
+        X2 = ((x2 - mu_2) / std_2).pow(2)
+        X1_X2 = 2 * rho * (x1 - mu_1) * (x2 - mu_2) / (std_1 * std_2)
+
+        Z = X1 + X2 - X1_X2
+
+        X = -Z / (2 * (epsilon + 1 - rho.pow(2)))
+
+        log_sum_exp = torch.logsumexp(log_constant + X, 2)
+        loss_t = -log_sum_exp + BCE(sos_logit, targets[:, :, 2])
+        loss = torch.sum(loss_t * mask)
+        return loss
 
 
 def to_value(loss_tensor):

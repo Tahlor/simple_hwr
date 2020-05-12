@@ -10,7 +10,7 @@ from robust_loss_pytorch import AdaptiveLossFunction
 import torch.multiprocessing as multiprocessing
 from hwr_utils.utils import to_numpy, Counter
 from hwr_utils.stroke_recovery import relativefy
-from hwr_utils.stroke_dataset import pad, create_gts
+from hwr_utils.stroke_dataset import pad, create_gts_from_fn
 from scipy.spatial import KDTree
 import time
 from hwr_utils.stroke_recovery import distance_metric

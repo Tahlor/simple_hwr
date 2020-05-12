@@ -160,6 +160,7 @@ stroke_defaults = {"SMALL_TRAINING": False,
                                 "include_synthetic": True,
                                 "adapted_gt_path": None,
                                 "linewidth": None,
+                                "resample": True,
                                 },
                     "coordconv_method": "y_abs",
                     "model": {"nHidden": 128, "num_layers": 2},
@@ -643,9 +644,10 @@ def validate_and_prep_loss(config):
         config.pred_format = config.gt_format
 
     # Each should be the same desired_num_of_strokes
-    assert len(config.gt_format) == len(config.gt_opts) or config.model_name != "normal"
-    if len(config.gt_format) != len(config.pred_opts):
-        warnings.warn("GT format does not match pred_opts")
+    if config.model_name == "normal":
+        assert len(config.gt_format) == len(config.gt_opts)
+        if len(config.gt_format) != len(config.pred_opts):
+            warnings.warn("GT format does not match pred_opts")
 
     config.vocab_size = len(config.pred_format) # vocab size is the desired_num_of_strokes of the GT format
 
@@ -658,6 +660,8 @@ def validate_and_prep_loss(config):
 
     for loss_fn_group in [k for k in config.keys() if "loss_fns" in k]:  # [loss_fns, loss_fns2]
         for i, loss in enumerate(config[loss_fn_group]):  # [{name: , coef: } ...]
+            if not "gts" in loss:
+                continue
             indices = [config.gt_format.index(k) for k in loss["gts"]] # This will throw an error if the loss expected something not in the GT
 
             # Add to list used for AUTOSTATS
@@ -708,7 +712,8 @@ def validate_and_prep_loss(config):
         if "loss_fns2" in config:
             config.loss_fns2 += config.loss_fns_to_report
 
-    config.pred_relativefy = [i for i, x in enumerate(config.pred_opts) if x == "cumsum"]
+    if "pred_opts" in config:
+        config.pred_relativefy = [i for i, x in enumerate(config.pred_opts) if x == "cumsum"]
     return config
 
 class CharAcc:

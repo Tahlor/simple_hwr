@@ -303,26 +303,27 @@ class StrokeRecoveryDataset(Dataset):
         else:
             raise NotImplemented(f"Unknown {parameter}")
 
-        gt = create_gts(x_func, y_func, start_times=start_times,
-                        number_of_samples=item["number_of_samples"],
-                        noise=self.noise,
-                        gt_format=self.gt_format)
+        gt = create_gts_from_fn(x_func, y_func, start_times=start_times,
+                                number_of_samples=item["number_of_samples"],
+                                noise=self.noise,
+                                gt_format=self.gt_format)
 
         item["gt"] = gt  # {"x":x, "y":y, "is_start_time":is_start_stroke, "full": gt}
         item["x_func"] = x_func
         item["y_func"] = y_func
         return item
 
-    def resample_data(self, data_list, parallel=True):
+    def prepare_data(self, data_list, parallel=True, fn=None):
+        fn = self.resample_one if fn is None else fn
         if parallel and False:
             poolcount = max(1, multiprocessing.cpu_count()-3)
             pool = multiprocessing.Pool(processes=poolcount)
-            all_results = list(pool.imap_unordered(self.resample_one, tqdm(data_list)))  # iterates through everything all at once
+            all_results = list(pool.imap_unordered(fn, tqdm(data_list)))  # iterates through everything all at once
             pool.close()
         else:
             all_results = []
             for item in data_list:
-                all_results.append(self.resample_one(item))
+                all_results.append(fn(item))
         return all_results
 
     def load_data(self, root, images_to_load, data_paths):
@@ -358,11 +359,21 @@ class StrokeRecoveryDataset(Dataset):
             data = data[:images_to_load]
         logger.info(("Dataloader size", len(data)))
 
-        if "gt" not in data[0].keys():
-            data = self.resample_data(data, parallel=True)
-
+        if "gt" not in data[0].keys() and self.config.dataset.resample:
+            data = self.prepare_data(data, parallel=True)
+        else:
+            data = self.prepare_data(data, parallel=True, fn=self.no_resample)
         logger.debug(("Done resampling", len(data)))
         return data
+
+    def no_resample(self, item):
+        stroke_dict = stroke_recovery.prep_stroke_dict(item["raw"])  # returns dict with {x,y,t,start_times,x_to_y (aspect ratio), start_strokes (binary list), raw strokes}
+        gt = create_gts(stroke_dict.x, stroke_dict.y, is_start_stroke=stroke_dict.start_strokes,
+                        gt_format=self.gt_format)
+        item["gt"] = gt  # {"x":x, "y":y, "is_start_time":is_start_stroke, "full": gt}
+        item["x_func"] = None
+        item["y_func"] = None
+        return item
 
     @staticmethod
     def shrink_gt(gt, height=61, width=None):
@@ -535,7 +546,7 @@ class StrokeRecoveryDataset(Dataset):
         np.testing.assert_allclose(item["gt"].shape, gt.shape)
 
         return {
-            "line_img": img,
+            "line_img": img, # H,W,C
             "gt": gt,
             "gt_reverse_strokes": gt_reverse_strokes,
             "sos_args": sos_args,
@@ -546,7 +557,8 @@ class StrokeRecoveryDataset(Dataset):
             "start_points": start_points,
             "kdtree": kdtree, # Will force preds to get nearer to nearest GTs; really want GTs forced to nearest pred; this will finish strokes better
             "gt_idx": idx,
-            "predicted_strokes_gt": None
+            "predicted_strokes_gt": None,
+            "feature_map_width": img_width_to_pred_mapping(img.shape[1])
         }
 
 def create_gts_from_raw_dict(item, interval, noise, gt_format=None):
@@ -559,40 +571,12 @@ def create_gts_from_raw_dict(item, interval, noise, gt_format=None):
     output = stroke_recovery.prep_stroke_dict(item) # returns dict with {x,y,t,start_times,x_to_y (aspect ratio), start_strokes (binary list), raw strokes}
     x_func, y_func = stroke_recovery.create_functions_from_strokes(output)
     number_of_samples = int(output.trange/interval)
-    return create_gts(x_func, y_func, output.start_times,
-                      number_of_samples=number_of_samples,
-                      noise=noise,
-                      gt_format=gt_format)
+    return create_gts_from_fn(x_func, y_func, output.start_times,
+                              number_of_samples=number_of_samples,
+                              noise=noise,
+                              gt_format=gt_format)
 
-def create_gts(x_func, y_func, start_times, number_of_samples, gt_format, noise=None):
-    """ Return LENGTH X VOCAB
-
-    Args:
-        x_func:
-        y_func:
-        start_times: [.1,1.2,3.6,...]
-        number_of_samples: Number of GT points
-        noise: Add some noise to the sampling
-        start_of_stroke_method: "normal" - use 1's for starts
-                              "interpolated" - use 0's for starts, 1's for ends, and interpolate
-                              "interpolated_distance" - use 0's for starts, total distance for ends, and interpolate
-
-    Returns:
-        gt array: SEQ_LEN x [X, Y, IS_STROKE_START, IS_END_OF_SEQUENCE]
-    """
-    # [{'el': 'x', 'opts': None}, {'el': 'y', 'opts': None}, {'el': 'stroke_number', 'opts': None}, {'el': 'eos', 'opts': None}]
-
-    # Sample from x/y functions
-    if False:
-        x, y, is_start_stroke = stroke_recovery.sample(x_func, y_func, start_times,
-                                                       number_of_samples=number_of_samples,
-                                                       noise=noise)
-    else:
-        x, y, is_start_stroke = stroke_recovery.sample(x_func, y_func, start_times[:-1],
-                                                       number_of_samples=number_of_samples,
-                                                       noise=noise,
-                                                       last_time=start_times[-1])
-
+def create_gts(x,y,is_start_stroke,gt_format):
     # Make coordinates relative to previous one
     # x = stroke_recovery.relativefy(x)
 
@@ -633,6 +617,39 @@ def create_gts(x_func, y_func, start_times, number_of_samples, gt_format, noise=
     # stop
     return gt
 
+
+def create_gts_from_fn(x_func, y_func, start_times, number_of_samples, gt_format, noise=None):
+    """ Return LENGTH X VOCAB
+
+    Args:
+        x_func:
+        y_func:
+        start_times: [.1,1.2,3.6,...]
+        number_of_samples: Number of GT points
+        noise: Add some noise to the sampling
+        start_of_stroke_method: "normal" - use 1's for starts
+                              "interpolated" - use 0's for starts, 1's for ends, and interpolate
+                              "interpolated_distance" - use 0's for starts, total distance for ends, and interpolate
+
+    Returns:
+        gt array: SEQ_LEN x [X, Y, IS_STROKE_START, IS_END_OF_SEQUENCE]
+    """
+    # [{'el': 'x', 'opts': None}, {'el': 'y', 'opts': None}, {'el': 'stroke_number', 'opts': None}, {'el': 'eos', 'opts': None}]
+
+    # Sample from x/y functions
+    if False:
+        x, y, is_start_stroke = stroke_recovery.sample(x_func, y_func, start_times,
+                                                       number_of_samples=number_of_samples,
+                                                       noise=noise)
+    else:
+        x, y, is_start_stroke = stroke_recovery.sample(x_func, y_func, start_times[:-1],
+                                                       number_of_samples=number_of_samples,
+                                                       noise=noise,
+                                                       last_time=start_times[-1])
+
+    return create_gts_from_fn(x, y, is_start_stroke, gt_format)
+
+
 # def sos_filtered(x,y,is_start_stroke, end_of_sequence_flag):
 #     gt.append(x)
 #     gt.append(y)
@@ -670,50 +687,6 @@ def calculate_output_size(data, cnn):
         width_to_output_mapping[i] = shape[-1]
     return width_to_output_mapping
 
-def add_output_size_to_data_old(data, cnn, key="number_of_samples", root=None):
-    """ Calculate how wide the GTs should be based on the output width of the CNN
-    Args:
-        data (list of dicts): 'full_img_path', 'xml_path', 'image_path',
-                                'dataset', 'x', 'y', 't', 'start_times', 'x_to_y', 'start_strokes',
-                                'raw', 'tmin', 'tmax', 'trange', 'shape'
-
-        img_height: only if calculating width from GTs (not image)
-
-    Returns:
-
-    """
-    #cnn.to("cpu")
-    width_to_output_mapping = {}
-    device = "cuda"
-    for i, instance in enumerate(data):
-        # USE A DIFFERENT WIDTH
-        # width = ceil(np.max(gt[:,0]) * img_height)+10
-        # Read in the width of the original image
-        if "shape" in instance:
-            width = instance["shape"][1] # H,W,Channels
-        elif root:
-            image_path = root / instance['image_path']
-            img = read_img(image_path)
-
-            # Add the image to the datafile!
-            data[i]["line_img"] = img
-            instance["img"] = img
-            instance["shape"] = img.shape
-            width = instance["shape"][1] # H,W,Channels
-        else:
-            raise Exception("No shape and no image root directory")
-
-        if width not in width_to_output_mapping:
-            try:
-                t = torch.zeros(1, 1, 32, width).to(device)
-            except:
-                device = "cpu"
-                t = torch.zeros(1, 1, 32, width).to(device)
-
-            shape = cnn(t).shape
-            width_to_output_mapping[width] = shape[0]
-        instance[key]=width_to_output_mapping[width]
-    #cnn.to("cuda")
 
 default64_base = lambda width: -(width % 2) + width + 4
 def img_width_to_pred_mapping(width, cnn_type="default64"):
@@ -838,16 +811,19 @@ def collate_stroke(batch, device="cpu", gt_opts=None):
     dim1 = max([b['line_img'].shape[1] for b in batch]) # width
     dim2 = batch[0]['line_img'].shape[2] # channel
 
+    max_feature_map_size = max([b['feature_map_width'] for b in batch])
     all_labels_numpy = []
     label_lengths = []
     start_points = []
 
-    # Make input square (variable vidwth
+    # Make input square BATCH, H, W, CHANNELS
     imgs_gt = np.full((batch_size, dim0, dim1, dim2), PADDING_CONSTANT).astype(TYPE)
     max_label = max([b['gt'].shape[0] for b in batch]) # width
 
     stroke_points_gt = np.full((batch_size, max_label, vocab_size), PADDING_CONSTANT).astype(TYPE)
-    stroke_points_rel = np.full((batch_size, max_label, vocab_size), 0).astype(TYPE)
+    stroke_points_rel = np.full((batch_size, max_label+1, vocab_size), 0).astype(TYPE)
+    mask = np.full((batch_size, max_label, 1), 0).astype(TYPE)
+    feature_map_mask = np.full((batch_size, max_feature_map_size, 1), 0).astype(TYPE)
 
     # Loop through instances in batch
     for i in range(len(batch)):
@@ -861,12 +837,15 @@ def collate_stroke(batch, device="cpu", gt_opts=None):
         stroke_points_gt[i, :len(l), :] = l
         stroke_points_gt[i, len(l):, :] = l[-1] # just repeat the last element; this works when using ABS coords for GTs (default) and EOS
 
-        # Relative version
+        # Relative version - this is 1 indx longer - first one is 0's
         rel_x = stroke_recovery.relativefy_numpy(l[:,0:1])
-        stroke_points_rel[i, :len(l), 0] = rel_x # use relative coords for X, then 0's
-        stroke_points_rel[i, :len(l), 1:2] = stroke_points_gt[i, :len(l), 1:2] # Copy the absolute ones for Y, then 0's
-        stroke_points_rel[i, batch[i]['sos_args'], 2] = 1 # all 0's => 1's where SOS are
+        stroke_points_rel[i, 1:1+len(l), 0] = rel_x # use relative coords for X, then 0's
+        stroke_points_rel[i, 1:1+len(l), 1:2] = stroke_points_gt[i, :len(l), 1:2] # Copy the absolute ones for Y, then 0's
+        stroke_points_rel[i, batch[i]['sos_args']+1, 2] = 1 # all 0's => 1's where SOS are
         # No EOS specified for rel_x
+
+        mask[i, :len(l), 0] = 1
+        feature_map_mask[i, :batch[i]['feature_map_width'], 0] = 1
 
         all_labels_numpy.append(l)
         start_points.append(torch.from_numpy(batch[i]['start_points'].astype(TYPE)).to(device))
@@ -883,7 +862,11 @@ def collate_stroke(batch, device="cpu", gt_opts=None):
     label_lengths = torch.from_numpy(label_lengths.astype(np.int32)).to(device)
     stroke_points_gt_rel = torch.from_numpy(stroke_points_rel.astype(TYPE)).to(device)
 
+    mask = torch.from_numpy(mask.astype(TYPE)).to(device)
+    feature_map_mask = torch.from_numpy(feature_map_mask.astype(TYPE)).to(device)
     return_d = {
+        "feature_map_mask": feature_map_mask,
+        "mask": mask,
         "line_imgs": line_imgs,
         "gt": stroke_points_gt, # Numpy Array, with padding
         "rel_gt": stroke_points_gt_rel,

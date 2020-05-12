@@ -163,7 +163,7 @@ class TrainerStrokeRecovery(Trainer):
         """ For offline data, that doesn't have ground truths
         """
         line_imgs = line_imgs.to(device)
-        pred_logits = model(line_imgs).cpu()
+        pred_logits = model(line_imgs, label_lengths).cpu()
 
         new_preds = pred_logits
         preds = new_preds.permute(1, 0, 2) # Width,Batch,Vocab -> Batch, Width, Vocab
@@ -347,4 +347,54 @@ class GeneratorTrainer(Trainer):
             self.optimizer.step()
 
         return loss, pred_image, predicted_strokes
+
+
+class AlexGravesTrainer(Trainer):
+    def __init__(self, model, optimizer, config, loss_criterion=None, training_dataset=None, **kwargs):
+        super().__init__(model, optimizer, config, loss_criterion)
+        self.loss_criterion = loss_criterion
+        self.generator_model = model
+        self.training_dataset = training_dataset
+        self.device = self.config.device
+
+    def test(self, item, **kwargs):
+        self.model.eval()
+        return self.train(item, train=False, **kwargs)
+
+    def eval(self, input, **kwargs):
+        image = self.generator_model(input)
+        return image
+
+    def stroke_eval(self, input):
+        pred_logits = self.stroke_model(input).cpu().permute(1, 0, 2)
+        return pred_logits
+
+    def train(self, item, train=True, **kwargs):
+        if train:
+            self.model.train()
+            suffix="_train"
+        else:
+            self.model.eval()
+            suffix="_test"
+        batch_size = item["line_imgs"].shape[0]
+        initial_hidden, window_vector, kappa = self.model.init_hidden(batch_size, self.device)
+        model_input = {"inputs": item["rel_gt"][:-1].to(self.config.device), # the shifted GTs
+                        "img": item["line_imgs"].to(self.config.device),   #
+                        "img_mask": item["feature_map_mask"].to(self.config.device), # ignore
+                        "initial_hidden": initial_hidden, # RNN state
+                        "prev_window_vec": window_vector,
+                        "prev_kappa": kappa,
+                        "is_map": False}
+
+        yhat = self.eval(model_input) # BATCH x 1 x H x W
+        self.config.counter.update(epochs=0, instances=gt_image.shape[0], updates=1)
+        loss_tensor, loss = self.loss_criterion.main_loss(yhat, item, suffix=suffix, targ_key="line_imgs")
+
+        if train:
+            self.optimizer.zero_grad()
+            loss_tensor.backward()
+            torch.nn.utils.clip_grad_norm_(self.config.model.parameters(), 10)
+            self.optimizer.step()
+
+        return loss, preds, None
 

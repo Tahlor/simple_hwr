@@ -11,7 +11,7 @@ from robust_loss_pytorch import AdaptiveLossFunction
 import torch.multiprocessing as multiprocessing
 from hwr_utils.utils import to_numpy, Counter
 from hwr_utils.stroke_recovery import relativefy
-from hwr_utils.stroke_dataset import pad, create_gts
+from hwr_utils.stroke_dataset import pad, create_gts_from_fn
 from scipy.spatial import KDTree
 import time
 from loss_module.losses import *
@@ -107,6 +107,8 @@ class StrokeLoss:
         elif loss_name.startswith("softdtw"):
             from loss_module.soft_dtw import SoftDTW
             loss_fn = SoftDTW(**loss).lossfun
+        elif loss_name.startswith("synthloss"):
+            loss_fn = SynthLoss(**loss).lossfun
         elif loss_name == "nnloss":
             loss_fn = NNLoss(**loss, device=self.device).lossfun
         else:

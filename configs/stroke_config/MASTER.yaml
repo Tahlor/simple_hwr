@@ -39,6 +39,7 @@ dataset:
   #gt_format - specified elsewhere
   #batch_size - specified elsewhere
   adapted_gt_path: null
+  resample: false
 
 # LR schedule
 learning_rate: 5e-4          # LR
