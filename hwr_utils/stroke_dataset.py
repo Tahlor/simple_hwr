@@ -864,7 +864,7 @@ def collate_stroke(batch, device="cpu", gt_opts=None):
         # Relative version
         rel_x = stroke_recovery.relativefy_numpy(l[:,0:1])
         stroke_points_rel[i, :len(l), 0] = rel_x # use relative coords for X, then 0's
-        stroke_points_rel[i, :len(l), 1:2] = stroke_points_gt[i, :, 1:2] # Copy the absolute ones for Y, then 0's
+        stroke_points_rel[i, :len(l), 1:2] = stroke_points_gt[i, :len(l), 1:2] # Copy the absolute ones for Y, then 0's
         stroke_points_rel[i, batch[i]['sos_args'], 2] = 1 # all 0's => 1's where SOS are
         # No EOS specified for rel_x
 
