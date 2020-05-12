@@ -15,7 +15,9 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+#from synth_models.models_original import HandWritingPredictionNet, HandWritingSynthesisNet
 from synth_models.models import HandWritingPredictionNet, HandWritingSynthesisNet
+
 from utils import plot_stroke
 from utils.constants import Global
 from utils.dataset import HandwritingDataset
@@ -34,7 +36,7 @@ def argparser():
     parser.add_argument('--n_epochs', type=int, default=100)
     parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--patience', type=int, default=15)
-    parser.add_argument('--model_type', type=str, default='prediction')
+    parser.add_argument('--model_type', type=str, default='synthesis') # prediction
     parser.add_argument('--data_path', type=str, default='./data/')
     parser.add_argument('--save_path', type=str, default='./logs/')
     parser.add_argument('--text_req', action='store_true')
@@ -42,6 +44,8 @@ def argparser():
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--seed', type=int, default=212, help='random seed')
     args = parser.parse_args()
+    if args.model_type=="synthesis":
+        args.text_req = True
 
     return args
 
@@ -50,10 +54,14 @@ def train_epoch(model, optimizer, epoch, train_loader, device, model_type):
     avg_loss = 0.0
     model.train()
     for i, mini_batch in enumerate(train_loader):
+        x = [m.numpy() for m in mini_batch]
+        f = np.sum(x[0], axis=1)
         if model_type == "prediction":
             inputs, targets, mask = mini_batch
         else:
             inputs, targets, mask, text, text_mask = mini_batch
+            # 32,1191,3; 32,1191,3; 32,1191 ; 32,64 ; 32,64
+            # BATCH, Width, (EOS,X,Y)
             text = text.to(device)
             text_mask = text_mask.to(device)
 
@@ -247,5 +255,7 @@ if __name__ == "__main__":
                                         n_layers=3,
                                         output_size=121,
                                         window_size=train_dataset.vocab_size)
+    else:
+        raise Exception(f"Unknown model type: {model_type}")
     train(model, train_loader, valid_loader, batch_size, n_epochs, args.lr, args.patience,
           args.step_size, device, model_type, args.save_path)

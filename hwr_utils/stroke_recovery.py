@@ -238,7 +238,7 @@ def resample(gt, distance=True):
     sos = [np.round(gt[:,2])==1]
 
     # Add origin for reference
-    gt_with_origin = np.vstack([[0,0,0],gt])
+    gt_with_origin = np.vstack([np.zeros(gt.shape[-1]),gt])
     distances = np.sum((gt_with_origin[1:,:2]-gt_with_origin[0:-1, :2])**2, axis=1)
     distances[sos] = EPSILON # distances for start strokes are epsilon
     cum_distance = np.cumsum(distances)

@@ -31,6 +31,7 @@ def main(config_path):
     config_path = PROJ_ROOT + "RESULTS/OFFLINE_PREDS/good/normal_preload.yaml"
     config_path = "/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_v3/normal_preload.yaml"
     config_path = PROJ_ROOT + "/configs/stroke_configs/ver8/dtw_adaptive.yaml"
+    config_path = "/media/data/GitHub/simple_hwr/results/stroke_config/pretrained/with_EOS/RESUME.yaml"
 
     load_path_override = "/media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr/results/stroke_config/GOOD/baseline_model.pt"
     load_path_override = "/media/data/GitHub/simple_hwr/~RESULTS/20191213_155358-baseline-GOOD_long"
@@ -41,6 +42,8 @@ def main(config_path):
     load_path_override = PROJ_ROOT + "/RESULTS/pretrained/dtw_adaptive_new_model.pt"
     load_path_override = PROJ_ROOT + "/RESULTS/pretrained/adapted_v2/"
     load_path_override = "/home/taylor/shares/brodie/home/taylor/github/simple_hwr/RESULTS/ver8/20200406_131747-dtw_adaptive_new2_restartLR_RESUME/RESUME_model.pt"
+    load_path_override = "/home/taylor/shares/brodie/home/taylor/github/simple_hwr/RESULTS/ver8/20200406_131747-dtw_adaptive_new2_restartLR_RESUME/RESUME_model.pt"
+    load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/pretrained/with_EOS/dtw_adaptive_no_truncation_model.pt"
 
     for load_path_override in [load_path_override
                                ]:

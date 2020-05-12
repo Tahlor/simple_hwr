@@ -183,6 +183,7 @@ class HandWritingPredictionNet(nn.Module):
 
         return gen_seq
 
+
 class HandWritingSynthesisNet(nn.Module):
     def __init__(self, hidden_size=400, n_layers=3, output_size=121, window_size=77):
         super(HandWritingSynthesisNet, self).__init__()
@@ -190,8 +191,6 @@ class HandWritingSynthesisNet(nn.Module):
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.n_layers = n_layers
-        self.text_mask = torch.ones(32, 64).to("cuda")
-
         K = 10
         self.EOS = False
         self._phi = []
@@ -228,7 +227,7 @@ class HandWritingSynthesisNet(nn.Module):
             encoding[i, torch.arange(U), text[i].long()] = 1.0
         return encoding
 
-    def compute_window_vector(self, mix_params, prev_kappa, text, text_mask=None, is_map=None):
+    def compute_window_vector(self, mix_params, prev_kappa, text, text_mask, is_map):
         encoding = self.one_hot_encoding(text)
         mix_params = torch.exp(mix_params)
 
@@ -242,7 +241,7 @@ class HandWritingSynthesisNet(nn.Module):
         phi = torch.sum(alpha * torch.exp(-beta * (kappa - u).pow(2)), dim=1)
         if phi[0, -1] > torch.max(phi[0, :-1]):
             self.EOS = True
-        phi = (phi * self.text_mask).unsqueeze(2)
+        phi = (phi * text_mask).unsqueeze(2)
         if is_map:
             self._phi.append(phi.squeeze(dim=2).unsqueeze(1))
 
