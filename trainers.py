@@ -145,6 +145,11 @@ class TrainerStrokeRecovery(Trainer):
                 if self.relu_indices:
                     preds[i][:, self.relu_indices] = RELU(p[:, self.relu_indices])
 
+        # if it has EOS
+        if preds[0].shape[-1] == 4:
+            for i in range(len(preds)):
+                eos = np.argmax(preds[i][:,4]>.5)
+                preds[i] = preds[i][:eos+1]
         return loss, preds, None
 
     def test(self, item, **kwargs):

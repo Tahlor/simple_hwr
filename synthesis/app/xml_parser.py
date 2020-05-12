@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 import os
 sys.path.append('../')
-from utils import plot_stroke
+from synth_utils import plot_stroke
 
 # for flask app
 def path_string_to_stroke(path, str_len, down_sample=False):

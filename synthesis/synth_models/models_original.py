@@ -2,7 +2,7 @@ import torch
 import math
 import torch.nn as nn
 from torch.distributions import bernoulli, uniform
-from utils.model_utils import stable_softmax
+from synth_utils.model_utils import stable_softmax
 
 
 def sample_from_out_dist(y_hat, bias):

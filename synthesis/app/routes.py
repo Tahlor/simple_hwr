@@ -15,7 +15,7 @@ from app.priming import generate_handwriting
 from app.xml_parser import svg_xml_parser, path_to_stroke, path_string_to_stroke
 
 sys.path.append("../")
-from utils import plot_stroke
+from synth_utils import plot_stroke
 
 
 @flask_app.route("/", methods=["GET"])

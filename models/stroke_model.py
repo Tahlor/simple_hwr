@@ -3,6 +3,8 @@ import torch
 from .basic import CNN, BidirectionalRNN
 from .CoordConv import CoordConv
 from hwr_utils.utils import is_dalai, no_gpu_testing
+import sys
+sys.path.append("./synthesis")
 #from synthesis.synth_models import models
 from synthesis.synth_models import models as synth_models
 

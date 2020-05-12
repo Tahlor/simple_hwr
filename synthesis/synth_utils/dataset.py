@@ -2,8 +2,8 @@ import torch
 import numpy as np
 from collections import Counter
 from torch.utils.data import DataLoader, Dataset
-from utils.data_utils import train_offset_normalization, valid_offset_normalization
-from utils.constants import Global
+from synth_utils.data_utils import train_offset_normalization, valid_offset_normalization
+from synth_utils.constants import Global
 
 
 class HandwritingDataset(Dataset):

@@ -7,10 +7,10 @@ import os
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from utils import plot_stroke
-from utils.constants import Global
-from utils.dataset import HandwritingDataset
-from utils.data_utils import data_denormalization, data_normalization
+from synth_utils import plot_stroke
+from synth_utils.constants import Global
+from synth_utils.dataset import HandwritingDataset
+from synth_utils.data_utils import data_denormalization, data_normalization
 from synth_models.models import HandWritingPredictionNet, HandWritingSynthesisNet
 
 

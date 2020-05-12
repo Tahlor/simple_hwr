@@ -18,11 +18,11 @@ import matplotlib.pyplot as plt
 #from synth_models.models_original import HandWritingPredictionNet, HandWritingSynthesisNet
 from synth_models.models import HandWritingPredictionNet, HandWritingSynthesisNet
 
-from utils import plot_stroke
-from utils.constants import Global
-from utils.dataset import HandwritingDataset
-from utils.model_utils import compute_nll_loss
-from utils.data_utils import data_denormalization
+from synth_utils import plot_stroke
+from synth_utils.constants import Global
+from synth_utils.dataset import HandwritingDataset
+from synth_utils.model_utils import compute_nll_loss
+from synth_utils.data_utils import data_denormalization
 from generate import generate_conditional_sequence, generate_unconditional_seq
 
 

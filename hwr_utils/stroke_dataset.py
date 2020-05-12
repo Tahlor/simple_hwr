@@ -60,7 +60,6 @@ def read_img(image_path, num_of_channels=1, target_height=61, resize=True, add_d
         return None
 
     #vertical_pad = False # vertical pad makes the last predictions totally haywire!!
-    vertical_pad = False
     if vertical_pad:
         target_height -= 2
     percent = float(target_height) / img.shape[0]

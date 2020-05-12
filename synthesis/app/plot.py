@@ -2,7 +2,7 @@ import numpy as np
 import sys
 
 sys.path.append("../")
-from utils import plot_stroke
+from synth_utils import plot_stroke
 
 style = np.load(
     "./static/uploads/default_style.npy", allow_pickle=True, encoding="bytes"
