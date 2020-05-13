@@ -294,7 +294,8 @@ def main(config_path, testing=False):
               "start_point_attn": start_points.StartPointAttnModel,
               "start_point_attn_deep": start_points.StartPointAttnModelDeep,
               "start_point_attn_full": start_points.StartPointAttnModelFull,
-              "normal":stroke_model.StrokeRecoveryModel}
+              "normal":stroke_model.StrokeRecoveryModel,
+              "AlexGraves":stroke_model.AlexGraves}
 
     model_class = model_dict[config.model_name]
     model = model_class(**model_kwargs).to(device)

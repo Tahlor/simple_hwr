@@ -174,13 +174,20 @@ class AttnStrokeSosEos(nn.Module):
         return outputs
 
 
-class Synthesis_with_CNN(synth_models.HandWritingSynthesisNet):
-    def __init__(self, hidden_size=400, n_layers=3, output_size=121, window_size=77):
+class AlexGraves(synth_models.HandWritingSynthesisNet):
+    def __init__(self, hidden_size=400,
+                 n_layers=3,
+                 output_size=121,
+                 window_size=1024, # dim of feature map
+                 cnn_type="default",
+                 **kwargs
+                 ):
         super().__init__(hidden_size, n_layers, output_size, window_size)
         self.vocab_size = window_size
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.n_layers = n_layers
+        self.cnn_type = cnn_type
         #self.text_mask = torch.ones(32, 64).to("cuda")
 
         K = 10
@@ -201,7 +208,7 @@ class Synthesis_with_CNN(synth_models.HandWritingSynthesisNet):
         self.window_layer = nn.Linear(hidden_size, 3 * K)
         self.output_layer = nn.Linear(n_layers * hidden_size, output_size)
 
-        self.cnn = CNN(nc=1, cnn_type="default64")
+        self.cnn = CNN(nc=1, cnn_type=self.cnn_type)
 
         # self.init_weight()
 
@@ -376,16 +383,16 @@ class Synthesis_with_CNN(synth_models.HandWritingSynthesisNet):
     # Predict all seconds strokes
     # If sequence runs out, decrement batch size
 
-class AlexGraves():
-    def __init__(self, vocab_size=5,
-                 device="cuda",
-                 cnn_type="default64",
-                 first_conv_op=CoordConv,
-                 first_conv_opts=None, **kwargs):
-        super().__init__()
-        self.__dict__.update(kwargs)
-
-        model = Synthesis_with_CNN(hidden_size=400,
-                                        n_layers=3,
-                                        output_size=121,
-                                        window_size=vocab_size.vocab_size)
+# class AlexGraves():
+#     def __init__(self, vocab_size=5,
+#                  device="cuda",
+#                  cnn_type="default64",
+#                  first_conv_op=CoordConv,
+#                  first_conv_opts=None, **kwargs):
+#         super().__init__()
+#         self.__dict__.update(kwargs)
+#
+#         model = Synthesis_with_CNN(hidden_size=400,
+#                                         n_layers=3,
+#                                         output_size=121,
+#                                         window_size=vocab_size)

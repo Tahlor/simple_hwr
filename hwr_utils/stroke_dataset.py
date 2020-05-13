@@ -647,7 +647,7 @@ def create_gts_from_fn(x_func, y_func, start_times, number_of_samples, gt_format
                                                        noise=noise,
                                                        last_time=start_times[-1])
 
-    return create_gts_from_fn(x, y, is_start_stroke, gt_format)
+    return create_gts(x, y, is_start_stroke, gt_format)
 
 
 # def sos_filtered(x,y,is_start_stroke, end_of_sequence_flag):
