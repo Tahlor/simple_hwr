@@ -194,7 +194,7 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
         self.EOS = False
         self._phi = []
 
-        self.lstm_1 = nn.LSTM(3 + self.vocab_size, hidden_size, batch_first=True)
+        self.lstm_1 = nn.LSTM(4 + self.vocab_size, hidden_size, batch_first=True)
         self.lstm_2 = nn.LSTM(
             3 + self.vocab_size + hidden_size, hidden_size, batch_first=True
         )
@@ -240,11 +240,12 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
         self,
         inputs, # the shifted GTs
         img,   #
-        text_mask, # ignore
+        img_mask, # ignore
         initial_hidden, # RNN state
         prev_window_vec,
         prev_kappa,
         is_map=False,
+        **kwargs
     ):
 
         feature_maps = self.cnn(img)
@@ -264,7 +265,7 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
                 mix_params.squeeze(dim=1).unsqueeze(2),
                 prev_kappa,
                 feature_maps,
-                text_mask,
+                img_mask,
                 is_map,
             )
 

@@ -23,17 +23,19 @@ class Trainer:
         self.optimizer = optimizer
         self.config = config
         self.loss_criterion = loss_criterion
-        self.relative_indices = self.get_indices(config.pred_opts, "cumsum")
-        self.sigmoid_indices = self.get_indices(config.pred_opts, "sigmoid")
-        self.relu_indices = self.get_indices(config.pred_opts, "relu")
-        self.convolve_indices = self.get_indices(config.pred_opts, "convolve") # NOT IMPLEMENTED
         SIGMOID = torch.nn.Sigmoid().to(config.device)
 
-        self.activations = [None] * len(config.pred_opts)
-        for i in self.sigmoid_indices:
-            self.activations[i] = SIGMOID
-        for i in self.relu_indices:
-            self.activations[i] = RELU
+        if "pred_opts" in config:
+            self.relative_indices = self.get_indices(config.pred_opts, "cumsum")
+            self.sigmoid_indices = self.get_indices(config.pred_opts, "sigmoid")
+            self.relu_indices = self.get_indices(config.pred_opts, "relu")
+            self.convolve_indices = self.get_indices(config.pred_opts, "convolve") # NOT IMPLEMENTED
+
+            self.activations = [None] * len(config.pred_opts)
+            for i in self.sigmoid_indices:
+                self.activations[i] = SIGMOID
+            for i in self.relu_indices:
+                self.activations[i] = RELU
 
         if config is None:
             self.logger = utils.setup_logging()
@@ -362,7 +364,7 @@ class AlexGravesTrainer(Trainer):
         return self.train(item, train=False, **kwargs)
 
     def eval(self, input, **kwargs):
-        image = self.generator_model(input)
+        image = self.generator_model(**input)
         return image
 
     def stroke_eval(self, input):
@@ -378,7 +380,7 @@ class AlexGravesTrainer(Trainer):
             suffix="_test"
         batch_size = item["line_imgs"].shape[0]
         initial_hidden, window_vector, kappa = self.model.init_hidden(batch_size, self.device)
-        model_input = {"inputs": item["rel_gt"][:-1].to(self.config.device), # the shifted GTs
+        model_input = {"inputs": item["rel_gt"][:,:-1].to(self.config.device), # the shifted GTs
                         "img": item["line_imgs"].to(self.config.device),   #
                         "img_mask": item["feature_map_mask"].to(self.config.device), # ignore
                         "initial_hidden": initial_hidden, # RNN state
@@ -387,7 +389,7 @@ class AlexGravesTrainer(Trainer):
                         "is_map": False}
 
         yhat = self.eval(model_input) # BATCH x 1 x H x W
-        self.config.counter.update(epochs=0, instances=gt_image.shape[0], updates=1)
+        self.config.counter.update(epochs=0, instances=np.sum(item["label_lengths"]), updates=1)
         loss_tensor, loss = self.loss_criterion.main_loss(yhat, item, suffix=suffix, targ_key="line_imgs")
 
         if train:

@@ -135,7 +135,8 @@ class StrokeLoss:
         for loss_def in loss_fn_definition:
             loss_fn = self.get_loss_fn(loss_def)
             master_loss_defintion[loss_def["name"]] = {"fn": loss_fn, **loss_def}
-            coefs.append(loss_def["coef"])
+            if "coef" in loss_def:
+                coefs.append(loss_def["coef"])
 
         self.coefs = Tensor(coefs)
         self.master_loss_defintion = master_loss_defintion

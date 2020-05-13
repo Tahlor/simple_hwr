@@ -190,7 +190,7 @@ class HandWritingSynthesisNet(nn.Module):
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.n_layers = n_layers
-        self.text_mask = torch.ones(32, 64).to("cuda")
+        #self.text_mask = torch.ones(32, 64).to("cuda")
 
         K = 10
         self.EOS = False
@@ -242,7 +242,7 @@ class HandWritingSynthesisNet(nn.Module):
         phi = torch.sum(alpha * torch.exp(-beta * (kappa - u).pow(2)), dim=1)
         if phi[0, -1] > torch.max(phi[0, :-1]):
             self.EOS = True
-        phi = (phi * self.text_mask).unsqueeze(2)
+        phi = (phi * text_mask).unsqueeze(2) # self.text_mask
         if is_map:
             self._phi.append(phi.squeeze(dim=2).unsqueeze(1))
 

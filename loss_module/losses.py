@@ -972,7 +972,7 @@ class SynthLoss(CustomLoss):
     """ Use opts to specify "variable_L1" (resample to get the same number of GTs/preds)
     """
 
-    def __init__(self, loss_indices, **kwargs):
+    def __init__(self, loss_indices=None, **kwargs):
         """
         """
         # parse the opts - this will include opts regarding the DTW basis
@@ -994,7 +994,7 @@ class SynthLoss(CustomLoss):
         Returns:
 
         """
-        targets = targets[:,:-1]
+        targets = targets[:,1:]
         mask = item["mask"]
         epsilon = 1e-6
         split_sizes = [1] + [20] * 6
