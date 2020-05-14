@@ -9,7 +9,7 @@ from scipy import spatial
 from robust_loss_pytorch import AdaptiveLossFunction
 #from sdtw import SoftDTW
 import torch.multiprocessing as multiprocessing
-from hwr_utils.utils import to_numpy, Counter
+from hwr_utils.utils import to_numpy, Counter, chk_flg
 from hwr_utils.stroke_recovery import relativefy
 from hwr_utils.stroke_dataset import pad, create_gts_from_fn
 from scipy.spatial import KDTree
@@ -137,8 +137,10 @@ class StrokeLoss:
             master_loss_defintion[loss_def["name"]] = {"fn": loss_fn, **loss_def}
             if "coef" in loss_def:
                 coefs.append(loss_def["coef"])
-
-        self.coefs = Tensor(coefs)
+        if len(coefs):
+            self.coefs = Tensor(coefs)
+        else:
+            self.coefs = 1
         self.master_loss_defintion = master_loss_defintion
 
         # Loop through monitor vs effective losses
@@ -163,7 +165,7 @@ class StrokeLoss:
 
         losses = torch.zeros(len(self.master_loss_defintion), requires_grad=False)
         batch_size = len(preds)
-        total_points = tensor_sum(label_lengths)
+        total_points = int(tensor_sum(label_lengths))
 
         ## Loop through loss functions
         for i, loss_name in enumerate(self.master_loss_defintion):
@@ -184,19 +186,20 @@ class StrokeLoss:
 
             # Make sure the loss is not negative, NaN, etc.
             try:
-                assert loss < np.inf and loss >= 0
-            except:
+                assert loss < np.inf # and loss >= 0
+            except Exception as e:
                 losses[i] = torch.zeros(1, requires_grad=True)
                 logger.error(e)
                 logger.error(f"{loss} {loss_fn}")
                 continue
 
-            if not self.master_loss_defintion[loss_name]["monitor_only"]:
+            if "monitor_only" not in self.master_loss_defintion[loss_name] \
+                    or not self.master_loss_defintion[loss_name]["monitor_only"]:
                 # losses[i] = torch.max(loss_tensor, 5)
-                losses[i] = loss_tensor
+                losses[i] = loss_tensor # if not monitor
 
             # Update loss stat
-            self.stats[loss_name + suffix].accumulate(loss)
+            self.stats[loss_name + suffix].accumulate(float(loss))
 
         if suffix == "_train":
             self.counter.update(training_pred_count=total_points)

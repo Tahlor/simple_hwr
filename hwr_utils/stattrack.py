@@ -47,7 +47,7 @@ class Stat:
         self.y.append(new_y)
         self.updated_since_plot = True
 
-    def default(self, o):
+    def default(self, o): # default JSON encoding function
         return o.__dict__
 
     def accumulate(self, sum, weight):
@@ -194,6 +194,9 @@ class Counter:
         self.test_pred_length_static = test_pred_length_static # If this is not constant, put it in train mode!
         self.test_pred_count = test_pred_count
         self.validation_pred_length_static = validation_pred_length_static
+
+    def default(self, o): # default JSON encoding function
+        return o.__dict__
 
     def update(self, epochs=0, instances=0, updates=0, training_pred_count=0, test_pred_count=0, validation_pred_length_static=0):
         self.epochs += epochs

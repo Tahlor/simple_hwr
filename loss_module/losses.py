@@ -994,7 +994,7 @@ class SynthLoss(CustomLoss):
         Returns:
 
         """
-        targets = targets[:,1:]
+        targets = targets[:,1:] # BATCH, W, GT_SIZE 29,394,4
         mask = item["mask"]
         epsilon = 1e-6
         split_sizes = [1] + [20] * 6
@@ -1015,12 +1015,12 @@ class SynthLoss(CustomLoss):
             logstd_2 - 0.5 * torch.log(epsilon + 1 - rho.pow(2))
 
         x1 = targets[:, :, 0:1]
-        x2 = targets[:, :, 2:3]
+        x2 = targets[:, :, 1:2]
 
         std_1 = torch.exp(logstd_1) + epsilon
         std_2 = torch.exp(logstd_2) + epsilon
 
-        X1 = ((x1 - mu_1) / std_1).pow(2)
+        X1 = ((x1 - mu_1) / std_1).pow(2) # x1: 29,394,1  mu_1/std_1: 29,394,20
         X2 = ((x2 - mu_2) / std_2).pow(2)
         X1_X2 = 2 * rho * (x1 - mu_1) * (x2 - mu_2) / (std_1 * std_2)
 
@@ -1029,8 +1029,8 @@ class SynthLoss(CustomLoss):
         X = -Z / (2 * (epsilon + 1 - rho.pow(2)))
 
         log_sum_exp = torch.logsumexp(log_constant + X, 2)
-        loss_t = -log_sum_exp + BCE(sos_logit, targets[:, :, 2])
-        loss = torch.sum(loss_t * mask)
+        loss_t = -log_sum_exp + BCE(sos_logit, targets[:, :, 2]) # SOS 29,394
+        loss = torch.sum(loss_t * mask.squeeze(2))
         return loss
 
 
@@ -1039,5 +1039,9 @@ def to_value(loss_tensor):
 
 
 def tensor_sum(tensor):
-    return torch.sum(tensor.cpu(), 0, keepdim=False).item()
-
+    if isinstance(tensor, torch.Tensor):
+        return torch.sum(tensor.cpu(), 0, keepdim=False).item()
+    elif isinstance(tensor, np.ndarray):
+        return np.sum(tensor)
+    else:
+        raise Exception("Unexpected datatype")

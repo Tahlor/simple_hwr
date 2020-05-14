@@ -151,6 +151,7 @@ class BasicDataset(Dataset):
 
         else:
             if pickle_file is None and cnn:
+                self.cnn_type = self.cnn.cnn_type
                 output = Path(root / "stroke_cached")
                 output.mkdir(parents=True, exist_ok=True)
                 pickle_file = output / (self.cnn.cnn_type + ".pickle")
@@ -349,8 +350,11 @@ class StrokeRecoveryDataset(Dataset):
 
         # Calculate how many points are needed
         if self.cnn:
+            self.cnn_type = self.cnn.cnn_type
             add_output_size_to_data(data, self.cnn, root=self.root, max_width=self.max_width)
             self.cnn=True # remove CUDA-object from class for multiprocessing to work!!
+        else:
+            self.cnn_type = False
 
         #print(data[0].keys())
 
@@ -558,7 +562,7 @@ class StrokeRecoveryDataset(Dataset):
             "kdtree": kdtree, # Will force preds to get nearer to nearest GTs; really want GTs forced to nearest pred; this will finish strokes better
             "gt_idx": idx,
             "predicted_strokes_gt": None,
-            "feature_map_width": img_width_to_pred_mapping(img.shape[1])
+            "feature_map_width": img_width_to_pred_mapping(img.shape[1], self.cnn_type)
         }
 
 def create_gts_from_raw_dict(item, interval, noise, gt_format=None):
@@ -823,7 +827,7 @@ def collate_stroke(batch, device="cpu", gt_opts=None):
     stroke_points_gt = np.full((batch_size, max_label, vocab_size), PADDING_CONSTANT).astype(TYPE)
     stroke_points_rel = np.full((batch_size, max_label+1, vocab_size), 0).astype(TYPE)
     mask = np.full((batch_size, max_label, 1), 0).astype(TYPE)
-    feature_map_mask = np.full((batch_size, max_feature_map_size, 1), 0).astype(TYPE)
+    feature_map_mask = np.full((batch_size, max_feature_map_size), 0).astype(TYPE)
 
     # Loop through instances in batch
     for i in range(len(batch)):
@@ -845,7 +849,7 @@ def collate_stroke(batch, device="cpu", gt_opts=None):
         # No EOS specified for rel_x
 
         mask[i, :len(l), 0] = 1
-        feature_map_mask[i, :batch[i]['feature_map_width'], 0] = 1
+        feature_map_mask[i, :batch[i]['feature_map_width']] = 1
 
         all_labels_numpy.append(l)
         start_points.append(torch.from_numpy(batch[i]['start_points'].astype(TYPE)).to(device))
@@ -859,7 +863,7 @@ def collate_stroke(batch, device="cpu", gt_opts=None):
 
     line_imgs = torch.from_numpy(line_imgs).to(device)
     stroke_points_gt = torch.from_numpy(stroke_points_gt.astype(TYPE)).to(device)
-    label_lengths = torch.from_numpy(label_lengths.astype(np.int32)).to(device)
+    #label_lengths = torch.from_numpy(label_lengths.astype(np.int32)).to(device)
     stroke_points_gt_rel = torch.from_numpy(stroke_points_rel.astype(TYPE)).to(device)
 
     mask = torch.from_numpy(mask.astype(TYPE)).to(device)

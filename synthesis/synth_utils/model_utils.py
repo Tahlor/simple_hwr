@@ -31,13 +31,13 @@ def compute_nll_loss(targets, y_hat, mask, M=20):
     log_constant = log_mixture_weights - math.log(2 * math.pi) - logstd_1 - \
         logstd_2 - 0.5 * torch.log(epsilon + 1 - rho.pow(2))
 
-    x1 = targets[:, :, 1:2]
+    x1 = targets[:, :, 1:2] # targets: Batch, Width, GT_size 32,1191,3
     x2 = targets[:, :, 2:]
 
     std_1 = torch.exp(logstd_1) + epsilon
     std_2 = torch.exp(logstd_2) + epsilon
 
-    X1 = ((x1 - mu_1) / std_1).pow(2)
+    X1 = ((x1 - mu_1) / std_1).pow(2) # X1: BATCH, 1191 (# of stroke points), 1; mu_1: 32,1191,20 (20 gaussians)
     X2 = ((x2 - mu_2) / std_2).pow(2)
     X1_X2 = 2 * rho * (x1 - mu_1) * (x2 - mu_2) / (std_1 * std_2)
 

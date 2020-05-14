@@ -47,7 +47,8 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
         current_batch_size = item["line_imgs"].shape[0]
         instances += current_batch_size
         #print(item["gt"].shape, item["label_lengths"])
-        loss, preds, *_ = trainer.train(item, train=True)
+        last_one = i+1==len(dataloader)
+        loss, preds, *_ = trainer.train(item, train=True, return_preds=last_one) #
         if loss is None:
             continue
 
@@ -58,7 +59,8 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
             training_loss = config.stats["Actual_Loss_Function_train"].get_last()
             logger.info(("update: ", config.counter.updates, "combined loss: ", training_loss))
 
-        if epoch==1 and i==0:
+        # Make Epoch 0 preds to make sure it's working
+        if epoch==1 and i==0 and not preds is None:
             logger.info(("Preds", preds[0]))
             logger.info(("GTs", item["gt_list"][0]))
 
@@ -83,10 +85,10 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
 def test(dataloader):
     preds_to_graph = None
     for i, item in enumerate(dataloader):
-        loss, preds, *_ = trainer.test(item)
+        loss, preds, *_ = trainer.test(item, return_preds=i == 0) #
         if loss is None:
             continue
-        if i ==0:
+        if i==0 and not preds is None:
             preds_to_graph = [p.permute([1, 0]) for p in preds]
             item_to_graph = item
         config.stats["Actual_Loss_Function_test"].accumulate(loss)
@@ -187,9 +189,9 @@ def graph(batch, config=None, preds=None, _type="test", save_folder="auto", epoc
         gt_img = np.squeeze(batch["line_imgs"][i]) # BATCH, CHANNEL, H, W, FLIP IT
         name=Path(batch["paths"][i]).stem
         if _type != "eval":
-            if config is None or config.model_name == "normal":
+            if config is None or config.model_name == "normal" or config.model_name=="AlexGraves":
                 subgraph(batch["gt_list"][i], gt_img, name, is_gt=True)
-            else:
+            elif config.model_name=="start_points":
                 subgraph(batch["start_points"][i], gt_img, name, is_gt=True)
         subgraph(preds, gt_img, name, is_gt=False)
         if i > 8:

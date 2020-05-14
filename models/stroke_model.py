@@ -1,3 +1,4 @@
+import torch.nn.functional as F
 from torch import nn
 import torch
 from .basic import CNN, BidirectionalRNN
@@ -30,14 +31,14 @@ class StrokeRecoveryModel(nn.Module):
             self.cnn.cnn_type = "FAKE"
             print("DALAi!!!!")
 
-    def forward(self, input):
+    def forward(self, input, lengths):
         if self.training or self.use_gradient_override:
             #print("TRAINING MODE")
-            return self._forward(input)
+            return self._forward(input, lengths)
         else:
             with torch.no_grad():
                 #print("EVAL MODE")
-                return self._forward(input)
+                return self._forward(input, lengths)
 
     def _forward(self, input, lengths=None):
         cnn_output = self.cnn(input) # W, B, 1024
@@ -45,13 +46,13 @@ class StrokeRecoveryModel(nn.Module):
         # width_positional = torch.arange(w).repeat(1, w, 1) / 60
         # sine_width_positional = torch.arange(w).repeat(1, w, 1) / 60
 
-        if lengths is not None:
-            cnn_output = torch.nn.utils.rnn.pack_padded_sequence(cnn_output, lengths, batch_first=True)
+        if lengths is not None and False:
+            cnn_output = torch.nn.utils.rnn.pack_padded_sequence(cnn_output, lengths, batch_first=False, enforce_sorted=False)
 
-        rnn_output = self.rnn(cnn_output) # width, batch, alphabet
+        rnn_output = self.rnn(cnn_output,) # width, batch, alphabet
 
-        if lengths is not None:
-            rnn_output, _ = torch.nn.utils.rnn.pad_packed_sequence(rnn_output, batch_first=True)
+        # if lengths is not None:
+        #     rnn_output, _ = torch.nn.utils.rnn.pad_packed_sequence(rnn_output, batch_first=False, enforce_sorted=False)
 
         # sigmoids are done in the loss
         return rnn_output
@@ -180,35 +181,48 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
                  output_size=121,
                  window_size=1024, # dim of feature map
                  cnn_type="default",
+                 device="cuda",
                  **kwargs
                  ):
+        """
+
+        Args:
+            hidden_size:
+            n_layers:
+            output_size:
+            window_size: The dimension of the characters vector OR feature map (feature map: BATCH x Width x 1024)
+            cnn_type:
+            **kwargs:
+        """
         super().__init__(hidden_size, n_layers, output_size, window_size)
         self.vocab_size = window_size
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.n_layers = n_layers
         self.cnn_type = cnn_type
+        self.gt_size = 4 # X,Y,SOS,EOS
+        self.device = device
         #self.text_mask = torch.ones(32, 64).to("cuda")
 
-        K = 10
+        K = 10 # number of Gaussians in window
         self.EOS = False
         self._phi = []
 
-        self.lstm_1 = nn.LSTM(4 + self.vocab_size, hidden_size, batch_first=True)
+        self.lstm_1 = nn.LSTM(self.gt_size + self.vocab_size, hidden_size, batch_first=True)
         self.lstm_2 = nn.LSTM(
-            3 + self.vocab_size + hidden_size, hidden_size, batch_first=True
+            self.gt_size + self.vocab_size + hidden_size, hidden_size, batch_first=True
         )
         # self.lstm_3 = nn.LSTM(
-        #     3 + hidden_size, hidden_size, batch_first=True
+        #     self.gt_size + hidden_size, hidden_size, batch_first=True
         # )
         self.lstm_3 = nn.LSTM(
-            3 + self.vocab_size + hidden_size, hidden_size, batch_first=True
+            self.gt_size + self.vocab_size + hidden_size, hidden_size, batch_first=True
         )
 
-        self.window_layer = nn.Linear(hidden_size, 3 * K)
+        self.window_layer = nn.Linear(hidden_size, 3 * K) # 3: alpha, beta, kappa
         self.output_layer = nn.Linear(n_layers * hidden_size, output_size)
 
-        self.cnn = CNN(nc=1, cnn_type=self.cnn_type)
+        self.cnn = CNN(nc=1, cnn_type=self.cnn_type) # output dim: Width x Batch x 1024
 
         # self.init_weight()
 
@@ -236,6 +250,9 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
         window_vec = torch.sum(phi * feature_maps, dim=1, keepdim=True)
         return window_vec, prev_kappa
 
+    def get_feature_maps(self, img):
+        return self.cnn(img).permute(1, 0, 2)  # B x W x 1024
+
     def forward(
         self,
         inputs, # the shifted GTs
@@ -245,26 +262,28 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
         prev_window_vec,
         prev_kappa,
         is_map=False,
+        feature_maps=None,
         **kwargs
     ):
+        if feature_maps is None:
+            feature_maps = self.get_feature_maps(img)
 
-        feature_maps = self.cnn(img)
         hid_1 = []
         window_vec = []
 
         state_1 = (initial_hidden[0][0:1], initial_hidden[1][0:1])
 
-        for t in range(inputs.shape[1]):
-            inp = torch.cat((inputs[:, t : t + 1, :], prev_window_vec), dim=2)
+        for t in range(inputs.shape[1]): # loop through width and calculate windows; 1st LSTM no window
+            inp = torch.cat((inputs[:, t : t + 1, :], prev_window_vec), dim=2) # BATCH x 1 x (GT_SIZE+1024)
 
-            hid_1_t, state_1 = self.lstm_1(inp, state_1)
+            hid_1_t, state_1 = self.lstm_1(inp, state_1) # hid_1_t: BATCH x 1 x HIDDEN
             hid_1.append(hid_1_t)
 
             mix_params = self.window_layer(hid_1_t)
             window, kappa = self.compute_window_vector(
-                mix_params.squeeze(dim=1).unsqueeze(2),
+                mix_params.squeeze(dim=1).unsqueeze(2), # BATCH x 1 x 10*4
                 prev_kappa,
-                feature_maps,
+                feature_maps, # BATCH x MAX_FM_LEN x (1024)
                 img_mask,
                 is_map,
             )
@@ -276,7 +295,7 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
         hid_1 = torch.cat(hid_1, dim=1)
         window_vec = torch.cat(window_vec, dim=1)
 
-        inp = torch.cat((inputs, hid_1, window_vec), dim=2)
+        inp = torch.cat((inputs, hid_1, window_vec), dim=2) # BATCH x 394? x (1024+LSTM_hidden+gt_size)
         state_2 = (initial_hidden[0][1:2], initial_hidden[1][1:2])
 
         hid_2, state_2 = self.lstm_2(inp, state_2)
@@ -293,47 +312,30 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
 
     def generate(
         self,
-        inp,
-        text,
-        text_mask,
-        prime_text,
-        prime_mask,
+        feature_maps,
+        feature_maps_mask,
         hidden,
         window_vector,
         kappa,
-        bias,
-        is_map=False,
-        prime=False,
-    ):
+        bias=10, # how close to max argument to be
+        **kwargs):
+
         seq_len = 0
         gen_seq = []
         with torch.no_grad():
-            batch_size = inp.shape[0]
+            batch_size = feature_maps.shape[0]
             print("batch_size:", batch_size)
-            if prime:
-                y_hat, state, window_vector, kappa = self.forward(
-                    inp, prime_text, prime_mask, hidden, window_vector, kappa, is_map
-                )
-
-                _hidden = torch.cat([s[0] for s in state], dim=0)
-                _cell = torch.cat([s[1] for s in state], dim=0)
-                # last time step hidden state
-                hidden = (_hidden, _cell)
-                # # last time step window vector
-                # window_vector = window_vector[:, -1:, :]
-                # # last time step output vector
-                # y_hat = y_hat[:, -1, :]
-                # # y_hat = y_hat.squeeze()
-                # Z = sample_from_out_dist(y_hat, bias)
-                # inp = Z
-                # gen_seq.append(Z)
-                self.EOS = False
-                inp = inp.new_zeros(batch_size, 1, 3)
-                _, window_vector, kappa = self.init_hidden(batch_size, inp.device)
-
+            Z = torch.zeros((batch_size, 1, self.gt_size)).to(self.device)
+            self.EOS = False
             while not self.EOS and seq_len < 2000:
                 y_hat, state, window_vector, kappa = self.forward(
-                    inp, text, text_mask, hidden, window_vector, kappa, is_map
+                    inputs=Z,
+                    img=None,
+                    feature_maps=feature_maps,
+                    img_mask=feature_maps_mask,
+                    initial_hidden=hidden,
+                    prev_window_vec=window_vector,
+                    prev_kappa=kappa
                 )
 
                 _hidden = torch.cat([s[0] for s in state], dim=0)
@@ -343,8 +345,11 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
                 # y_hat = y_hat.squeeze(dim=1)
                 # Z = sample_batch_from_out_dist(y_hat, bias)
                 y_hat = y_hat.squeeze()
-                Z = synth_models.sample_from_out_dist(y_hat, bias)
-                inp = Z
+                Z = synth_models.sample_batch_from_out_dist(y_hat, bias)
+
+                if Z.shape[-1] < self.gt_size:
+                    Z = F.pad(input=Z, pad=(0, self.gt_size-Z.shape[-1]), mode='constant', value=0)
+
                 gen_seq.append(Z)
 
                 seq_len += 1

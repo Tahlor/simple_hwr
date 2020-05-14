@@ -66,7 +66,7 @@ batch_size: 29
 gt_format: # if relative etc., specify that here; e.g., opts:rel
   - x
   - y
-  - stroke_number
+  - sos
   - eos # not used
 
 loss_fns:

@@ -229,7 +229,19 @@ class HandWritingSynthesisNet(nn.Module):
         return encoding
 
     def compute_window_vector(self, mix_params, prev_kappa, text, text_mask=None, is_map=None):
-        encoding = self.one_hot_encoding(text)
+        """
+
+        Args:
+            mix_params:
+            prev_kappa:
+            text: BATCH x MAX_CHAR_LEN
+            text_mask: BATCH x MAX_CHAR_LEN
+            is_map:
+
+        Returns:
+
+        """
+        encoding = self.one_hot_encoding(text) # BATCH x MAX_CHAR_LEN x ALPHABET_SIZE
         mix_params = torch.exp(mix_params)
 
         alpha, beta, kappa = mix_params.split(10, dim=1)
@@ -242,7 +254,7 @@ class HandWritingSynthesisNet(nn.Module):
         phi = torch.sum(alpha * torch.exp(-beta * (kappa - u).pow(2)), dim=1)
         if phi[0, -1] > torch.max(phi[0, :-1]):
             self.EOS = True
-        phi = (phi * text_mask).unsqueeze(2) # self.text_mask
+        phi = (phi * text_mask).unsqueeze(2) # self.text_mask - # BATCH x MAX_CHAR_LENGTH
         if is_map:
             self._phi.append(phi.squeeze(dim=2).unsqueeze(1))
 

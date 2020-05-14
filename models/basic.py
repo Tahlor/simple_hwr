@@ -76,11 +76,16 @@ class BidirectionalRNN(nn.Module):
         self.nIn = nIn
         self.rnn = rnn_constructor(nIn, nHidden, bidirectional=True, dropout=dropout, num_layers=num_layers)
         self.embedding = nn.Linear(nHidden * 2, nOut) # add dropout?
-
-    def forward(self, _input):
+        self.nOut = nOut
+    def forward(self, _input, *args, **kwargs):
         # input [time size, batch size, output dimension], e.g. 404, 8, 1024
         recurrent, _ = self.rnn(_input)
+
+        if isinstance(recurrent, torch.nn.utils.rnn.PackedSequence):
+            recurrent, _ = torch.nn.utils.rnn.pad_packed_sequence(recurrent, batch_first=False)
+
         T, b, h = recurrent.size()
+
         t_rec = recurrent.view(T * b, h)
 
         output = self.embedding(t_rec)  # [T * b, nOut], T*b is the batch size for a FC

@@ -639,6 +639,10 @@ def write_out(folder, fname, text):
     with open(os.path.join(folder, fname), "a") as f:
         f.writelines(text+"\n\n")
 
+def chk_flg(key, d):
+    # Return True if key is found AND is True
+    return key in d and d[key]
+
 def validate_and_prep_loss(config):
     if not "pred_format" in config:
         config.pred_format = config.gt_format
@@ -660,15 +664,15 @@ def validate_and_prep_loss(config):
 
     for loss_fn_group in [k for k in config.keys() if "loss_fns" in k]:  # [loss_fns, loss_fns2]
         for i, loss in enumerate(config[loss_fn_group]):  # [{name: , coef: } ...]
-            if not "gts" in loss:
-                continue
-            indices = [config.gt_format.index(k) for k in loss["gts"]] # This will throw an error if the loss expected something not in the GT
-
             # Add to list used for AUTOSTATS
             if loss["name"] not in config.all_losses:
                 config.all_losses.add(loss["name"])
             else:
                 warnings.warn(f"{loss['name']} loss already added to stats")
+
+            if not "gts" in loss:
+                continue
+            indices = [config.gt_format.index(k) for k in loss["gts"]] # This will throw an error if the loss expected something not in the GT
 
             # Convert to a slice?? no
             loss["loss_indices"] = indices
@@ -1220,12 +1224,37 @@ def reset_all_stats(config, keyword="", freq=None):
 
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
+        o = self.check_dict(o)
+        o = self.convert_values(o)
         try:
-            return super().default(o)
-        except:
-            d = o.__dict__
+            return super().default(o) # use the JSON encoder
+        except Exception as e:
+            try:
+                return self.check_dict(o.default(o)) # hopefully the class has a default function; clean up the dict as needed
+            except:
+                return o
+
+    def check_dict(self, o):
+        # Handle edicts
+        d = o.__dict__ if isinstance(o, edict) else o
+
+        #
+        if isinstance(d, dict):
             # Don't save out circular reference
-            return {i:d[i] for i in d if i!='x_dict'}
+            return {i: self.convert_values(d[i]) for i in d if i != 'x_dict'}
+        else:
+            return o
+
+    def convert_values(self, o):
+        if isinstance(o, np.integer):
+            return int(o)
+        elif isinstance(o, np.floating):
+            return float(o)
+        elif isinstance(o, np.ndarray):
+            return o.tolist()
+        else:
+            return o
+
 
 def stat_prep(config):
     """ Prep to track statistics/losses, setup plots etc.
@@ -1312,14 +1341,15 @@ def stat_prep_strokes(config):
                                      x_title="Epochs", y_title="Loss", name=f"nn_{variant}", train=is_training))
 
         # Include how many GT points there were for this update
-        config_stats.append(AutoStat(counter_obj=config.counter, x_weight=x_weight, x_plot="epoch_decimal",
-                                     x_title="Epochs", y_title="Points Predicted", name=f"point_count_{variant}", train=is_training))
+        # config_stats.append(AutoStat(counter_obj=config.counter, x_weight=x_weight, x_plot="epoch_decimal",
+        #                              x_title="Epochs", y_title="Points Predicted", name=f"point_count_{variant}", train=is_training))
 
         # All other loss functions
         for loss in config.all_losses:
             if loss!="l1_default":
                 config_stats.append(AutoStat(counter_obj=config.counter, x_weight=x_weight, x_plot="epoch_decimal",
                                              x_title="Epochs", y_title="Loss", name=f"{loss}_{variant}", train=is_training))
+
     for stat in config_stats:
         if config["use_visdom"]:
             config["visdom_manager"].register_plot(stat.name, stat.x_title, stat.y_title, ymax=stat.ymax)

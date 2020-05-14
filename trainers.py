@@ -152,6 +152,7 @@ class TrainerStrokeRecovery(Trainer):
             for i in range(len(preds)):
                 eos = np.argmax(preds[i][:,3]>.5)
                 preds[i] = preds[i][:eos+1]
+
         return loss, preds, None
 
     def test(self, item, **kwargs):
@@ -364,8 +365,7 @@ class AlexGravesTrainer(Trainer):
         return self.train(item, train=False, **kwargs)
 
     def eval(self, input, **kwargs):
-        image = self.generator_model(**input)
-        return image
+        return self.generator_model(**input)
 
     def stroke_eval(self, input):
         pred_logits = self.stroke_model(input).cpu().permute(1, 0, 2)
@@ -379,18 +379,24 @@ class AlexGravesTrainer(Trainer):
             self.model.eval()
             suffix="_test"
         batch_size = item["line_imgs"].shape[0]
-        initial_hidden, window_vector, kappa = self.model.init_hidden(batch_size, self.device)
+        initial_hidden, initial_window_vector, initial_kappa = self.model.init_hidden(batch_size, self.device)
+
+        imgs = item["line_imgs"].to(self.config.device)
+        feature_maps = self.model.get_feature_maps(imgs)
+        feature_maps_mask = item["feature_map_mask"].to(self.config.device)
+
         model_input = {"inputs": item["rel_gt"][:,:-1].to(self.config.device), # the shifted GTs
-                        "img": item["line_imgs"].to(self.config.device),   #
-                        "img_mask": item["feature_map_mask"].to(self.config.device), # ignore
+                        "img": imgs,
+                        "img_mask": feature_maps_mask, # ignore
                         "initial_hidden": initial_hidden, # RNN state
-                        "prev_window_vec": window_vector,
-                        "prev_kappa": kappa,
+                        "prev_window_vec": initial_window_vector,
+                        "prev_kappa": initial_kappa,
+                        "feature_maps": feature_maps,
                         "is_map": False}
 
-        yhat = self.eval(model_input) # BATCH x 1 x H x W
+        y_hat, [state_1, state_2, state_3], window_vec, prev_kappa = self.eval(model_input) # BATCH x 1 x H x W
         self.config.counter.update(epochs=0, instances=np.sum(item["label_lengths"]), updates=1)
-        loss_tensor, loss = self.loss_criterion.main_loss(yhat, item, suffix=suffix, targ_key="line_imgs")
+        loss_tensor, loss = self.loss_criterion.main_loss(y_hat.cpu(), item, suffix=suffix, targ_key="rel_gt")
 
         if train:
             self.optimizer.zero_grad()
@@ -398,5 +404,15 @@ class AlexGravesTrainer(Trainer):
             torch.nn.utils.clip_grad_norm_(self.config.model.parameters(), 10)
             self.optimizer.step()
 
+        preds = None
+        if chk_flg("return_preds",kwargs):
+            preds = self.model.generate(feature_maps=feature_maps,
+                                        feature_maps_mask=feature_maps_mask,
+                                        hidden=initial_hidden,
+                                        window_vector=initial_window_vector,
+                                        kappa=initial_kappa)
+            # Convert to absolute coords
+            preds[:,:,:2] = np.cumsum(preds[:,:,:2], axis=2)
+            preds = torch.from_numpy(preds)
         return loss, preds, None
 
