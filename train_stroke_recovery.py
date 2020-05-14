@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from torch import nn
 from loss_module.stroke_recovery_loss import StrokeLoss
 from trainers import *
-from hwr_utils.stroke_dataset import StrokeRecoveryDataset
+from hwr_utils.stroke_dataset import StrokeRecoveryDataset, collate_stroke
 from hwr_utils.stroke_recovery import *
 from hwr_utils import utils
 from torch.optim import lr_scheduler
@@ -210,22 +210,26 @@ def build_data_loaders(folder, cnn, train_size, test_size, **kwargs):
             warnings.warn("AUTOMATIC OVERRIDE, USING 5 WORKERS!!!")
             NUM_WORKERS = 5
 
-    train_dataset=StrokeRecoveryDataset([folder / "train_online_coords.json", *kwargs["extra_dataset"]],
-                            root=config.data_root,
-                            max_images_to_load = train_size,
-                            cnn=cnn,
-                            training=True,
-                            **kwargs,
-                            )
+    if not config.test_only:
+        train_dataset=StrokeRecoveryDataset([folder / "train_online_coords.json", *kwargs["extra_dataset"]],
+                                root=config.data_root,
+                                max_images_to_load = train_size,
+                                cnn=cnn,
+                                training=True,
+                                **kwargs,
+                                )
 
-    train_dataloader = DataLoader(train_dataset,
-                                  batch_size=batch_size,
-                                  shuffle=True,
-                                  num_workers=NUM_WORKERS,
-                                  collate_fn=train_dataset.collate,
-                                  pin_memory=False)
+        train_dataloader = DataLoader(train_dataset,
+                                      batch_size=batch_size,
+                                      shuffle=True,
+                                      num_workers=NUM_WORKERS,
+                                      collate_fn=train_dataset.collate,
+                                      pin_memory=False)
 
-    config.n_train_instances = len(train_dataloader.dataset)
+        config.n_train_instances = len(train_dataloader.dataset)
+    else:
+        config.n_train_instances = 1
+        train_dataset = train_dataloader = None
 
     test_dataset=StrokeRecoveryDataset([folder / "test_online_coords.json"],
                             root=config.data_root,
@@ -239,7 +243,7 @@ def build_data_loaders(folder, cnn, train_size, test_size, **kwargs):
                                   batch_size=batch_size,
                                   shuffle=True,
                                   num_workers=NUM_WORKERS,
-                                  collate_fn=train_dataset.collate,
+                                  collate_fn=collate_stroke,
                                   pin_memory=False)
 
     n_test_points = 0

@@ -297,7 +297,7 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
                 is_map,
             )
 
-            new_eos = prev_eos = torch.max(prev_eos, eos)
+            new_eos = prev_eos = torch.max(prev_eos, eos.cpu())
             all_eos.append(new_eos)
 
             prev_window_vec = window
