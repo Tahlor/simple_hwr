@@ -9,7 +9,7 @@ from scipy import spatial
 from robust_loss_pytorch import AdaptiveLossFunction
 #from sdtw import SoftDTW
 import torch.multiprocessing as multiprocessing
-from hwr_utils.utils import to_numpy, Counter, chk_flg
+from hwr_utils.utils import to_numpy, Counter, chk_flg, tensor_sum
 from hwr_utils.stroke_recovery import relativefy
 from hwr_utils.stroke_dataset import pad, create_gts_from_fn
 from scipy.spatial import KDTree

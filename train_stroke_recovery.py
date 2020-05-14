@@ -325,7 +325,8 @@ def main(config_path, testing=False):
     utils.stat_prep_strokes(config)
 
     # Create loss object
-    config.loss_obj = StrokeLoss(loss_stats=config.stats, counter=config.counter, device=device, training_dataset=config.training_dataset.data)
+    trainset_data = None if config.training_dataset is None else config.training_dataset.data
+    config.loss_obj = StrokeLoss(loss_stats=config.stats, counter=config.counter, device=device, training_dataset=trainset_data)
 
     LR = config.learning_rate * batch_size/24
     logger.info(f"Specified LR: {config.learning_rate}, Effective: {LR}")
@@ -362,8 +363,9 @@ def main(config_path, testing=False):
         #config.counter.epochs = epoch
         config.counter.update(epochs=1)
         plot_graphs = True if epoch % config.test_freq == 0 else False
-        loss = run_epoch(train_dataloader, report_freq=config.update_freq, plot_graphs=plot_graphs)
-        logger.info(f"Epoch: {epoch}, Training Loss: {loss}")
+        if train_dataloader:
+            loss = run_epoch(train_dataloader, report_freq=config.update_freq, plot_graphs=plot_graphs)
+            logger.info(f"Epoch: {epoch}, Training Loss: {loss}")
 
         # Test and save models
         if epoch % config.test_freq == 0:

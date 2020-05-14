@@ -1036,12 +1036,3 @@ class SynthLoss(CustomLoss):
 
 def to_value(loss_tensor):
     return torch.sum(loss_tensor.cpu(), 0, keepdim=False).item()
-
-
-def tensor_sum(tensor):
-    if isinstance(tensor, torch.Tensor):
-        return torch.sum(tensor.cpu(), 0, keepdim=False).item()
-    elif isinstance(tensor, np.ndarray):
-        return np.sum(tensor)
-    else:
-        raise Exception("Unexpected datatype")

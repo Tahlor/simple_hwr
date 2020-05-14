@@ -3,7 +3,7 @@ from torch import nn
 import torch
 from .basic import CNN, BidirectionalRNN
 from .CoordConv import CoordConv
-from hwr_utils.utils import is_dalai, no_gpu_testing
+from hwr_utils.utils import is_dalai, no_gpu_testing, tensor_sum
 import sys
 sys.path.append("./synthesis")
 #from synthesis.synth_models import models
@@ -241,7 +241,7 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
 
         phi = torch.sum(alpha * torch.exp(-beta * (kappa - u).pow(2)), dim=1)
 
-        eos = phi[:, -1] > torch.max(phi[:, :-1]) # BATCH x 1
+        eos = (phi[:, -1] > torch.max(phi[:, :-1])).type(torch.float) # BATCH x 1
 
         # optimize this?
         phi = (phi * mask).unsqueeze(2)
@@ -306,7 +306,7 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
 
         hid_1 = torch.cat(hid_1, dim=1)
         window_vec = torch.cat(window_vec, dim=1)
-        all_eos = torch.cat(all_eos[1:], dim=1)
+        all_eos = torch.cat(all_eos, dim=0).reshape(len(all_eos),-1).permute(1,0)
 
         inp = torch.cat((inputs, hid_1, window_vec), dim=2) # BATCH x 394? x (1024+LSTM_hidden+gt_size)
         state_2 = (initial_hidden[0][1:2], initial_hidden[1][1:2])
@@ -340,7 +340,7 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
             print("batch_size:", batch_size)
             Z = torch.zeros((batch_size, 1, self.gt_size)).to(self.device)
             eos = 0
-            while seq_len < 2000 and torch.sum(eos) < batch_size/2:
+            while seq_len < 2000 and tensor_sum(eos) < batch_size/2:
 
                 y_hat, state, window_vector, kappa, eos = self.forward(
                     inputs=Z,
@@ -363,7 +363,7 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
                 Z = model_utils.sample_batch_from_out_dist(y_hat, bias, gt_size=self.gt_size)
 
                 if self.gt_size==4:
-                    Z[:, seq_len, 3] = eos
+                    Z[:, 0, 3] = eos.squeeze()
                 # if Z.shape[-1] < self.gt_size:
                 #     Z = F.pad(input=Z, pad=(0, self.gt_size-Z.shape[-1]), mode='constant', value=0)
                 gen_seq.append(Z)

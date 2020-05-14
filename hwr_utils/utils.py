@@ -883,6 +883,15 @@ def save_model_stroke(config, bsf=False):
     if "training_dataset" in config and "dtw_adaptive" in config.all_losses:
         np.save(Path(config["results_dir"]) / "training_dataset.npy", [{"gt":gt["gt"], "image_path":gt["image_path"]} for gt in config.training_dataset.data] )
 
+
+def tensor_sum(tensor):
+    if isinstance(tensor, torch.Tensor):
+        return torch.sum(tensor.cpu(), 0, keepdim=False).item()
+    else: # (tensor, np.ndarray)
+        return np.sum(tensor)
+    # else:
+    #     raise Exception("Unexpected datatype")
+
 def new_scheduler(optimizer, batch_size, gamma=.95, last_epoch=-1):
     print("Building new scheduler...")
     return lr_scheduler.StepLR(optimizer, step_size=int(180000 / batch_size), gamma=gamma, last_epoch=last_epoch)
