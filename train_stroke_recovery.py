@@ -363,6 +363,7 @@ def main(config_path, testing=False):
         #config.counter.epochs = epoch
         config.counter.update(epochs=1)
         plot_graphs = True if epoch % config.test_freq == 0 else False
+
         if train_dataloader:
             loss = run_epoch(train_dataloader, report_freq=config.update_freq, plot_graphs=plot_graphs)
             logger.info(f"Epoch: {epoch}, Training Loss: {loss}")
@@ -379,6 +380,8 @@ def main(config_path, testing=False):
             utils.save_model_stroke(config, bsf=False) # also saves stats
         else:
             utils.save_stats_stroke(config, bsf=False)
+        if config.test_only:
+            break
 
     ## Bezier curve
     # Have network predict whether it has reached the end of a stroke or not

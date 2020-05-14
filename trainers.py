@@ -412,7 +412,7 @@ class AlexGravesTrainer(Trainer):
                                         window_vector=initial_window_vector,
                                         kappa=initial_kappa)
             # Convert to absolute coords
-            preds[:,:,:2] = np.cumsum(preds[:,:,:2], axis=2)
+            preds[:,:,0:1] = np.cumsum(preds[:,:,0:1], axis=2)
             preds = torch.from_numpy(preds)
         return loss, preds, None
 
