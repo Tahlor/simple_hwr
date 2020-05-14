@@ -85,7 +85,7 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
 def test(dataloader):
     preds_to_graph = None
     for i, item in enumerate(dataloader):
-        loss, preds, *_ = trainer.test(item, return_preds=i == 0) #
+        loss, preds, *_ = trainer.test(item, return_preds= i == 0) #
         if loss is None:
             continue
         if i==0 and not preds is None:
@@ -94,6 +94,12 @@ def test(dataloader):
         config.stats["Actual_Loss_Function_test"].accumulate(loss)
     if not preds_to_graph is None:
         save_folder = graph(item_to_graph, config=config, preds=preds_to_graph, _type="test", epoch=epoch)
+        # Graph GTs
+        gts = item["rel_gt"].clone().detach()
+        gts[:,:,0:1] = torch.cumsum(gts[:,:,0:1], axis=2)
+        gts = [p.permute([1, 0]) for p in gts]
+        save_folder = graph(item_to_graph, config=config, preds=gts, _type="test2", epoch=epoch)
+
     utils.reset_all_stats(config, keyword="_test")
 
     for loss in config.stats:
