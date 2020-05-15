@@ -362,7 +362,7 @@ def main(config_path, testing=False):
 
     if config.model_name.lower == "startpoints":
         trainer = TrainerStartPoints(model, optimizer, config=config, loss_criterion=config.loss_obj)
-    elif config.model_name == "AlexGraves":
+    elif "AlexGraves" in config.model_name:
         trainer = AlexGravesTrainer(model, optimizer, config=config, loss_criterion=config.loss_obj)
     else:
         trainer = TrainerStrokeRecovery(model, optimizer, config=config, loss_criterion=config.loss_obj)
