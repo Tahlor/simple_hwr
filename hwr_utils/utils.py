@@ -388,6 +388,7 @@ def make_config_consistent_stroke(config):
 
     if is_dalai():
         config.dataset_folder = "online_coordinate_data/3_stroke_vverysmallFull"
+        config.load_path = False
 
     ## Process loss functions
     config.all_losses = set()

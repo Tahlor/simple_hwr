@@ -94,9 +94,12 @@ def test(dataloader):
             item_to_graph = item
 
             # Graph GTs
-            gts = item["rel_gt"].clone().detach()
-            gts[:, :, 0:1] = torch.cumsum(gts[:, :, 0:1], axis=2)
+            gts = item["rel_gt"].clone().detach() # B, W, 4
+            print(gts.shape)
+            gts[:, :, 0:1] = torch.cumsum(gts[:, :, 0:1], axis=1)
             gts = [p.permute([1, 0]) for p in gts]
+
+            #np.save("screw_this.npy", [gts, item["rel_gt"], item["gt"]])
             save_folder = graph(item_to_graph, config=config, preds=gts, _type="test2", epoch=epoch)
 
             save_folder = graph(item_to_graph, config=config, preds=preds_to_graph, _type="test", epoch=epoch)
