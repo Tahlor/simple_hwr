@@ -47,8 +47,11 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
         current_batch_size = item["line_imgs"].shape[0]
         instances += current_batch_size
         #print(item["gt"].shape, item["label_lengths"])
-        last_one = i+1==len(dataloader)
+        last_one = (i+2==len(dataloader) or len(dataloader) <= 2)
         loss, preds, *_ = trainer.train(item, train=True, return_preds=last_one) #
+        if last_one and not preds is None and plot_graphs:
+            graph_procedure(preds,item)
+
         if loss is None:
             continue
 
@@ -69,19 +72,37 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
     end_time = timer()
     logger.info(("Epoch duration:", end_time-start_time))
 
-    # GRAPH
-    if not preds is None and plot_graphs:
-        preds_to_graph = [p.permute([1, 0]) for p in preds]
-
-        save_folder = graph(item, config=config, preds=preds_to_graph, _type="train", epoch=epoch)
-        utils.write_out(save_folder, "example_data", f"GT {str(item['gt_list'][0])}"
-                                                     f"\nPREDS\n{str(preds_to_graph[0].transpose(1,0))}"
-                                                     f"\nStartPoints\n{str(item['start_points'][0])}")
-        utils.pickle_it({"item":item, "preds":[p.detach().numpy() for p in preds_to_graph]}, Path(save_folder) / "example_data.pickle")
-
     #config.scheduler.step()
     training_loss = config.stats["Actual_Loss_Function_train"].get_last_epoch()
     return training_loss
+
+def graph_procedure(preds, item, _type="train"):
+    # GRAPH
+    preds_to_graph = [p.permute([1, 0]) for p in preds]
+    save_folder = graph(item, config=config, preds=preds_to_graph, _type=_type, epoch=epoch)
+    utils.write_out(save_folder, "example_data", f"GT {str(item['gt_list'][0])}"
+                                                 f"\nPREDS\n{str(preds_to_graph[0].transpose(1,0))}"
+                                                 f"\nStartPoints\n{str(item['start_points'][0])}")
+    utils.pickle_it({"item":item, "preds":[p.detach().numpy() for p in preds_to_graph]}, Path(save_folder) / "example_data.pickle")
+
+def graph_gts(item):
+    """ Make sure relative graphing is correct
+
+    Args:
+        item:
+
+    Returns:
+
+    """
+    # Graph GTs
+    gts = item["rel_gt"].clone().detach()  # B, W, 4
+    print(gts.shape)
+    gts[:, :, 0:1] = torch.cumsum(gts[:, :, 0:1], axis=1)
+    gts = [p.permute([1, 0]) for p in gts]
+
+    # np.save("screw_this.npy", [gts, item["rel_gt"], item["gt"]])
+    save_folder = graph(item, config=config, preds=gts, _type="test2", epoch=epoch)
+
 
 def test(dataloader):
     preds_to_graph = None
@@ -90,19 +111,9 @@ def test(dataloader):
         if loss is None:
             continue
         if i==0 and not preds is None:
+            graph_procedure(preds, item, _type="test")
             preds_to_graph = [p.permute([1, 0]) for p in preds]
             item_to_graph = item
-
-            if False:
-                # Graph GTs
-                gts = item["rel_gt"].clone().detach() # B, W, 4
-                print(gts.shape)
-                gts[:, :, 0:1] = torch.cumsum(gts[:, :, 0:1], axis=1)
-                gts = [p.permute([1, 0]) for p in gts]
-
-                #np.save("screw_this.npy", [gts, item["rel_gt"], item["gt"]])
-                save_folder = graph(item_to_graph, config=config, preds=gts, _type="test2", epoch=epoch)
-
             save_folder = graph(item_to_graph, config=config, preds=preds_to_graph, _type="test", epoch=epoch)
 
         config.stats["Actual_Loss_Function_test"].accumulate(loss)
@@ -314,7 +325,8 @@ def main(config_path, testing=False):
               "start_point_attn_deep": start_points.StartPointAttnModelDeep,
               "start_point_attn_full": start_points.StartPointAttnModelFull,
               "normal":stroke_model.StrokeRecoveryModel,
-              "AlexGraves":stroke_model.AlexGraves}
+              "AlexGraves":stroke_model.AlexGraves,
+              "AlexGraves2":stroke_model.AlexGraves2}
 
     model_class = model_dict[config.model_name]
     model = model_class(**model_kwargs).to(device)

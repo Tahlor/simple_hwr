@@ -70,13 +70,15 @@ class MLP(nn.Module):
 
 class BidirectionalRNN(nn.Module):
 
-    def __init__(self, nIn, nHidden, nOut, dropout=.5, num_layers=2, rnn_constructor=nn.LSTM):
+    def __init__(self, nIn, nHidden, nOut, dropout=.5, num_layers=2, rnn_constructor=nn.LSTM, bidirectional=True, **kwargs):
         super().__init__()
         print(f"Creating {rnn_constructor.__name__}: in:{nIn} hidden:{nHidden} dropout:{dropout} layers:{num_layers} out:{nOut}")
         self.nIn = nIn
-        self.rnn = rnn_constructor(nIn, nHidden, bidirectional=True, dropout=dropout, num_layers=num_layers)
-        self.embedding = nn.Linear(nHidden * 2, nOut) # add dropout?
+        self.rnn = rnn_constructor(nIn, nHidden, bidirectional=bidirectional, dropout=dropout, num_layers=num_layers, **kwargs)
+        embedding_multiplier = 2 if bidirectional else 1
+        self.embedding = nn.Linear(nHidden * embedding_multiplier, nOut) # add dropout?
         self.nOut = nOut
+
     def forward(self, _input, *args, **kwargs):
         # input [time size, batch size, output dimension], e.g. 404, 8, 1024
         recurrent, _ = self.rnn(_input)

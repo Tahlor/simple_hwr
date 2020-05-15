@@ -183,6 +183,7 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
                  window_size=1024, # dim of feature map
                  cnn_type="default",
                  device="cuda",
+                 model_name="default",
                  **kwargs
                  ):
         """
@@ -207,25 +208,23 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
 
         K = 10 # number of Gaussians in window
 
-        self._phi = []
+        if model_name == "default":
+            self._phi = []
+            self.lstm_1 = nn.LSTM(self.gt_size + self.vocab_size, hidden_size, batch_first=True, dropout=.5)
+            self.lstm_2 = nn.LSTM(
+                self.gt_size + self.vocab_size + hidden_size, hidden_size, batch_first=True, dropout=.5
+            )
+            # self.lstm_3 = nn.LSTM(
+            #     self.gt_size + hidden_size, hidden_size, batch_first=True
+            # )
+            self.lstm_3 = nn.LSTM(
+                self.gt_size + self.vocab_size + hidden_size, hidden_size, batch_first=True, dropout=.5
+            )
 
-        self.lstm_1 = nn.LSTM(self.gt_size + self.vocab_size, hidden_size, batch_first=True)
-        self.lstm_2 = nn.LSTM(
-            self.gt_size + self.vocab_size + hidden_size, hidden_size, batch_first=True
-        )
-        # self.lstm_3 = nn.LSTM(
-        #     self.gt_size + hidden_size, hidden_size, batch_first=True
-        # )
-        self.lstm_3 = nn.LSTM(
-            self.gt_size + self.vocab_size + hidden_size, hidden_size, batch_first=True
-        )
-
-        self.window_layer = nn.Linear(hidden_size, 3 * K) # 3: alpha, beta, kappa
-        self.output_layer = nn.Linear(n_layers * hidden_size, output_size)
+            self.window_layer = nn.Linear(hidden_size, 3 * K) # 3: alpha, beta, kappa
+            self.output_layer = nn.Linear(n_layers * hidden_size, output_size)
 
         self.cnn = CNN(nc=1, cnn_type=self.cnn_type) # output dim: Width x Batch x 1024
-
-        # self.init_weight()
 
     def compute_window_vector(self, mix_params, prev_kappa, feature_maps, mask, is_map=None):
         # Text would have been text LEN x alphabet
@@ -373,6 +372,144 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
         print("seq_len:", seq_len)
 
         return gen_seq
+
+class AlexGraves2(AlexGraves):
+    def __init__(self, hidden_size=400,
+                 n_layers=3,
+                 output_size=121,
+                 window_size=1024, # dim of feature map
+                 cnn_type="default",
+                 device="cuda",
+                 **kwargs
+                 ):
+        """
+
+        Args:
+            hidden_size:
+            n_layers:
+            output_size:
+            window_size: The dimension of the characters vector OR feature map (feature map: BATCH x Width x 1024)
+            cnn_type:
+            **kwargs:
+        """
+        super().__init__(hidden_size=hidden_size,
+                         n_layers=n_layers,
+                         output_size=output_size,
+                         window_size=window_size,
+                         cnn_type=cnn_type,
+                         device=device,
+                         model_name="version2",
+                         **kwargs)
+
+        # Create model
+        self.brnn1 = BidirectionalRNN(nIn=1024, nHidden=hidden_size, nOut=hidden_size, dropout=.5, num_layers=2,
+                                    rnn_constructor=nn.LSTM, batch_first=True)
+
+        self.rnn2 = BidirectionalRNN(nIn=hidden_size*2+self.gt_size,
+                                     nHidden=hidden_size,
+                                     nOut=output_size,
+                                     dropout=.5,
+                                     num_layers=2,
+                                     rnn_constructor=nn.LSTM,
+                                     bidirectional=False,
+                                     batch_first=True)
+
+    def forward(
+        self,
+        inputs, # the GTs that start with 0
+        img,   #
+        img_mask, # ignore
+        initial_hidden, # RNN state
+        prev_window_vec=None,
+        prev_kappa=None,
+        is_map=False,
+        feature_maps=None,
+        prev_eos=None,
+        lengths=None,
+        **kwargs
+    ):
+        batch_size = inputs.shape[0]
+        if feature_maps is None:
+            feature_maps = self.get_feature_maps(img) # B,W,1024
+
+        # Upsample to be the same length as the (lontest) GT-strokepoint-width dimension
+        shp = feature_maps.shape
+        shp[1] = inputs.shape[1]
+        feature_maps_upsample = torch.nn.functional.interpolate(feature_maps,
+                                                                size=shp,
+                                                                mode='bilinear',
+                                                                align_corners=None)
+
+        # Pack it up (pack it in)
+        if lengths is not None:
+            feature_maps_upsample = torch.nn.utils.rnn.pack_padded_sequence(feature_maps_upsample, lengths, batch_first=True, enforce_sorted=False)
+
+        brnn_output = self.brnn1(feature_maps_upsample) # B, W, hidden
+        rnn_input = torch.cat((inputs, brnn_output), dim=2) # B,W, hidden+4
+        rnn_output = self.rnn2(rnn_input) # B, W, hidden
+        return rnn_output, None, None, None, None
+
+    def generate(
+        self,
+        feature_maps,
+        feature_maps_mask,
+        hidden,
+        window_vector,
+        kappa,
+        bias=10, # how close to max argument to be
+        **kwargs):
+
+        seq_len = 0
+        gen_seq = []
+        with torch.no_grad():
+            batch_size = feature_maps.shape[0]
+            print("batch_size:", batch_size)
+            Z = torch.zeros((batch_size, 1, self.gt_size)).to(self.device)
+            eos = 0
+            while seq_len < 2000 and tensor_sum(eos) < batch_size/2:
+
+                y_hat, state, window_vector, kappa, eos = self.forward(
+                    inputs=Z,
+                    img=None,
+                    feature_maps=feature_maps,
+                    img_mask=feature_maps_mask,
+                    initial_hidden=hidden,
+                    prev_window_vec=window_vector,
+                    prev_kappa=kappa,
+                    previous_eos=eos
+                )
+
+                _hidden = torch.cat([s[0] for s in state], dim=0)
+                _cell = torch.cat([s[1] for s in state], dim=0)
+                hidden = (_hidden, _cell)
+
+                y_hat = y_hat.squeeze(dim=1)
+                Z = model_utils.sample_batch_from_out_dist(y_hat, bias, gt_size=self.gt_size)
+
+                if self.gt_size==4:
+                    Z[:, 0:1, 3:4] = eos.unsqueeze(1)
+                # if Z.shape[-1] < self.gt_size:
+                #     Z = F.pad(input=Z, pad=(0, self.gt_size-Z.shape[-1]), mode='constant', value=0)
+                gen_seq.append(Z)
+                seq_len += 1
+
+        gen_seq = torch.cat(gen_seq, dim=1)
+        gen_seq = gen_seq.cpu().numpy()
+
+        print("seq_len:", seq_len)
+
+        return gen_seq
+
+
+
+
+
+
+
+
+
+
+
 
 
 ### Options:
