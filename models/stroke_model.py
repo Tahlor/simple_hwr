@@ -356,14 +356,12 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
                 _hidden = torch.cat([s[0] for s in state], dim=0)
                 _cell = torch.cat([s[1] for s in state], dim=0)
                 hidden = (_hidden, _cell)
-                # for batch sampling
-                # y_hat = y_hat.squeeze(dim=1)
-                # Z = sample_batch_from_out_dist(y_hat, bias)
-                y_hat = y_hat.squeeze()
+
+                y_hat = y_hat.squeeze(dim=1)
                 Z = model_utils.sample_batch_from_out_dist(y_hat, bias, gt_size=self.gt_size)
 
                 if self.gt_size==4:
-                    Z[:, 0, 3] = eos.squeeze()
+                    Z[:, 0:1, 3:4] = eos.unsqueeze(1)
                 # if Z.shape[-1] < self.gt_size:
                 #     Z = F.pad(input=Z, pad=(0, self.gt_size-Z.shape[-1]), mode='constant', value=0)
                 gen_seq.append(Z)
