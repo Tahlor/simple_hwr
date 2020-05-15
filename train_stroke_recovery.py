@@ -92,17 +92,16 @@ def test(dataloader):
         if i==0 and not preds is None:
             preds_to_graph = [p.permute([1, 0]) for p in preds]
             item_to_graph = item
+
+            # Graph GTs
+            gts = item["rel_gt"].clone().detach()
+            gts[:, :, 0:1] = torch.cumsum(gts[:, :, 0:1], axis=2)
+            gts = [p.permute([1, 0]) for p in gts]
+            save_folder = graph(item_to_graph, config=config, preds=gts, _type="test2", epoch=epoch)
+
+            save_folder = graph(item_to_graph, config=config, preds=preds_to_graph, _type="test", epoch=epoch)
+
         config.stats["Actual_Loss_Function_test"].accumulate(loss)
-
-    if not preds_to_graph is None:
-        # Graph GTs
-        gts = item["rel_gt"].clone().detach()
-        gts[:,:,0:1] = torch.cumsum(gts[:,:,0:1], axis=2)
-        gts = [p.permute([1, 0]) for p in gts]
-        print(gts)
-        save_folder = graph(item_to_graph, config=config, preds=gts, _type="test2", epoch=epoch)
-
-        save_folder = graph(item_to_graph, config=config, preds=preds_to_graph, _type="test", epoch=epoch)
 
     utils.reset_all_stats(config, keyword="_test")
 
