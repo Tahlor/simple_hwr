@@ -72,6 +72,7 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
     # GRAPH
     if not preds is None and plot_graphs:
         preds_to_graph = [p.permute([1, 0]) for p in preds]
+
         save_folder = graph(item, config=config, preds=preds_to_graph, _type="train", epoch=epoch)
         utils.write_out(save_folder, "example_data", f"GT {str(item['gt_list'][0])}"
                                                      f"\nPREDS\n{str(preds_to_graph[0].transpose(1,0))}"
@@ -92,13 +93,16 @@ def test(dataloader):
             preds_to_graph = [p.permute([1, 0]) for p in preds]
             item_to_graph = item
         config.stats["Actual_Loss_Function_test"].accumulate(loss)
+
     if not preds_to_graph is None:
-        save_folder = graph(item_to_graph, config=config, preds=preds_to_graph, _type="test", epoch=epoch)
         # Graph GTs
         gts = item["rel_gt"].clone().detach()
         gts[:,:,0:1] = torch.cumsum(gts[:,:,0:1], axis=2)
         gts = [p.permute([1, 0]) for p in gts]
+        print(gts)
         save_folder = graph(item_to_graph, config=config, preds=gts, _type="test2", epoch=epoch)
+
+        save_folder = graph(item_to_graph, config=config, preds=preds_to_graph, _type="test", epoch=epoch)
 
     utils.reset_all_stats(config, keyword="_test")
 
