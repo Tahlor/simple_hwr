@@ -204,7 +204,7 @@ def graph(batch, config=None, preds=None, _type="test", save_folder="auto", epoc
             elif config.model_name=="start_points":
                 subgraph(batch["start_points"][i], gt_img, name, is_gt=True)
         subgraph(preds, gt_img, name, is_gt=False)
-        if i > 8:
+        if i > 10 or i+2 > len(preds):
             break
     return save_folder
 
