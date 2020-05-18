@@ -109,14 +109,11 @@ def graph_gts(item):
 def test(dataloader):
     preds_to_graph = None
     for i, item in enumerate(dataloader):
-        loss, preds, *_ = trainer.test(item, return_preds= i == 0) #
+        loss, preds, y_hat, *_ = trainer.test(item, return_preds= i == 0) #
         if loss is None:
             continue
         if i==0 and not preds is None:
-            graph_procedure(preds, item, _type="test")
-            preds_to_graph = [p.permute([1, 0]) for p in preds]
-            item_to_graph = item
-            save_folder = graph(item_to_graph, config=config, preds=preds_to_graph, _type="test", epoch=epoch)
+            graph_procedure(preds, item, _type="test",other=y_hat)
 
         config.stats["Actual_Loss_Function_test"].accumulate(loss)
 

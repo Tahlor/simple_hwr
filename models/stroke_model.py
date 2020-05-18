@@ -336,7 +336,7 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
         gen_seq = []
         with torch.no_grad():
             batch_size = feature_maps.shape[0]
-            print("batch_size:", batch_size)
+            #print("batch_size:", batch_size)
             Z = torch.zeros((batch_size, 1, self.gt_size)).to(self.device)
             eos = 0
             while seq_len < 2000 and tensor_sum(eos) < batch_size/2:
@@ -448,14 +448,14 @@ class AlexGraves2(AlexGraves):
 
         if len(initial_hidden[0].shape) == 4:
             state1, state2 = initial_hidden
-            print(state1.shape, state2.shape, state1)
+            #print(state1.shape, state2.shape, state1)
         else:
             state1 = state2 = None
 
         brnn_output, brnn_states = self.brnn1(feature_maps_upsample, state1) # B, W, hidden
         rnn_input = torch.cat((inputs, brnn_output), dim=2)#.contiguous() # B,W, hidden+4
         rnn_output, rnn_states = self.rnn2(rnn_input, state2) # B, W, hidden
-        print(len(brnn_states), brnn_states[0].shape, len(rnn_states), rnn_states[0].shape) # state1.shape, state2.shape,
+        #print(len(brnn_states), brnn_states[0].shape, len(rnn_states), rnn_states[0].shape) # state1.shape, state2.shape,
         return rnn_output, [brnn_states, rnn_states], None, None, None
 
     def generate(
@@ -472,7 +472,7 @@ class AlexGraves2(AlexGraves):
         gen_seq = []
         with torch.no_grad():
             batch_size = feature_maps.shape[0]
-            print("batch_size:", batch_size)
+            #print("batch_size:", batch_size)
             Z = torch.zeros((batch_size, 1, self.gt_size)).to(self.device)
             eos = 0
             while seq_len < 2000 and tensor_sum(eos) < batch_size/2:

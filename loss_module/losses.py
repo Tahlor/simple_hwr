@@ -997,7 +997,10 @@ class SynthLoss(CustomLoss):
         targets = targets[:,1:] # BATCH, W, GT_SIZE 29,394,4
         mask = item["mask"]
         epsilon = 1e-6
-        split_sizes = [1] + [20] * 6
+        if y_hat.shape[-1] == 121:
+            split_sizes = [1] + [20] * 6
+        else:
+            split_sizes = [1] + [20] * 6 + [1]
         y = torch.split(y_hat, split_sizes, dim=2)
 
         sos_logit = y[0].squeeze()
