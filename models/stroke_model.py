@@ -442,7 +442,8 @@ class AlexGraves2(AlexGraves):
         # Pack it up (pack it in)
         if lengths is not None:
             feature_maps_upsample = torch.nn.utils.rnn.pack_padded_sequence(feature_maps_upsample, lengths, batch_first=True, enforce_sorted=False)
-
+        print("FM", feature_maps_upsample.shape)
+        print("IN", inputs.shape)
         brnn_output = self.brnn1(feature_maps_upsample) # B, W, hidden
         rnn_input = torch.cat((inputs, brnn_output), dim=2) # B,W, hidden+4
         rnn_output = self.rnn2(rnn_input) # B, W, hidden
