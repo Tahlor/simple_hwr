@@ -403,7 +403,7 @@ class AlexGraves2(AlexGraves):
 
         # Create model
         self.brnn1 = BidirectionalRNN(nIn=1024, nHidden=hidden_size, nOut=hidden_size, dropout=.5, num_layers=2,
-                                    rnn_constructor=nn.LSTM, batch_first=True)
+                                    rnn_constructor=nn.LSTM, batch_first=True, return_states=True)
 
         self.rnn2 = BidirectionalRNN(nIn=hidden_size+self.gt_size,
                                      nHidden=hidden_size,
@@ -412,7 +412,8 @@ class AlexGraves2(AlexGraves):
                                      num_layers=2,
                                      rnn_constructor=nn.LSTM,
                                      bidirectional=False,
-                                     batch_first=True)
+                                     batch_first=True,
+                                     return_states=True)
 
     def forward(
         self,
@@ -442,12 +443,16 @@ class AlexGraves2(AlexGraves):
         # Pack it up (pack it in)
         if lengths is not None:
             feature_maps_upsample = torch.nn.utils.rnn.pack_padded_sequence(feature_maps_upsample, lengths, batch_first=True, enforce_sorted=False)
-        print("FM", feature_maps_upsample.shape, feature_maps_upsample.stride())
-        print("IN", inputs.shape)
-        brnn_output = self.brnn1(feature_maps_upsample.contiguous()) # B, W, hidden
+        # print("FM", feature_maps_upsample.shape, feature_maps_upsample.stride())
+        # print("IN", inputs.shape)
+
+        if not initial_hidden is None:
+            state1, state2, state3 = initial_hidden
+
+        brnn_output, brnn_states = self.brnn1(feature_maps_upsample, state1) # B, W, hidden
         rnn_input = torch.cat((inputs, brnn_output), dim=2)#.contiguous() # B,W, hidden+4
-        rnn_output = self.rnn2(rnn_input) # B, W, hidden
-        return rnn_output, [None, None, None], None, None, None
+        rnn_output, rnn_states = self.rnn2(rnn_input, state2) # B, W, hidden
+        return rnn_output, [brnn_states, rnn_states, None], None, None, None
 
     def generate(
         self,

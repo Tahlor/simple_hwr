@@ -70,7 +70,7 @@ class MLP(nn.Module):
 
 class BidirectionalRNN(nn.Module):
 
-    def __init__(self, nIn, nHidden, nOut, dropout=.5, num_layers=2, rnn_constructor=nn.LSTM, bidirectional=True, **kwargs):
+    def __init__(self, nIn, nHidden, nOut, dropout=.5, num_layers=2, rnn_constructor=nn.LSTM, bidirectional=True, return_states=False, **kwargs):
         super().__init__()
         print(f"Creating {rnn_constructor.__name__}: in:{nIn} hidden:{nHidden} dropout:{dropout} layers:{num_layers} out:{nOut}")
         self.nIn = nIn
@@ -78,14 +78,15 @@ class BidirectionalRNN(nn.Module):
         embedding_multiplier = 2 if bidirectional else 1
         self.embedding = nn.Linear(nHidden * embedding_multiplier, nOut) # add dropout?
         self.nOut = nOut
+        self.return_states = return_states
 
-    def forward(self, _input, *args, **kwargs):
+    def forward(self, _input, states=None, *args, **kwargs):
         # input [time size, batch size, output dimension], e.g. 404, 8, 1024
-        recurrent, _ = self.rnn(_input)
+        recurrent, states = self.rnn(_input, states)
 
         if isinstance(recurrent, torch.nn.utils.rnn.PackedSequence):
             warnings.warn(":packing")
-            recurrent, _ = torch.nn.utils.rnn.pad_packed_sequence(recurrent, batch_first=False).contiguous()
+            recurrent, states = torch.nn.utils.rnn.pad_packed_sequence(recurrent, batch_first=False).contiguous()
 
         T, b, h = recurrent.size()
 
@@ -95,7 +96,10 @@ class BidirectionalRNN(nn.Module):
         output = self.embedding(t_rec)  # [T * b, nOut], T*b is the batch size for a FC
         output = output.view(T, b, -1)
 
-        return output
+        if self.return_states:
+            return output, states
+        else:
+            return output
 
 
 class GeneralizedBRNN(nn.Module):
