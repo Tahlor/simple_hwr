@@ -433,19 +433,19 @@ class AlexGraves2(AlexGraves):
             feature_maps = self.get_feature_maps(img) # B,W,1024
 
         # Upsample to be the same length as the (lontest) GT-strokepoint-width dimension
-        shp = inputs.shape[1], feature_maps.shape[2]
-        feature_maps_upsample = torch.nn.functional.interpolate(feature_maps.unsqueeze(1),
+        shp = inputs.shape[1],feature_maps.shape[2]
+        feature_maps_upsample = torch.nn.functional.interpolate(feature_maps.unsqueeze(0),
                                                                 size=shp,
                                                                 mode='nearest',
-                                                                align_corners=None).squeeze(1)
+                                                                align_corners=None).squeeze(0)
 
         # Pack it up (pack it in)
         if lengths is not None:
             feature_maps_upsample = torch.nn.utils.rnn.pack_padded_sequence(feature_maps_upsample, lengths, batch_first=True, enforce_sorted=False)
-        print("FM", feature_maps_upsample.shape)
+        print("FM", feature_maps_upsample.shape, feature_maps_upsample.stride())
         print("IN", inputs.shape)
         brnn_output = self.brnn1(feature_maps_upsample) # B, W, hidden
-        rnn_input = torch.cat((inputs, brnn_output), dim=2) # B,W, hidden+4
+        rnn_input = torch.cat((inputs, brnn_output), dim=2).contiguous() # B,W, hidden+4
         rnn_output = self.rnn2(rnn_input) # B, W, hidden
         return rnn_output, None, None, None, None
 
