@@ -84,7 +84,8 @@ class BidirectionalRNN(nn.Module):
         recurrent, _ = self.rnn(_input)
 
         if isinstance(recurrent, torch.nn.utils.rnn.PackedSequence):
-            recurrent, _ = torch.nn.utils.rnn.pad_packed_sequence(recurrent, batch_first=False)
+            warnings.warn(":packing")
+            recurrent, _ = torch.nn.utils.rnn.pad_packed_sequence(recurrent, batch_first=False).contiguous()
 
         T, b, h = recurrent.size()
 
