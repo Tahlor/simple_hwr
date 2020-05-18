@@ -48,9 +48,9 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
         instances += current_batch_size
         #print(item["gt"].shape, item["label_lengths"])
         last_one = (i+2==len(dataloader) or len(dataloader) <= 2)
-        loss, preds, *_ = trainer.train(item, train=True, return_preds=last_one) #
+        loss, preds, y_hat, *_ = trainer.train(item, train=True, return_preds=last_one) #
         if last_one and not preds is None and plot_graphs:
-            graph_procedure(preds,item)
+            graph_procedure(preds,item,other=y_hat)
 
         if loss is None:
             continue
@@ -76,13 +76,15 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
     training_loss = config.stats["Actual_Loss_Function_train"].get_last_epoch()
     return training_loss
 
-def graph_procedure(preds, item, _type="train"):
+def graph_procedure(preds, item, _type="train", other=None):
     # GRAPH
     preds_to_graph = [p.permute([1, 0]) for p in preds]
     save_folder = graph(item, config=config, preds=preds_to_graph, _type=_type, epoch=epoch)
     utils.write_out(save_folder, "example_data", f"GT {str(item['gt_list'][0])}"
                                                  f"\nPREDS\n{str(preds_to_graph[0].transpose(1,0))}"
-                                                 f"\nStartPoints\n{str(item['start_points'][0])}")
+                                                 f"\nStartPoints\n{str(item['start_points'][0])}"
+                                                 f"\nYHATs\n{str(other[0])}"
+                                                 )
     utils.pickle_it({"item":item, "preds":[p.detach().numpy() for p in preds_to_graph]}, Path(save_folder) / "example_data.pickle")
 
 def graph_gts(item):

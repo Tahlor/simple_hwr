@@ -433,11 +433,11 @@ class AlexGraves2(AlexGraves):
             feature_maps = self.get_feature_maps(img) # B,W,1024
 
         # Upsample to be the same length as the (lontest) GT-strokepoint-width dimension
-        shp = feature_maps.shape[0], inputs.shape[1], feature_maps.shape[2]
-        feature_maps_upsample = torch.nn.functional.interpolate(feature_maps,
+        shp = inputs.shape[1], feature_maps.shape[2]
+        feature_maps_upsample = torch.nn.functional.interpolate(feature_maps.unsqueeze(1),
                                                                 size=shp,
                                                                 mode='nearest',
-                                                                align_corners=None)
+                                                                align_corners=None).squeeze(1)
 
         # Pack it up (pack it in)
         if lengths is not None:
