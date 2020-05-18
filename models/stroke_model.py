@@ -446,13 +446,18 @@ class AlexGraves2(AlexGraves):
         # print("FM", feature_maps_upsample.shape, feature_maps_upsample.stride())
         # print("IN", inputs.shape)
 
-        if not initial_hidden is None:
-            state1, state2, state3 = initial_hidden
+        if len(initial_hidden[0].shape) == 4:
+            state1, state2 = initial_hidden
+            print(state1.shape, state2.shape, state1)
+
+        else:
+            state1 = state2 = None
 
         brnn_output, brnn_states = self.brnn1(feature_maps_upsample, state1) # B, W, hidden
         rnn_input = torch.cat((inputs, brnn_output), dim=2)#.contiguous() # B,W, hidden+4
         rnn_output, rnn_states = self.rnn2(rnn_input, state2) # B, W, hidden
-        return rnn_output, [brnn_states, rnn_states, None], None, None, None
+        print(len(brnn_states), brnn_states[0].shape, len(rnn_states), rnn_states[0].shape) # state1.shape, state2.shape,
+        return rnn_output, [brnn_states, rnn_states, []], None, None, None
 
     def generate(
         self,
