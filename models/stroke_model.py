@@ -376,7 +376,7 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
 class AlexGraves2(AlexGraves):
     def __init__(self, hidden_size=400,
                  n_layers=3,
-                 output_size=121,
+                 output_size=122,
                  window_size=1024, # dim of feature map
                  cnn_type="default",
                  device="cuda",
@@ -476,8 +476,7 @@ class AlexGraves2(AlexGraves):
             Z = torch.zeros((batch_size, 1, self.gt_size)).to(self.device)
             eos = 0
             while seq_len < 2000 and tensor_sum(eos) < batch_size/2:
-
-                y_hat, state, window_vector, kappa, eos = self.forward(
+                y_hat, state, window_vector, kappa, _ = self.forward(
                     inputs=Z,
                     img=None,
                     feature_maps=feature_maps,
@@ -493,12 +492,8 @@ class AlexGraves2(AlexGraves):
                 hidden = (_hidden, _cell)
 
                 y_hat = y_hat.squeeze(dim=1)
-                Z = model_utils.sample_batch_from_out_dist(y_hat, bias, gt_size=self.gt_size)
-
-                if self.gt_size==4:
-                    Z[:, 0:1, 3:4] = eos.unsqueeze(1)
-                # if Z.shape[-1] < self.gt_size:
-                #     Z = F.pad(input=Z, pad=(0, self.gt_size-Z.shape[-1]), mode='constant', value=0)
+                Z = model_utils.sample_batch_from_out_dist2(y_hat, bias, gt_size=self.gt_size)
+                eos = Z[:,:,3]
                 gen_seq.append(Z)
                 seq_len += 1
 
