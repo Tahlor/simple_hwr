@@ -405,7 +405,7 @@ class AlexGraves2(AlexGraves):
         self.brnn1 = BidirectionalRNN(nIn=1024, nHidden=hidden_size, nOut=hidden_size, dropout=.5, num_layers=2,
                                     rnn_constructor=nn.LSTM, batch_first=True)
 
-        self.rnn2 = BidirectionalRNN(nIn=hidden_size*2+self.gt_size,
+        self.rnn2 = BidirectionalRNN(nIn=hidden_size+self.gt_size,
                                      nHidden=hidden_size,
                                      nOut=output_size,
                                      dropout=.5,
@@ -447,7 +447,7 @@ class AlexGraves2(AlexGraves):
         brnn_output = self.brnn1(feature_maps_upsample.contiguous()) # B, W, hidden
         rnn_input = torch.cat((inputs, brnn_output), dim=2)#.contiguous() # B,W, hidden+4
         rnn_output = self.rnn2(rnn_input) # B, W, hidden
-        return rnn_output, None, None, None, None
+        return rnn_output, [None, None, None], None, None, None
 
     def generate(
         self,
