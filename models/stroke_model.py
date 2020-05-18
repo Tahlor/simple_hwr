@@ -444,8 +444,8 @@ class AlexGraves2(AlexGraves):
             feature_maps_upsample = torch.nn.utils.rnn.pack_padded_sequence(feature_maps_upsample, lengths, batch_first=True, enforce_sorted=False)
         print("FM", feature_maps_upsample.shape, feature_maps_upsample.stride())
         print("IN", inputs.shape)
-        brnn_output = self.brnn1(feature_maps_upsample) # B, W, hidden
-        rnn_input = torch.cat((inputs, brnn_output), dim=2).contiguous() # B,W, hidden+4
+        brnn_output = self.brnn1(feature_maps_upsample.contiguous()) # B, W, hidden
+        rnn_input = torch.cat((inputs, brnn_output), dim=2)#.contiguous() # B,W, hidden+4
         rnn_output = self.rnn2(rnn_input) # B, W, hidden
         return rnn_output, None, None, None, None
 
