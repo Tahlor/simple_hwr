@@ -449,7 +449,6 @@ class AlexGraves2(AlexGraves):
         if len(initial_hidden[0].shape) == 4:
             state1, state2 = initial_hidden
             print(state1.shape, state2.shape, state1)
-
         else:
             state1 = state2 = None
 
@@ -457,7 +456,7 @@ class AlexGraves2(AlexGraves):
         rnn_input = torch.cat((inputs, brnn_output), dim=2)#.contiguous() # B,W, hidden+4
         rnn_output, rnn_states = self.rnn2(rnn_input, state2) # B, W, hidden
         print(len(brnn_states), brnn_states[0].shape, len(rnn_states), rnn_states[0].shape) # state1.shape, state2.shape,
-        return rnn_output, [brnn_states, rnn_states, []], None, None, None
+        return rnn_output, [brnn_states, rnn_states], None, None, None
 
     def generate(
         self,

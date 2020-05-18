@@ -394,7 +394,7 @@ class AlexGravesTrainer(Trainer):
                         "feature_maps": feature_maps,
                         "is_map": False}
 
-        y_hat, [state_1, state_2, state_3], window_vec, prev_kappa, eos = self.eval(model_input) # BATCH x 1 x H x W
+        y_hat, states, window_vec, prev_kappa, eos = self.eval(model_input) # BATCH x 1 x H x W
         self.config.counter.update(epochs=0, instances=np.sum(item["label_lengths"]), updates=1)
         loss_tensor, loss = self.loss_criterion.main_loss(y_hat.cpu(), item, suffix=suffix, targ_key="rel_gt")
 
