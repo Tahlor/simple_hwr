@@ -47,6 +47,7 @@ def sample_from_out_dist(y_hat, bias, gt_size=3):
 def sample_batch_from_out_dist2(y_hat, bias, gt_size=4):
     batch_size = y_hat.shape[0]
     split_sizes = [1] + [20] * 6 + [1]
+    print(split_sizes)
     y = torch.split(y_hat, split_sizes, dim=1)
 
     sos_prob = torch.sigmoid(y[0])
