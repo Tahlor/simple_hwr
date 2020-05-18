@@ -414,5 +414,5 @@ class AlexGravesTrainer(Trainer):
             # Convert to absolute coords
             preds[:,:,0:1] = np.cumsum(preds[:,:,0:1], axis=1)
             preds = torch.from_numpy(preds)
-        return loss, preds, None
+        return loss, preds, y_hat
 
