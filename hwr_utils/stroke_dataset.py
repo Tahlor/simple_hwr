@@ -141,7 +141,14 @@ class BasicDataset(Dataset):
         self.data = []
         self.num_of_channels = 1
         self.collate = collate_stroke_eval
+
         self.cnn = cnn
+
+        if not cnn is None and cnn.cnn_type:
+            self.cnn_type = cnn.cnn_type
+        else:
+            self.cnn_type = "default64"
+
         if "contrast" in kwargs:
             self.contrast = kwargs["contrast"]
 
