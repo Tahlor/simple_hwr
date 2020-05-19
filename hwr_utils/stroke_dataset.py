@@ -407,6 +407,7 @@ class StrokeRecoveryDataset(Dataset):
         Returns:
 
         """
+        # Based on how the GTs were resampled, how big was the original image etc?
         image_width = gts_to_image_size(len(gt))
         # Returns image in upper origin format
         padded_gt_img = random_pad(gt,vpad=3, hpad=5) # pad top, left, bottom
@@ -414,7 +415,8 @@ class StrokeRecoveryDataset(Dataset):
         # padded_gt = StrokeRecoveryDataset.enlarge_gt(padded_gt, width=image_width)  # enlarge to fit - needs to be at least as big as GTs
 
         img = draw_from_gt(padded_gt_img, show=False, save_path=None, min_width=None, height=img_height,
-                           right_padding="random", max_width=8, use_stroke_number=use_stroke_number, **kwargs)
+                           right_padding="random", max_width=8, use_stroke_number=use_stroke_number,
+                           **kwargs)
 
         # img = img[::-1] # convert to lower origin format
         if add_distortion:
@@ -495,7 +497,8 @@ class StrokeRecoveryDataset(Dataset):
                                       add_distortion=add_distortion,
                                       add_blur=add_blur,
                                       use_stroke_number=("stroke_number" in self.gt_format),
-                                      linewidth=None if self.config.dataset.linewidth is None else self.config.dataset.linewidth)
+                                      linewidth=None if self.config.dataset.linewidth is None else self.config.dataset.linewidth,
+                                      )
         else:
             # Check if the image is already loaded
             if "line_img" in item and not add_distortion:
@@ -510,6 +513,12 @@ class StrokeRecoveryDataset(Dataset):
         #gt_reverse_strokes, sos_args = stroke_recovery.invert_each_stroke(gt)
         gt_reverse_strokes = None
         sos_args = stroke_recovery.get_sos_args(gt[:, 2], stroke_numbers=True)
+
+        # Need to convert to relative AFTER warping etc.
+        for x in ("x_rel", "y_rel"):
+            if x in self.gt_format: # can't do this
+                idx = self.gt_format.index(x)
+                gt[:,idx] = stroke_recovery.relativefy(gt[:,idx])
 
         # Assumes dimension 2 is start points, 3 is EOS
         # START POINT MODEL
@@ -587,10 +596,13 @@ def create_gts(x,y,is_start_stroke,gt_format):
     # Put it together
     gt = []
     padding_constant = []
+    assert not np.isnan(x).any()
+    assert not np.isnan(y).any()
+
     for i,el in enumerate(gt_format):
-        if el == "x":
+        if el.startswith("x"):
             gt.append(x)
-        elif el == "y":
+        elif el.startswith("y"):
             gt.append(y)
         elif el == "sos":
             gt.append(is_start_stroke)
@@ -619,6 +631,8 @@ def create_gts(x,y,is_start_stroke,gt_format):
     # draw_from_gt(gt, show=True)
     # input()
     # stop
+    assert not np.isnan(gt).any()
+
     return gt
 
 
@@ -792,7 +806,7 @@ def collate_stroke(batch, device="cpu", gt_opts=None):
         Report lengths to get accurate average loss
 
         stroke_points_gt : padded with repeated last point
-        stroke_points_rel : rel_x, abs_y, SOS, 0's
+        stroke_points_rel : x_rel, abs_y, SOS, 0's
 
     Args:
         batch:
@@ -846,7 +860,7 @@ def collate_stroke(batch, device="cpu", gt_opts=None):
         stroke_points_rel[i, 1:1+len(l), 0] = rel_x # use relative coords for X, then 0's
         stroke_points_rel[i, 1:1+len(l), 1:2] = stroke_points_gt[i, :len(l), 1:2] # Copy the absolute ones for Y, then 0's
         stroke_points_rel[i, batch[i]['sos_args']+1, 2] = 1 # all 0's => 1's where SOS are
-        # No EOS specified for rel_x
+        # No EOS specified for x_rel
 
         mask[i, :len(l), 0] = 1
         feature_map_mask[i, :batch[i]['feature_map_width']] = 1

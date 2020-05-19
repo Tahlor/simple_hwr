@@ -1,6 +1,8 @@
-## TO DO IMMEDIATELY:
-# DEBUG TEST/TRAIN LOSS
-# RELATIVE COORDS CONFIG
+# Abandoned:
+# The idea was to see if just L1 + only relative coordinates would learn to line up perfectly eventually
+# If we try to weight X/Y points for SOS points more, then the model needs to learn these perfectly or is punished hugely
+# Needs DTW or something to flexibly realize this
+# But we could use DTW on relative points? OK
 
 # Load model
 load_path: /fslhome/tarch/fsl_groups/fslg_hwr/compute/taylor_simple_hwr/RESULTS/20200301-PRETRAIN/normal_preload_model.pt
@@ -35,7 +37,7 @@ dataset:
   include_synthetic: true
   num_of_channels: 1
   image_prep: pil_with_distortion
-  #adapted_gt_path: ./RESULTS/pretrained/training_dataset.npy
+  adapted_gt_path: ./RESULTS/pretrained/training_dataset.npy
 
 # Training data
 #dataset_folder: online_coordinate_data/8_stroke_vSmall_16
@@ -76,7 +78,7 @@ batch_size: 28
 
 # interpolated_sos: interpolated # normal: use 1's for starts; interpolated: start is a "0" and increases from there based on distance of stroke
 gt_format: # if relative etc., specify that here; e.g., opts:rel
-  - x opts:rel
+  - x_rel
   - y
   - sos
   - eos
@@ -108,11 +110,12 @@ pred_opts: # if relative etc., specify that here; e.g., opts:rel opts:cumsum etc
 #      - x
 #      - y
 #    subcoef: 1,1
+
 loss_fns2:
   - name: l1
     coef: 1
     gts:
-      - x
+      - x_rel
       - y
   - name: cross_entropy
     coef: 1

@@ -762,7 +762,14 @@ class L1(CustomLoss):
     def l1(self, preds, targs, label_lengths, **kwargs):
         loss = 0
         for i, pred in enumerate(preds):
-            loss += torch.sum(abs(pred[:, self.loss_indices] - targs[i][:, self.loss_indices]) * self.subcoef)
+            min_length = np.minimum(pred.shape[0], targs[i].shape[0]) # with new truncation, we leave 20+ extra preds; the longest
+                                                                      # GT won't have this extra space, so just truncate it
+            loss += torch.sum(abs(pred[:min_length, self.loss_indices] - targs[i][:min_length, self.loss_indices]) * self.subcoef)
+
+            # Weight SOS/EOS points more
+            # But these are really hard to get right, need DTW / some flexibility to get wrong
+            # OK
+
         return loss  # , to_value(loss)
 
 class L2(CustomLoss):
@@ -1000,7 +1007,7 @@ class SynthLoss(CustomLoss):
         if y_hat.shape[-1] == 121:
             split_sizes = [1] + [20] * 6
         else:
-            split_sizes = [1] + [2s0] * 6 + [1]
+            split_sizes = [1] + [20] * 6 + [1]
         y = torch.split(y_hat, split_sizes, dim=2)
 
         sos_logit = y[0].squeeze()

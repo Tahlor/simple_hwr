@@ -403,7 +403,9 @@ def rnd_width(w, on=True):
 
 def draw_from_gt(gt, show=True, save_path=None, min_width=None, height=61,
                  right_padding="random", linewidth=None, max_width=5, color=0, alpha=False,
-                 use_stroke_number=None, plot_points=False, bonus_points=None, **kwargs):
+                 use_stroke_number=None, plot_points=False, bonus_points=None,
+                 x_rel=False,
+                 **kwargs):
     """ RETURNS DATA IN "LOWER" origin format!!!
         GT is a WIDTH x VOCAB size numpy array
         Start strokes are inferred by [:,2], which should be 1 when the point starts a new stroke
@@ -449,7 +451,13 @@ def draw_from_gt(gt, show=True, save_path=None, min_width=None, height=61,
     if isinstance(right_padding, str):
         right_padding = np.random.randint(6)
 
-    #
+    # Put in absolute space
+    if x_rel:
+        gt = gt.copy()
+        gt[:, 0] = np.cumsum(gt[:, 0])
+
+    if np.isnan(gt).any():
+        assert not np.isnan(gt).any()
     width = ceil(np.max(gt[:, 0]) * height) + right_padding
     width = max(width, height) # needs to be positive
     rescale = height
