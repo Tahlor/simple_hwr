@@ -1000,7 +1000,7 @@ class SynthLoss(CustomLoss):
         if y_hat.shape[-1] == 121:
             split_sizes = [1] + [20] * 6
         else:
-            split_sizes = [1] + [20] * 6 + [1]
+            split_sizes = [1] + [2s0] * 6 + [1]
         y = torch.split(y_hat, split_sizes, dim=2)
 
         sos_logit = y[0].squeeze()
