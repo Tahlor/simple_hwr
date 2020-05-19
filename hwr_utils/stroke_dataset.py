@@ -255,6 +255,12 @@ class StrokeRecoveryDataset(Dataset):
         super().__init__()
         self.max_width = 2000
 
+        if not cnn is None and cnn.cnn_type:
+            self.cnn_type = cnn.cnn_type
+        else:
+            self.cnn_type = "default64"
+
+
         # Make it an iterable
         if isinstance(data_paths, str) or isinstance(data_paths, Path):
             data_paths = [data_paths]
@@ -360,8 +366,6 @@ class StrokeRecoveryDataset(Dataset):
             self.cnn_type = self.cnn.cnn_type
             add_output_size_to_data(data, self.cnn, root=self.root, max_width=self.max_width)
             self.cnn=True # remove CUDA-object from class for multiprocessing to work!!
-        else:
-            self.cnn_type = False
 
         #print(data[0].keys())
 
@@ -724,6 +728,8 @@ def img_width_to_pred_mapping(width, cnn_type="default64"):
         return default64_base(width)*2
     elif cnn_type == "default96":
         return int(default64_base(width)*1.5)
+    elif not cnn_type: # No CNN type specified
+        return None
     else:
         raise Exception(f"Unknown CNN type {cnn_type}")
 
