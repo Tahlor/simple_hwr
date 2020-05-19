@@ -255,6 +255,12 @@ class StrokeRecoveryDataset(Dataset):
         super().__init__()
         self.max_width = 2000
 
+        if not cnn is None and cnn.cnn_type:
+            self.cnn_type = cnn.cnn_type
+        else:
+            self.cnn_type = "default64"
+
+
         # Make it an iterable
         if isinstance(data_paths, str) or isinstance(data_paths, Path):
             data_paths = [data_paths]
