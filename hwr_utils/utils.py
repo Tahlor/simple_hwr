@@ -842,6 +842,7 @@ def save_model_stroke(config, bsf=False):
     if bsf:
         path = os.path.join(config["results_dir"], "BSF")
         mkdir(path)
+        logger.info(f"Saving BSF to {path}")
     else:
         path = config["results_dir"]
 
@@ -859,16 +860,17 @@ def save_model_stroke(config, bsf=False):
     #config["main_model_path"] = os.path.join(path, "{}_model.pt".format(config['name']))
 
     # Make resume model be the most recent
-    config["main_model_path"] = os.path.join(config["results_dir"], "{}_model.pt".format(config['name']))
+    model_filename = "{}_model.pt".format(config['name'])
+    config["main_model_path"] = os.path.join(config["results_dir"], model_filename)
 
-    torch.save(state_dict, config["main_model_path"])
+    torch.save(state_dict, os.path.join(path, model_filename))
     save_stats_stroke(config, bsf)
 
     # Save visdom
     if config["use_visdom"]:
         try:
-            path = os.path.join(path, "visdom.json")
-            config["visdom_manager"].save_env(file_path=path)
+            visdom_path = os.path.join(path, "visdom.json")
+            config["visdom_manager"].save_env(file_path=visdom_path)
         except:
             warnings.warn(f"Unable to save visdom to {path}; is it started?")
             config["use_visdom"] = False

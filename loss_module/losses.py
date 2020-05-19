@@ -1032,12 +1032,14 @@ class SynthLoss(CustomLoss):
         X = -Z / (2 * (epsilon + 1 - rho.pow(2)))
 
         log_sum_exp = torch.logsumexp(log_constant + X, 2)
+        sos_points = targets[:, :, 2]==1
+        bonus_sos_loss = -log_sum_exp[sos_points] * 3 # give SOS points an additional 3x the gradient update
 
         if len(sos_logit.shape)==1:
             sos_logit = sos_logit.unsqueeze(0)
         loss_t = -log_sum_exp + BCE(sos_logit, targets[:, :, 2]) # SOS 29,394
         loss = torch.sum(loss_t * mask.squeeze(2))
-        return loss
+        return loss + torch.sum(bonus_sos_loss)
 
 
 def to_value(loss_tensor):
