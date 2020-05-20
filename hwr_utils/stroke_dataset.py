@@ -571,7 +571,7 @@ class StrokeRecoveryDataset(Dataset):
 
         return {
             "line_img": img, # H,W,C
-            "gt": gt,
+            "gt": gt, # B, W, 3/4
             "gt_reverse_strokes": gt_reverse_strokes,
             "sos_args": sos_args,
             "path": image_path,
@@ -582,7 +582,7 @@ class StrokeRecoveryDataset(Dataset):
             "kdtree": kdtree, # Will force preds to get nearer to nearest GTs; really want GTs forced to nearest pred; this will finish strokes better
             "gt_idx": idx,
             "predicted_strokes_gt": None,
-            "feature_map_width": img_width_to_pred_mapping(img.shape[1], self.cnn_type)
+            "feature_map_width": gt.shape[1] #img_width_to_pred_mapping(img.shape[1], self.cnn_type)
         }
 
 def create_gts_from_raw_dict(item, interval, noise, gt_format=None):
@@ -814,7 +814,7 @@ def test_padding(pad_list, func):
     return x #[0,0]
 
 TYPE = np.float32 #np.float16
-def collate_stroke(batch, device="cpu", gt_opts=None):
+def collate_stroke(batch, device="cpu", gt_opts=None, post_length_buffer=20):
     """ Pad ground truths with 0's
         Report lengths to get accurate average loss
 
@@ -876,7 +876,7 @@ def collate_stroke(batch, device="cpu", gt_opts=None):
         # No EOS specified for x_rel
 
         mask[i, :len(l), 0] = 1
-        feature_map_mask[i, :batch[i]['feature_map_width']] = 1
+        feature_map_mask[i, :batch[i]['feature_map_width']+post_length_buffer] = 1 # keep predicting after
 
         all_labels_numpy.append(l)
         start_points.append(torch.from_numpy(batch[i]['start_points'].astype(TYPE)).to(device))

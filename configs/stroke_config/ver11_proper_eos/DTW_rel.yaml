@@ -13,6 +13,7 @@ load_path: /home/taylor/github/simple_hwr/RESULTS/pretrained/normal_SOS_EOS_ORDE
 TESTING: false # this is for debugging, do it on a small dataset
 load_path: ./RESULTS/pretrained/adapted_v2/dtw_adaptive_new2_restartLR_model.pt # GT3
 load_path: ./RESULTS/pretrained/with_EOS/normal_preload_model.pt # GT4
+load_path: /home/taylor/shares/SuperComputerHWR/taylor_simple_hwr/RECENT.lnk2/DTW_rel_super_model.pt
 
 load_optimizer: false # load LR and per-parameter LR's from saved state
 reset_LR: true # reset the global LR if loading optimizer - this resets it based on epoch
@@ -37,7 +38,7 @@ dataset:
   include_synthetic: true
   num_of_channels: 1
   image_prep: pil_with_distortion
-  adapted_gt_path: ./RESULTS/pretrained/training_dataset_4.npy
+  #adapted_gt_path: ./RESULTS/pretrained/training_dataset_4.npy
 
 # Training data
 #dataset_folder: online_coordinate_data/8_stroke_vSmall_16
