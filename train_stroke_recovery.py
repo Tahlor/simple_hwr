@@ -183,9 +183,9 @@ def graph(batch, config=None, preds=None, _type="test", save_folder="auto", epoc
                 idx = config.gt_format.index("stroke_number")
                 coords[idx] = relativefy_numpy(coords[idx], reverse=False)
 
-            if "x_rel" in config.gt_format:
-                idx = config.gt_format.index("x_rel")
-                coords[idx] = relativefy_numpy(coords[idx], reverse=True) # take CUMSUM
+        if "x_rel" in config.gt_format:
+            idx = config.gt_format.index("x_rel")
+            coords[idx] = relativefy_numpy(coords[idx], reverse=True) # take CUMSUM
 
         # Flip everything for PIL
         # gt_img = torch.flip(gt_img, (0,))
