@@ -181,7 +181,9 @@ class TrainerStrokeRecovery(Trainer):
         ## Shorten - label lengths currently = width of image after CNN
         truncate_window = 0 if truncate else 20
         if not label_lengths is None: #and truncate_window >= 0:
-            preds = TrainerStrokeRecovery._truncate(preds, label_lengths, window=truncate_window) # Convert square torch object to a list, removing predictions related to padding
+            # Convert square torch object to a list, removing predictions related to padding
+            # Add a buffer of 20, so that each pred goes 20 past the EOS
+            preds = TrainerStrokeRecovery._truncate(preds, label_lengths, window=truncate_window)
 
         # THIS IS A "PRE" ACTIVATION, MUST NOT BE DONE DURING TRAINING!
         if (sigmoid_activations or relu_activations) and not train:

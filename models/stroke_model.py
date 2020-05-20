@@ -474,7 +474,8 @@ class AlexGraves2(AlexGraves):
         hidden, # (BRNN_HIDDEN, BRNN_CELL), (RNN_HIDDEN, RNN_CELL)
         window_vector,
         kappa,
-        bias=10, # how close to max argument to be
+        bias=10,  # how close to max argument to be
+        gts=None,
         **kwargs):
 
         seq_len = 0
@@ -485,7 +486,7 @@ class AlexGraves2(AlexGraves):
             #print("batch_size:", batch_size)
             Z = torch.zeros((batch_size, 1, self.gt_size)).to(self.device)
             eos = 0
-            while seq_len < 2000 and tensor_sum(eos) < batch_size/2:
+            while seq_len < 400: # and tensor_sum(eos) < batch_size/2:
                 y_hat, hidden, window_vector, kappa, _ = self.forward(
                     inputs=Z,
                     img=None,
