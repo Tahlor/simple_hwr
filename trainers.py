@@ -392,9 +392,11 @@ class AlexGravesTrainer(Trainer):
                         "prev_window_vec": initial_window_vector,
                         "prev_kappa": initial_kappa,
                         "feature_maps": feature_maps,
-                        "is_map": False}
+                        #"lengths": item["label_lengths"],
+                        "is_map": False,
+                        "reset": True} # reset hidden/cell states
 
-        y_hat, states, window_vec, prev_kappa, eos = self.eval(model_input) # BATCH x 1 x H x W
+        y_hat, states, window_vec, prev_kappa, eos = self.eval(model_input, ) # BATCH x 1 x H x W
         self.config.counter.update(epochs=0, instances=np.sum(item["label_lengths"]), updates=1)
         loss_tensor, loss = self.loss_criterion.main_loss(y_hat.cpu(), item, suffix=suffix, targ_key="rel_gt")
 
@@ -410,7 +412,8 @@ class AlexGravesTrainer(Trainer):
                                         feature_maps_mask=feature_maps_mask,
                                         hidden=initial_hidden,
                                         window_vector=initial_window_vector,
-                                        kappa=initial_kappa)
+                                        kappa=initial_kappa,
+                                        reset=True)
             # Convert to absolute coords
             preds[:,:,0:1] = np.cumsum(preds[:,:,0:1], axis=1)
             preds = torch.from_numpy(preds)

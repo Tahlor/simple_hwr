@@ -13,10 +13,9 @@ load_path: ./RESULTS/pretrained/adapted_v2/dtw_adaptive_new2_restartLR_model.pt 
 load_path: ./RESULTS/pretrained/with_EOS/normal_preload_model.pt # GT4
 load_path: /media/data/GitHub/simple_hwr/results/stroke_config/ver12_AlexGraves/20200513_223906-AlexGraves_MAIN/AlexGraves_model.pt
 load_path: /media/data/GitHub/simple_hwr/results/stroke_config/ver12_AlexGraves/20200519_173155-AlexGraves2/AlexGraves2_model.pt
-load_path: false
 
-load_optimizer: false # load LR and per-parameter LR's from saved state
-reset_LR: true # reset the global LR if loading optimizer - this resets it based on epoch
+load_optimizer: true # load LR and per-parameter LR's from saved state
+reset_LR: false # reset the global LR if loading optimizer - this resets it based on epoch
 
 results_dir_override: # will override the subexperiment folder logic
 test_only: false # Do not train
@@ -62,7 +61,7 @@ scheduler_gamma: .95         # LR decay rate
 
 test_size: null
 train_size: null
-batch_size: 25
+batch_size: 24
 
 # interpolated_sos: interpolated # normal: use 1's for starts; interpolated: start is a "0" and increases from there based on distance of stroke
 gt_format: # if relative etc., specify that here; e.g., opts:rel

@@ -375,7 +375,7 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
 
 class AlexGraves2(AlexGraves):
     def __init__(self, hidden_size=400,
-                 n_layers=3,
+                 n_layers=2,
                  output_size=122,
                  window_size=1024, # dim of feature map
                  cnn_type="default",
@@ -392,9 +392,9 @@ class AlexGraves2(AlexGraves):
             cnn_type:
             **kwargs:
         """
-        super().__init__(hidden_size=hidden_size,
-                         n_layers=n_layers,
-                         output_size=output_size,
+        super().__init__(hidden_size=hidden_size, # 400
+                         n_layers=n_layers, # 2
+                         output_size=output_size, # 20*6+2 (EOS,SOS)
                          window_size=window_size,
                          cnn_type=cnn_type,
                          device=device,
@@ -402,14 +402,18 @@ class AlexGraves2(AlexGraves):
                          **kwargs)
 
         # Create model
-        self.brnn1 = BidirectionalRNN(nIn=1024, nHidden=hidden_size, nOut=hidden_size, dropout=.5, num_layers=2,
-                                    rnn_constructor=nn.LSTM, batch_first=True, return_states=True)
+        hidden_size_factor = 2
+        self.brnn1 = BidirectionalRNN(nIn=1024, nHidden=hidden_size, nOut=hidden_size*hidden_size_factor,
+                                      dropout=.5, num_layers=n_layers,
+                                      rnn_constructor=nn.LSTM,
+                                      batch_first=True,
+                                      return_states=True)
 
-        self.rnn2 = BidirectionalRNN(nIn=hidden_size+self.gt_size,
+        self.rnn2 = BidirectionalRNN(nIn=hidden_size*hidden_size_factor+self.gt_size,
                                      nHidden=hidden_size,
                                      nOut=output_size,
                                      dropout=.5,
-                                     num_layers=2,
+                                     num_layers=n_layers,
                                      rnn_constructor=nn.LSTM,
                                      bidirectional=False,
                                      batch_first=True,
@@ -420,13 +424,14 @@ class AlexGraves2(AlexGraves):
         inputs, # the GTs that start with 0
         img,   #
         img_mask, # ignore
-        initial_hidden, # RNN state
+        initial_hidden=None, # RNN state
         prev_window_vec=None,
         prev_kappa=None,
         is_map=False,
         feature_maps=None,
         prev_eos=None,
         lengths=None,
+        reset=False,
         **kwargs
     ):
         batch_size = inputs.shape[0]
@@ -437,7 +442,7 @@ class AlexGraves2(AlexGraves):
         shp = inputs.shape[1],feature_maps.shape[2]
         feature_maps_upsample = torch.nn.functional.interpolate(feature_maps.unsqueeze(0),
                                                                 size=shp,
-                                                                mode='nearest',
+                                                                mode='bilinear',
                                                                 align_corners=None).squeeze(0)
 
         # Pack it up (pack it in)
@@ -446,23 +451,27 @@ class AlexGraves2(AlexGraves):
         # print("FM", feature_maps_upsample.shape, feature_maps_upsample.stride())
         # print("IN", inputs.shape)
 
-        if len(initial_hidden[0].shape) == 4:
-            state1, state2 = initial_hidden
-            #print(state1.shape, state2.shape, state1)
+        if reset:
+            brnn_states, rnn_states = None, None
         else:
-            state1 = state2 = None
+            brnn_states, rnn_states = initial_hidden
 
-        brnn_output, brnn_states = self.brnn1(feature_maps_upsample, state1) # B, W, hidden
+        brnn_output, brnn_states = self.brnn1(feature_maps_upsample, brnn_states) # B, W, hidden
         rnn_input = torch.cat((inputs, brnn_output), dim=2)#.contiguous() # B,W, hidden+4
-        rnn_output, rnn_states = self.rnn2(rnn_input, state2) # B, W, hidden
+        rnn_output, rnn_states = self.rnn2(rnn_input, rnn_states) # B, W, hidden
         #print(len(brnn_states), brnn_states[0].shape, len(rnn_states), rnn_states[0].shape) # state1.shape, state2.shape,
         return rnn_output, [brnn_states, rnn_states], None, None, None
+        # RNN states: tuple (hidden state, cell state)
+            # # layers, B, Hidden Dim; 2,25,400
+
+        # BRNN states: tuple (size=number of layers)
+            # (# layers * 2 bidirectional), B, Hidden Dim; 4,25,400
 
     def generate(
         self,
         feature_maps,
         feature_maps_mask,
-        hidden,
+        hidden, # (BRNN_HIDDEN, BRNN_CELL), (RNN_HIDDEN, RNN_CELL)
         window_vector,
         kappa,
         bias=10, # how close to max argument to be
@@ -470,13 +479,14 @@ class AlexGraves2(AlexGraves):
 
         seq_len = 0
         gen_seq = []
+        hidden = None, None
         with torch.no_grad():
             batch_size = feature_maps.shape[0]
             #print("batch_size:", batch_size)
             Z = torch.zeros((batch_size, 1, self.gt_size)).to(self.device)
             eos = 0
             while seq_len < 2000 and tensor_sum(eos) < batch_size/2:
-                y_hat, state, window_vector, kappa, _ = self.forward(
+                y_hat, hidden, window_vector, kappa, _ = self.forward(
                     inputs=Z,
                     img=None,
                     feature_maps=feature_maps,
@@ -486,10 +496,6 @@ class AlexGraves2(AlexGraves):
                     prev_kappa=kappa,
                     previous_eos=eos
                 )
-
-                _hidden = torch.cat([s[0] for s in state], dim=0)
-                _cell = torch.cat([s[1] for s in state], dim=0)
-                hidden = (_hidden, _cell)
 
                 y_hat = y_hat.squeeze(dim=1)
                 Z = model_utils.sample_batch_from_out_dist2(y_hat, bias, gt_size=self.gt_size)
@@ -505,6 +511,14 @@ class AlexGraves2(AlexGraves):
         return gen_seq
 
 
+    def init_hidden(self, batch_size, device):
+        initial_hidden = (
+            torch.zeros(self.n_layers, batch_size, self.hidden_size, device=device),
+            torch.zeros(self.n_layers, batch_size, self.hidden_size, device=device),
+        )
+        window_vector = torch.zeros(batch_size, 1, self.vocab_size, device=device)
+        kappa = torch.zeros(batch_size, 10, 1, device=device)
+        return initial_hidden, window_vector, kappa
 
 
 
