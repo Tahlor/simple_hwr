@@ -1060,3 +1060,25 @@ class SynthLoss(CustomLoss):
 
 def to_value(loss_tensor):
     return torch.sum(loss_tensor.cpu(), 0, keepdim=False).item()
+
+
+# def map_vectors_to_stuff():
+#     rel_preds
+#     rel_targs
+#     cum_preds
+#     cum_targs
+#     targs = cum_preds - cum_targs
+#     for each timestep:
+#         new_targs = abs_targs - current_location
+#         new_targs *= pred # create the distribution
+#     # just take the max and plug these decisions into DTW
+#         # might not work right - the selection is still ex nihilo?
+          # ensure that it is "nudged" to a prediction that matches to a different vector
+#
+#     # OR do some probability stuff
+            # could make nearby GTs non-zero probability
+            # how to do probability stuff + DTW?
+#
+#     true_pred
+#
+#     pass
