@@ -1005,9 +1005,12 @@ class SynthLoss(CustomLoss):
         mask = item["mask"]
         epsilon = 1e-6
         if y_hat.shape[-1] == 121:
+            has_eos = False
             split_sizes = [1] + [20] * 6
         else:
+            has_eos = True
             split_sizes = [1] + [20] * 6 + [1]
+
         y = torch.split(y_hat, split_sizes, dim=2)
 
         sos_logit = y[0].squeeze()
@@ -1042,9 +1045,15 @@ class SynthLoss(CustomLoss):
         sos_points = targets[:, :, 2]==1
         bonus_sos_loss = -log_sum_exp[sos_points] * 3 # give SOS points an additional 3x the gradient update
 
-        if len(sos_logit.shape)==1:
+        if len(sos_logit.shape)==1: # SOS logit needs 2 dimensions, BATCH x W
             sos_logit = sos_logit.unsqueeze(0)
-        loss_t = -log_sum_exp + BCE(sos_logit, targets[:, :, 2]) # SOS 29,394
+        loss_t = -log_sum_exp + BCEWithLogitsLoss(sos_logit, targets[:, :, 2]) # SOS 29,394
+
+        # Calculate EOS loss
+        if has_eos:
+            eos_logit = y[-1].squeeze()
+            loss_t += BCEWithLogitsLoss(eos_logit, targets[:, :, 3])
+
         loss = torch.sum(loss_t * mask.squeeze(2))
         return loss + torch.sum(bonus_sos_loss)
 
