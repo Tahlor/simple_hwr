@@ -565,7 +565,10 @@ class StrokeRecoveryDataset(Dataset):
         else:
             start_points = np.array([])
 
-        kdtree = KDTree(gt[:, 0:2]) if self.config and "nnloss" in [loss["name"] for loss in self.config.loss_fns] else None
+        if self.config and ("nnloss" in [loss["name"] for loss in self.config.loss_fns] or self.config.dataset.kdtree):
+            kdtree = KDTree(gt[:, 0:2])
+        else:
+            kdtree = None
 
         np.testing.assert_allclose(item["gt"].shape, gt.shape)
 

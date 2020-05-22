@@ -162,6 +162,7 @@ stroke_defaults = {"SMALL_TRAINING": False,
                                 "adapted_gt_path": None,
                                 "linewidth": None,
                                 "resample": True,
+                                "kdtree": False
                                 },
                     "coordconv_method": "y_abs",
                     "model": {"nHidden": 128, "num_layers": 2},

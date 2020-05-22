@@ -522,9 +522,143 @@ class AlexGraves2(AlexGraves):
         return initial_hidden, window_vector, kappa
 
 
+class TMinus1(nn.module):
+    def __init__(self, vocab_size=4, device="cuda", cnn_type="default64", first_conv_op=CoordConv, first_conv_opts=None, **kwargs):
+        super().__init__()
+        self.__dict__.update(kwargs)
+        self.use_gradient_override = False
+        if not "nHidden" in kwargs:
+            self.nHidden = 128
+        if not "num_layers" in kwargs:
+            self.num_layers = 2
 
+        self.vocab_size = vocab_size
+        self.n_layers = self.num_layers
+        self.cnn_type = cnn_type
+        self.gt_size = 4 # X,Y,SOS,EOS
+        self.device = device
+        #self.text_mask = torch.ones(32, 64).to("cuda")
 
+        if first_conv_op:
+            first_conv_op = CoordConv
+        if not no_gpu_testing():
+            self.rnn = BidirectionalRNN(nIn=1024, nHidden=self.nHidden, nOut=vocab_size, dropout=.5, num_layers=self.num_layers, rnn_constructor=nn.LSTM)
+            self.cnn = CNN(nc=1, first_conv_op=first_conv_op, cnn_type=cnn_type, first_conv_opts=first_conv_opts)
+        else:
+            self.rnn = BidirectionalRNN(nIn=64, nHidden=1, nOut=vocab_size, dropout=.5, num_layers=1,
+                                        rnn_constructor=nn.LSTM)
+            self.cnn = fake_cnn
+            self.cnn.cnn_type = "FAKE"
+            print("DALAi!!!!")
 
+        self.cnn = CNN(nc=1, cnn_type=self.cnn_type) # output dim: Width x Batch x 1024
+
+        # Create model
+        hidden_size_factor = 2
+        self.brnn1 = BidirectionalRNN(nIn=1024, nHidden=self.nHidden, nOut=self.nHidden*hidden_size_factor,
+                                      dropout=.5, num_layers=self.n_layers,
+                                      rnn_constructor=nn.LSTM,
+                                      batch_first=True,
+                                      return_states=True)
+
+        self.rnn2 = BidirectionalRNN(nIn=self.nHidden*hidden_size_factor+self.gt_size,
+                                     nHidden=self.nHidden,
+                                     nOut=self.gt_size,
+                                     dropout=.5,
+                                     num_layers=self.n_layers,
+                                     rnn_constructor=nn.LSTM,
+                                     bidirectional=False,
+                                     batch_first=True,
+                                     return_states=True)
+
+    def forward1(
+        self,
+        inputs, # the GTs that start with 0
+        img,
+        feature_maps=None,
+        inital_hidden=None,
+        lengths=None,
+        reset=False,
+        **kwargs
+    ):
+        if feature_maps is None:
+            feature_maps = self.get_feature_maps(img) # B,W,1024
+
+        # Upsample to be the same length as the (lontest) GT-strokepoint-width dimension
+        shp = inputs.shape[1]
+        feature_maps_upsample = torch.nn.functional.interpolate(feature_maps.permute(0,2,1),
+                                                                size=shp,
+                                                                mode='linear',
+                                                                align_corners=None).permute(0,2,1)
+
+        # Pack it up (pack it in)
+        if lengths is not None:
+            feature_maps_upsample = torch.nn.utils.rnn.pack_padded_sequence(feature_maps_upsample, lengths, batch_first=True, enforce_sorted=False)
+
+        if reset or inital_hidden is None:
+            brnn_states, rnn_states = None, None
+        else:
+            brnn_states, rnn_states = initial_hidden
+
+        brnn_output, brnn_states = self.brnn1(feature_maps_upsample, brnn_states) # B, W, hidden
+        rnn_input = torch.cat((inputs, brnn_output), dim=2)#.contiguous() # B,W, hidden+4
+        rnn_output, rnn_states = self.rnn2(rnn_input, rnn_states) # B, W, hidden
+
+        return rnn_output, [brnn_states, rnn_states], None, None, None
+
+        # RNN states: tuple (hidden state, cell state)
+            # # layers, B, Hidden Dim; 2,25,400
+
+        # BRNN states: tuple (size=number of layers)
+            # (# layers * 2 bidirectional), B, Hidden Dim; 4,25,400
+
+    def forward(
+        self,
+        item,
+        inputs=None,
+        img=None,
+        feature_maps=None,
+        inital_hidden=None,
+        lengths=None,
+        reset=False,
+        **kwargs
+    ):
+        if feature_maps is None:
+            feature_maps = self.get_feature_maps(img) # B,W,1024
+
+        # Upsample to be the same length as the (lontest) GT-strokepoint-width dimension
+        shp = inputs.shape[1]
+        feature_maps_upsample = torch.nn.functional.interpolate(feature_maps.permute(0,2,1),
+                                                                size=shp,
+                                                                mode='linear',
+                                                                align_corners=None).permute(0,2,1)
+
+        # Pack it up (pack it in)
+        if lengths is not None:
+            feature_maps_upsample = torch.nn.utils.rnn.pack_padded_sequence(feature_maps_upsample, lengths, batch_first=True, enforce_sorted=False)
+
+        if reset or inital_hidden is None:
+            brnn_states, rnn_states = None, None
+        else:
+            brnn_states, rnn_states = initial_hidden
+
+        brnn_output, brnn_states = self.brnn1(feature_maps_upsample, brnn_states) # B, W, hidden
+
+        input = torch.zeros(inputs[:,0,:].shape).to(self.device)
+        for t in range(feature_maps_upsample.shape[1]):
+            rnn_input = torch.cat((input, brnn_output[:,t]), dim=2)#.contiguous() # B,W, hidden+4
+            rnn_output, rnn_states = self.rnn2(rnn_input, rnn_states) # B, W, hidden
+            # RNN output needs to be added to running sum
+            # gts need to be in absolute coordinates
+            idx = [kd.query(rnn_output[i])[1] for i,kd in enumerate(item["kdtree"])]
+            # inputs[idx] etc
+        return rnn_output, [brnn_states, rnn_states]
+
+        # RNN states: tuple (hidden state, cell state)
+            # # layers, B, Hidden Dim; 2,25,400
+
+        # BRNN states: tuple (size=number of layers)
+            # (# layers * 2 bidirectional), B, Hidden Dim; 4,25,400
 
 
 
