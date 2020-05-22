@@ -125,7 +125,7 @@ class TrainerStrokeRecovery(Trainer):
 
         preds = self.eval(line_imgs, self.model, label_lengths=label_lengths, relative_indices=self.relative_indices,
                           device=self.config.device, gt=item["gt"], train=train, convolve=self.convolve,
-                          truncate=self.truncate)  # This evals and permutes result, Width,Batch,Vocab -> Batch, Width, Vocab
+                          truncate=self.truncate, item=item)  # This evals and permutes result, Width,Batch,Vocab -> Batch, Width, Vocab
 
         loss_tensor, loss = self.loss_criterion.main_loss(preds, item, suffix)
 
@@ -162,11 +162,11 @@ class TrainerStrokeRecovery(Trainer):
     @staticmethod
     def eval(line_imgs, model, label_lengths=None, relative_indices=None, device="cuda",
              gt=None, train=False, convolve=None, sigmoid_activations=None, relu_activations=None,
-             truncate=0):
+             truncate=0, item=None):
         """ For offline data, that doesn't have ground truths
         """
         line_imgs = line_imgs.to(device)
-        pred_logits = model(line_imgs, label_lengths).cpu()
+        pred_logits = model(line_imgs, label_lengths, item=item).cpu()
 
         new_preds = pred_logits
         preds = new_preds.permute(1, 0, 2) # Width,Batch,Vocab -> Batch, Width, Vocab

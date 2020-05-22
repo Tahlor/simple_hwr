@@ -4,7 +4,7 @@ import torch
 from .basic import CNN, BidirectionalRNN
 from .CoordConv import CoordConv
 from hwr_utils.utils import is_dalai, no_gpu_testing, tensor_sum
-import sys
+import sys, random
 sys.path.append("./synthesis")
 #from synthesis.synth_models import models
 from synthesis.synth_models import models as synth_models
@@ -32,16 +32,16 @@ class StrokeRecoveryModel(nn.Module):
             self.cnn.cnn_type = "FAKE"
             print("DALAi!!!!")
 
-    def forward(self, input, lengths):
+    def forward(self, input, lengths, **kwargs):
         if self.training or self.use_gradient_override:
             #print("TRAINING MODE")
-            return self._forward(input, lengths)
+            return self._forward(input, lengths, **kwargs)
         else:
             with torch.no_grad():
                 #print("EVAL MODE")
-                return self._forward(input, lengths)
+                return self._forward(input, lengths, **kwargs)
 
-    def _forward(self, input, lengths=None):
+    def _forward(self, input, lengths=None, **kwargs):
         cnn_output = self.cnn(input) # W, B, 1024
         # w,b,d = cnn_output.shape
         # width_positional = torch.arange(w).repeat(1, w, 1) / 60
@@ -56,7 +56,7 @@ class StrokeRecoveryModel(nn.Module):
         #     rnn_output, _ = torch.nn.utils.rnn.pad_packed_sequence(rnn_output, batch_first=False, enforce_sorted=False)
 
         # sigmoids are done in the loss
-        return rnn_output
+        return rnn_output # W x B x GTshape
 
 
 def fake_cnn(img):
@@ -96,7 +96,7 @@ class StartEndPointReconstructor(nn.Module):
             with torch.no_grad():
                 return self._forward(**kwargs)
 
-    def _forward(self, start_end_points, image):
+    def _forward(self, start_end_points, image, **kwargs):
         """
 
         Args:
@@ -522,7 +522,7 @@ class AlexGraves2(AlexGraves):
         return initial_hidden, window_vector, kappa
 
 
-class TMinus1(nn.module):
+class TMinus1(nn.Module):
     def __init__(self, vocab_size=4, device="cuda", cnn_type="default64", first_conv_op=CoordConv, first_conv_opts=None, **kwargs):
         super().__init__()
         self.__dict__.update(kwargs)
@@ -571,6 +571,9 @@ class TMinus1(nn.module):
                                      batch_first=True,
                                      return_states=True)
 
+    def get_feature_maps(self, img):
+        return self.cnn(img).permute(1, 0, 2)  # B x W x 1024
+
     def forward1(
         self,
         inputs, # the GTs that start with 0
@@ -581,6 +584,20 @@ class TMinus1(nn.module):
         reset=False,
         **kwargs
     ):
+        """ GTS can be injected here, fast
+
+        Args:
+            inputs:
+            img:
+            feature_maps:
+            inital_hidden:
+            lengths:
+            reset:
+            **kwargs:
+
+        Returns:
+
+        """
         if feature_maps is None:
             feature_maps = self.get_feature_maps(img) # B,W,1024
 
@@ -614,18 +631,38 @@ class TMinus1(nn.module):
 
     def forward(
         self,
-        item,
+        img,
+        label_lengths=None,
+        item=None,
         inputs=None,
-        img=None,
         feature_maps=None,
         inital_hidden=None,
         lengths=None,
         reset=False,
+        mode="random", # always_fix, never_fix
         **kwargs
     ):
+        """ Manual calculation for each step
+
+        Args:
+            item:
+            inputs:
+            img:
+            feature_maps:
+            inital_hidden:
+            lengths:
+            reset:
+            mode: always_fix, never_fix
+            **kwargs:
+
+        Returns:
+
+        """
+
         if feature_maps is None:
             feature_maps = self.get_feature_maps(img) # B,W,1024
 
+        inputs = item["gt"]
         # Upsample to be the same length as the (lontest) GT-strokepoint-width dimension
         shp = inputs.shape[1]
         feature_maps_upsample = torch.nn.functional.interpolate(feature_maps.permute(0,2,1),
@@ -644,15 +681,36 @@ class TMinus1(nn.module):
 
         brnn_output, brnn_states = self.brnn1(feature_maps_upsample, brnn_states) # B, W, hidden
 
-        input = torch.zeros(inputs[:,0,:].shape).to(self.device)
+        _input = torch.zeros(inputs[:,0,:].shape).to(self.device) # 28x4
+        output = []
+        curr_locations = _input[:,:2] # B x 2
         for t in range(feature_maps_upsample.shape[1]):
-            rnn_input = torch.cat((input, brnn_output[:,t]), dim=2)#.contiguous() # B,W, hidden+4
+            rnn_input = torch.cat((_input, brnn_output[:,t]), dim=1).unsqueeze(1 )#.contiguous() # B,1,hidden+4
             rnn_output, rnn_states = self.rnn2(rnn_input, rnn_states) # B, W, hidden
-            # RNN output needs to be added to running sum
-            # gts need to be in absolute coordinates
-            idx = [kd.query(rnn_output[i])[1] for i,kd in enumerate(item["kdtree"])]
-            # inputs[idx] etc
-        return rnn_output, [brnn_states, rnn_states]
+            if (mode=="random" and random.random()) < .5 or mode=="always_fix":
+                # RNN output needs to be added to running sum
+                # gts need to be in absolute coordinates
+                new_points = (rnn_output.squeeze(1)[:,:2]+curr_locations).detach().cpu() # BATCH X 4
+
+                # Query GTs, find best prediction
+                idx = [kd.query(new_points[i,:2])[1] if t < item["label_lengths"][i] else -1 for i,kd in enumerate(item["kdtree"])]
+                i = range(0, len(idx)), idx
+                best_gts = item["gt"][i][:,:2].to(self.device) # Bx2; these need to be ABS
+
+                # Calculate delta -- vector to push prediction to nearest GT
+                delta = best_gts - (curr_locations + rnn_output[:, -1, :2].detach()) # vector to push
+                rnn_output[:, -1, :2] += delta #.to(self.device)
+
+                # Curr location is just this best position, feed into next iteration
+                curr_locations = best_gts
+                output.append(rnn_output)
+                _input = rnn_output.detach().squeeze(1)
+            else:
+                curr_locations += rnn_output[:, -1, :2].detach()
+                output.append(rnn_output)
+
+        rnn_output = torch.cat(output, axis=1)
+        return rnn_output.permute(1, 0, 2) # Convert to W, B, Vocab #, [brnn_states, rnn_states]
 
         # RNN states: tuple (hidden state, cell state)
             # # layers, B, Hidden Dim; 2,25,400
