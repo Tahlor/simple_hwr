@@ -162,6 +162,7 @@ stroke_defaults = {"SMALL_TRAINING": False,
                                 "adapted_gt_path": None,
                                 "linewidth": None,
                                 "resample": True,
+                                "kdtree": False
                                 },
                     "coordconv_method": "y_abs",
                     "model": {"nHidden": 128, "num_layers": 2},
@@ -1115,12 +1116,16 @@ def create_resume_training_stroke(config):
         yaml.dump(export_config, outfile, default_flow_style=False, sort_keys=False)
 
     st = inspect.stack()
-    frm = st[-1]
-    mod = inspect.getmodule(frm[0]).__name__
-
+    frm = [s.filename for s in st if s]
+    mod = [s for s in frm if "train" in Path(s).stem]
     make_resume_sh(sh_path=Path(output) / "resume.sh",
                    config_path=Path(output) / 'RESUME.yaml',
-                   python_script=mod)
+                   python_script=mod[-1])
+
+    # st = inspect.stack()
+    # frm = st[-1]
+    # mod = inspect.getmodule(frm[0]).__name__
+
 
 def create_resume_training(config):
     #export_config = copy.deepcopy(config)
@@ -1511,6 +1516,9 @@ def make_resume_sh( sh_path, config_path, python_script="train_stroke_recovery.p
     Returns:
 
     """
+    if not python_script:
+        python_script = "train_stroke_recovery.py"
+
     config_path = Path(config_path).absolute()
     if python_script[-3:] != ".py":
         python_script += ".py"

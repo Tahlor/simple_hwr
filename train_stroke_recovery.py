@@ -331,6 +331,7 @@ def main(config_path, testing=False):
               "start_point_attn_full": start_points.StartPointAttnModelFull,
               "normal":stroke_model.StrokeRecoveryModel,
               "AlexGraves":stroke_model.AlexGraves,
+              "TMinus1": stroke_model.TMinus1,
               "AlexGraves2":stroke_model.AlexGraves2}
 
     model_class = model_dict[config.model_name]
