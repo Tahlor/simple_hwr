@@ -459,7 +459,7 @@ class AlexGraves2(AlexGraves):
         brnn_output, brnn_states = self.brnn1(feature_maps_upsample, brnn_states) # B, W, hidden
         rnn_input = torch.cat((inputs, brnn_output), dim=2)#.contiguous() # B,W, hidden+4
         rnn_output, rnn_states = self.rnn2(rnn_input, rnn_states) # B, W, hidden
-        #print(len(brnn_states), brnn_states[0].shape, len(rnn_states), rnn_states[0].shape) # state1.shape, state2.shape,
+
         return rnn_output, [brnn_states, rnn_states], None, None, None
         # RNN states: tuple (hidden state, cell state)
             # # layers, B, Hidden Dim; 2,25,400
