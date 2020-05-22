@@ -1115,7 +1115,7 @@ def create_resume_training_stroke(config):
         yaml.dump(export_config, outfile, default_flow_style=False, sort_keys=False)
 
     st = inspect.stack()
-    frm = inspect.stack()[1]
+    frm = st[-1]
     mod = inspect.getmodule(frm[0]).__name__
 
     make_resume_sh(sh_path=Path(output) / "resume.sh",
