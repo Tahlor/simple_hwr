@@ -1,3 +1,4 @@
+import inspect
 import itertools
 import numbers
 import socket
@@ -1113,6 +1114,14 @@ def create_resume_training_stroke(config):
     with open(Path(output / 'TEST.yaml'), 'w') as outfile:
         yaml.dump(export_config, outfile, default_flow_style=False, sort_keys=False)
 
+    st = inspect.stack()
+    frm = inspect.stack()[1]
+    mod = inspect.getmodule(frm[0]).__name__
+
+    make_resume_sh(sh_path=Path(output) / "resume.sh",
+                   config_path=Path(output) / 'RESUME.yaml',
+                   python_script=mod)
+
 def create_resume_training(config):
     #export_config = copy.deepcopy(config)
     export_config = config.copy()
@@ -1491,6 +1500,52 @@ def plot_loss(config, loss):
     except Exception as e:
         logger.info(f"Problem graphing: {e}")
         pass
+
+def make_resume_sh( sh_path, config_path, python_script="train_stroke_recovery.py"):
+    """
+
+    Args:
+        python_script:
+        config_path:
+
+    Returns:
+
+    """
+    config_path = Path(config_path).absolute()
+    if python_script[-3:] != ".py":
+        python_script += ".py"
+
+    script = f"""
+            #!/bin/bash
+            #SBATCH --gres=gpu:1
+            #SBATCH -C 'rhel7&pascal'
+            #SBATCH --mem-per-cpu 12500MB
+            #SBATCH --ntasks 8
+            #SBATCH --nodes=1
+            #SBATCH --output="/panfs/pan.fsl.byu.edu/scr/grp/fslg_hwr/taylor_simple_hwr/slurm_scripts/scripts/stroke_config/ver11_proper_eos/log_dtw_adaptive_no_truncation_default64v2.slurm"
+            #SBATCH --time 72:00:00
+            #SBATCH --mail-user=taylornarchibald@gmail.com   # email address
+            #SBATCH --mail-type=BEGIN
+            #SBATCH --mail-type=END
+            #SBATCH --mail-type=FAIL
+            
+            #%Module
+            
+            module purge
+            module load cuda/10.1
+            module load cudnn/7.6
+            
+            export PATH="/panfs/pan.fsl.byu.edu/scr/grp/fslg_hwr/env/hwr4_env:$PATH"
+            eval "$(conda shell.bash hook)"
+            conda activate /panfs/pan.fsl.byu.edu/scr/grp/fslg_hwr/env/hwr4_env
+            
+            cd "/panfs/pan.fsl.byu.edu/scr/grp/fslg_hwr/taylor_simple_hwr"
+            which python
+            python -u {python_script} --config '{config_path}'
+    """
+    with Path(sh_path).open("w") as f:
+        f.write(script)
+
 
 def graph_generated_img():
     # save the image and save the GT image next to it
