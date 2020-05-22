@@ -112,7 +112,7 @@ pred_opts: # if relative etc., specify that here; e.g., opts:rel opts:cumsum etc
 #      - y
 #    subcoef: 1,1
 loss_fns2:
-  - name: dtw_adaptive
+  - name: dtw
     coef: 1
     gts:
       - x
