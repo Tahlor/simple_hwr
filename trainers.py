@@ -151,7 +151,8 @@ class TrainerStrokeRecovery(Trainer):
         if preds[0].shape[-1] == 4:
             for i in range(len(preds)):
                 eos = np.argmax(preds[i][:,3]>.5)
-                preds[i] = preds[i][:eos+1]
+                if eos >= 300:
+                    preds[i] = preds[i][:eos+1]
 
         return loss, preds, None
 
