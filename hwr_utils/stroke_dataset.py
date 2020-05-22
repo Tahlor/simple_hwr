@@ -722,7 +722,7 @@ def img_width_to_pred_mapping(width, cnn_type="default64"):
     # If using default
     if cnn_type=="default":
         return int(width / 4) + 1
-    elif cnn_type in ("default64", "FAKE"):
+    elif cnn_type in ("default64", "FAKE", "default64v2"):
         return default64_base(width)
     elif cnn_type == "default128":
         return default64_base(width)*2

@@ -174,8 +174,10 @@ class CNN(nn.Module):
 
         if cnn_type in ["default", "intermediates"]:
             self.cnn = self.default_CNN(nc=nc, leakyRelu=leakyRelu)
-        elif "default64" in cnn_type:
+        elif "default64" == cnn_type:
             self.cnn = self.default_CNN64(nc=nc, leakyRelu=leakyRelu)
+        elif "default64v2" in cnn_type:
+            self.cnn = self.default_CNN64v2(nc=nc, leakyRelu=leakyRelu)
         elif "default128" in cnn_type:
             self.cnn = self.default_CNN64(nc=nc, leakyRelu=leakyRelu, multiplier=2)
         elif "default96" in cnn_type:
@@ -243,6 +245,10 @@ class CNN(nn.Module):
 
         return cnn
 
+    def default_CNN64v2(self, *args, **kwargs):
+        cnn = self.default_CNN(*args, **kwargs)
+        cnn.add_module("upsample", Interpolate(size=None, scale_factor=[1,4], mode='bilinear', align_corners=True))
+        return cnn
 
     def default_CNN64(self, nc=3, leakyRelu=False, multiplier=1):
 
