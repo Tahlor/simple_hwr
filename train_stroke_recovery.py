@@ -312,6 +312,7 @@ def main(config_path, testing=False):
     folder = Path(config.dataset_folder)
 
     if config.model_name != "normal":
+
         # SOS will still be the 2 index, just ignore it!
         # config.input_vocab_size = 3
         #input_vocab_size = 3
@@ -322,7 +323,7 @@ def main(config_path, testing=False):
                     "cnn_type":config.cnn_type,
                     "first_conv_op":config.coordconv,
                     "first_conv_opts":config.coordconv_opts,
-                    **config.model}
+                    **config.model_opts}
 
     model_dict = {"start_point_lstm": start_points.StartPointModel,
               "start_point_lstm2":start_points.StartPointModel2,
