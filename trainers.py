@@ -125,7 +125,7 @@ class TrainerStrokeRecovery(Trainer):
 
         preds = self.eval(line_imgs, self.model, label_lengths=label_lengths, relative_indices=self.relative_indices,
                           device=self.config.device, gt=item["gt"], train=train, convolve=self.convolve,
-                          truncate=self.truncate)  # This evals and permutes result, Width,Batch,Vocab -> Batch, Width, Vocab
+                          truncate=self.truncate, item=item)  # This evals and permutes result, Width,Batch,Vocab -> Batch, Width, Vocab
 
         loss_tensor, loss = self.loss_criterion.main_loss(preds, item, suffix)
 
@@ -151,7 +151,8 @@ class TrainerStrokeRecovery(Trainer):
         if preds[0].shape[-1] == 4:
             for i in range(len(preds)):
                 eos = np.argmax(preds[i][:,3]>.5)
-                preds[i] = preds[i][:eos+1]
+                if eos >= 300:
+                    preds[i] = preds[i][:eos+1]
 
         return loss, preds, None
 
@@ -162,11 +163,11 @@ class TrainerStrokeRecovery(Trainer):
     @staticmethod
     def eval(line_imgs, model, label_lengths=None, relative_indices=None, device="cuda",
              gt=None, train=False, convolve=None, sigmoid_activations=None, relu_activations=None,
-             truncate=0):
+             truncate=0, item=None):
         """ For offline data, that doesn't have ground truths
         """
         line_imgs = line_imgs.to(device)
-        pred_logits = model(line_imgs, label_lengths).cpu()
+        pred_logits = model(line_imgs, label_lengths, item=item).cpu()
 
         new_preds = pred_logits
         preds = new_preds.permute(1, 0, 2) # Width,Batch,Vocab -> Batch, Width, Vocab
@@ -386,9 +387,10 @@ class AlexGravesTrainer(Trainer):
         imgs = item["line_imgs"].to(self.config.device)
         feature_maps = self.model.get_feature_maps(imgs)
         feature_maps_mask = item["feature_map_mask"].to(self.config.device)
-        #inputs = item["rel_gt"][:,:-1].to(self.config.device)
-        inputs = torch.zeros(item["rel_gt"][:,:-1].shape).to(self.config.device)
 
+        inputs = item["rel_gt"][:,:-1].to(self.config.device)
+        #inputs = torch.zeros(item["rel_gt"][:,:-1].shape).to(self.config.device)
+        
         model_input = {"inputs": inputs, # the shifted GTs
                         "img": imgs,
                         "img_mask": feature_maps_mask, # ignore
@@ -401,6 +403,7 @@ class AlexGravesTrainer(Trainer):
                         "reset": True} # reset hidden/cell states
 
         y_hat, states, window_vec, prev_kappa, eos = self.eval(model_input, ) # BATCH x 1 x H x W
+        #m = y_hat.detach().cpu().numpy()
         self.config.counter.update(epochs=0, instances=np.sum(item["label_lengths"]), updates=1)
         loss_tensor, loss = self.loss_criterion.main_loss(y_hat.cpu(), item, suffix=suffix, targ_key="rel_gt")
 

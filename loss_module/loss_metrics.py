@@ -118,7 +118,7 @@ def calculate_nn_distance(item, preds):
     batch_size = len(gt)
     for i in range(batch_size):
         # TODO binarize line images and do dist based on that
-        kd = KDTree(preds[i][:, :2])
+        kd = KDTree(preds[i][:, :2].detach().numpy())
         cum_dist = sum(kd.query(gt[i][:, :2])[0])  # How far do we have to move the GT's to match the predictions?
         n_pts += gt[i].shape[0]
 
