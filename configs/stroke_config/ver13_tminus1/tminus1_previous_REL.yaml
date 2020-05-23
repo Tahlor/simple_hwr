@@ -31,8 +31,8 @@ debug: off
 truncate: false
 model_name: TMinus1
 model_opts:
-  rnn_mode: normal
-  mode: never_fix
+  rnn_mode: correct_gts
+  mode: NA
   nHidden": 256
   num_layers": 2
 
@@ -43,7 +43,6 @@ dataset:
   image_prep: pil_with_distortion
   #adapted_gt_path: ./RESULTS/pretrained/training_dataset.npy
   kdtree: true
-
 
 # Training data
 #dataset_folder: online_coordinate_data/8_stroke_vSmall_16
@@ -84,9 +83,9 @@ batch_size: 28
 
 # interpolated_sos: interpolated # normal: use 1's for starts; interpolated: start is a "0" and increases from there based on distance of stroke
 gt_format: # if relative etc., specify that here; e.g., opts:rel
-  - x
+  - x_rel
   - y
-  - stroke_number
+  - sos
   - eos
 
 # NOT IMPLEMENTED
@@ -99,7 +98,7 @@ gt_opts:
 # stroke_number is the cumsum of sos; gt_format, gt_opts, pred_opts: "sos", "cumsum", "cumsum" = "start_stroke", "null", "cumsum"
 # E.g. cumsum will predict RELATIVE positions; if "null" is specified for gt, it will compare to absolute values
 pred_opts: # if relative etc., specify that here; e.g., opts:rel opts:cumsum etc.
-  - cumsum
+  - null
   - null
   - sigmoid # THIS WILL BE A LOGIT
   - sigmoid # 0 - sequence still going 1 - sequence has ended
@@ -117,17 +116,21 @@ pred_opts: # if relative etc., specify that here; e.g., opts:rel opts:cumsum etc
 #      - y
 #    subcoef: 1,1
 loss_fns2:
-  - name: dtw
+  - name: l1_
     coef: 1
     gts:
-      - x
+      - x_rel
       - y
-    dtw_mapping_basis:
-      - x
-      - y
-    cross_entropy_indices: # SIGMOID TAKEN DURING LOSS
-      - stroke_number
+  - name: cross_entropy
+    coef: .01
+    gts:
       - eos
+      - sos
+    activation: sigmoid
+
+#    cross_entropy_indices: # SIGMOID TAKEN DURING LOSS
+#      - stroke_number
+#      - eos
     relativefy_cross_entropy_gt: true #
     window_size: 40
     barron: false
