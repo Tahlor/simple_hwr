@@ -585,7 +585,7 @@ class StrokeRecoveryDataset(Dataset):
             "kdtree": kdtree, # Will force preds to get nearer to nearest GTs; really want GTs forced to nearest pred; this will finish strokes better
             "gt_idx": idx,
             "predicted_strokes_gt": None,
-            "feature_map_width": gt.shape[1] #img_width_to_pred_mapping(img.shape[1], self.cnn_type)
+            "feature_map_width": img_width_to_pred_mapping(img.shape[1], self.cnn_type) # featuer maps not always same width as GT if using attention, window thing
         }
 
 def create_gts_from_raw_dict(item, interval, noise, gt_format=None):
