@@ -388,7 +388,7 @@ class AlexGravesTrainer(Trainer):
         feature_maps_mask = item["feature_map_mask"].to(self.config.device)
         #inputs = item["rel_gt"][:,:-1].to(self.config.device)
         inputs = torch.zeros(item["rel_gt"][:,:-1].shape).to(self.config.device)
-        
+
         model_input = {"inputs": inputs, # the shifted GTs
                         "img": imgs,
                         "img_mask": feature_maps_mask, # ignore
