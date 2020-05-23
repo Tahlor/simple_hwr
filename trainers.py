@@ -387,6 +387,7 @@ class AlexGravesTrainer(Trainer):
         imgs = item["line_imgs"].to(self.config.device)
         feature_maps = self.model.get_feature_maps(imgs)
         feature_maps_mask = item["feature_map_mask"].to(self.config.device)
+        gt_maps_makks = item["mask"]
         inputs = item["rel_gt"][:,:-1].to(self.config.device)
         #inputs = torch.zeros(item["rel_gt"][:,:-1].shape).to(self.config.device)
         

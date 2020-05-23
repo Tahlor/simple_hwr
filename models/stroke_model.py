@@ -243,7 +243,7 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
         eos = (phi[:, -1] > torch.max(phi[:, :-1])).type(torch.float) # BATCH x 1
 
         # optimize this?
-        phi = (phi * mask).unsqueeze(2)
+        phi = (phi * mask).unsqueeze(2) # PHI: BxW Mask: BxGT.size (4)
         if is_map:
             self._phi.append(phi.squeeze(dim=2).unsqueeze(1))
 
