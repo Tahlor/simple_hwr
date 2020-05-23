@@ -523,12 +523,16 @@ class AlexGraves2(AlexGraves):
 
 
 class TMinus1(nn.Module):
-    def __init__(self, vocab_size=4, device="cuda", cnn_type="default64", first_conv_op=CoordConv, first_conv_opts=None, **kwargs):
+    def __init__(self, vocab_size=4, device="cuda", cnn_type="default64", first_conv_op=CoordConv,
+                 first_conv_opts=None,
+                 rnn_mode="all_zeros",   # all_zeros - super fast (not implemented) ; correct_gts - super fast
+                 mode="random", #"random"ly apply kd; always_fix=always apply kd; never_fix
+                 **kwargs):
         super().__init__()
         self.__dict__.update(kwargs)
         self.use_gradient_override = False
         if not "nHidden" in kwargs:
-            self.nHidden = 128
+            self.nHidden = 256
         if not "num_layers" in kwargs:
             self.num_layers = 2
 
@@ -553,6 +557,13 @@ class TMinus1(nn.Module):
 
         self.cnn = CNN(nc=1, cnn_type=self.cnn_type) # output dim: Width x Batch x 1024
 
+        self.mode = mode
+        self.rnn_mode = rnn_mode
+        if rnn_mode in ("all_zeros", "correct_gts"):
+            self.forward = self.forward_fast
+        else:
+            self.forward = self.forward_main
+
         # Create model
         hidden_size_factor = 2
         self.brnn1 = BidirectionalRNN(nIn=1024, nHidden=self.nHidden, nOut=self.nHidden*hidden_size_factor,
@@ -574,14 +585,17 @@ class TMinus1(nn.Module):
     def get_feature_maps(self, img):
         return self.cnn(img).permute(1, 0, 2)  # B x W x 1024
 
-    def forward1(
+    def forward_fast(
         self,
-        inputs, # the GTs that start with 0
         img,
+        label_lengths=None,
+        item=None,
+        inputs=None,
         feature_maps=None,
         inital_hidden=None,
         lengths=None,
         reset=False,
+        mode="random", # always_fix, never_fix
         **kwargs
     ):
         """ GTS can be injected here, fast
@@ -598,6 +612,15 @@ class TMinus1(nn.Module):
         Returns:
 
         """
+        #inputs = item["gt"].to(self.device)
+        if inputs is None:
+            if self.rnn_mode=="all_zeros":
+                inputs = torch.zeros(item["rel_gt"][:, :-1].shape).to(self.device)
+            elif self.rnn_mode=="correct_gts":
+                inputs = item["rel_gt"][:, :-1].to(self.device)
+            else:
+                raise NotImplemented
+
         if feature_maps is None:
             feature_maps = self.get_feature_maps(img) # B,W,1024
 
@@ -621,15 +644,9 @@ class TMinus1(nn.Module):
         rnn_input = torch.cat((inputs, brnn_output), dim=2)#.contiguous() # B,W, hidden+4
         rnn_output, rnn_states = self.rnn2(rnn_input, rnn_states) # B, W, hidden
 
-        return rnn_output, [brnn_states, rnn_states], None, None, None
+        return rnn_output
 
-        # RNN states: tuple (hidden state, cell state)
-            # # layers, B, Hidden Dim; 2,25,400
-
-        # BRNN states: tuple (size=number of layers)
-            # (# layers * 2 bidirectional), B, Hidden Dim; 4,25,400
-
-    def forward(
+    def forward_main(
         self,
         img,
         label_lengths=None,
@@ -639,7 +656,6 @@ class TMinus1(nn.Module):
         inital_hidden=None,
         lengths=None,
         reset=False,
-        mode="random", # always_fix, never_fix
         **kwargs
     ):
         """ Manual calculation for each step
@@ -687,7 +703,7 @@ class TMinus1(nn.Module):
         for t in range(feature_maps_upsample.shape[1]):
             rnn_input = torch.cat((_input, brnn_output[:,t]), dim=1).unsqueeze(1 )#.contiguous() # B,1,hidden+4
             rnn_output, rnn_states = self.rnn2(rnn_input, rnn_states) # B, W, hidden
-            if (mode=="random" and random.random()) < .5 or mode=="always_fix":
+            if (self.mode=="random" and random.random()) < .5 or self.mode=="always_fix":
                 # RNN output needs to be added to running sum
                 # gts need to be in absolute coordinates
                 new_points = (rnn_output.squeeze(1)[:,:2]+curr_locations).detach().cpu() # BATCH X 4

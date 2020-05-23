@@ -30,6 +30,11 @@ use_visdom: true
 debug: off
 truncate: false
 model_name: TMinus1
+model_opts:
+  rnn_mode: correct_gts
+  mode: NA
+  nHidden": 256
+  num_layers": 2
 
 dataset:
   img_height: 61
@@ -39,7 +44,6 @@ dataset:
   #adapted_gt_path: ./RESULTS/pretrained/training_dataset.npy
   kdtree: true
 
-
 # Training data
 #dataset_folder: online_coordinate_data/8_stroke_vSmall_16
 #dataset_folder: online_coordinate_data/8_stroke_vFull
@@ -48,12 +52,6 @@ data_root_local: data
 dataset_folder: online_coordinate_data/MAX_stroke_vFull
 dataset_folder: online_coordinate_data/MAX_stroke_vTEST_AUGMENTFull
 dataset_folder: online_coordinate_data/MAX_stroke_vlargeTrnSetFull
-
-model_opts:
-  rnn_mode: normal
-  mode: random
-  nHidden": 256
-  num_layers": 2
 
 # WARP
 warp: true
@@ -87,7 +85,7 @@ batch_size: 28
 gt_format: # if relative etc., specify that here; e.g., opts:rel
   - x
   - y
-  - stroke_number
+  - sos
   - eos
 
 # NOT IMPLEMENTED
@@ -118,17 +116,21 @@ pred_opts: # if relative etc., specify that here; e.g., opts:rel opts:cumsum etc
 #      - y
 #    subcoef: 1,1
 loss_fns2:
-  - name: dtw
+  - name: l1_
     coef: 1
     gts:
       - x
       - y
-    dtw_mapping_basis:
-      - x
-      - y
-    cross_entropy_indices: # SIGMOID TAKEN DURING LOSS
-      - stroke_number
+  - name: cross_entropy
+    coef: .01
+    gts:
       - eos
+      - sos
+    activation: sigmoid
+
+#    cross_entropy_indices: # SIGMOID TAKEN DURING LOSS
+#      - stroke_number
+#      - eos
     relativefy_cross_entropy_gt: true #
     window_size: 40
     barron: false
@@ -161,7 +163,7 @@ test_nn_loss: false
 # test_nn_loss: true # calculate nearest neighbor loss on every test instance
 
 ## CNN
-cnn_type: default64v2 # default64; CNN output width similar to input width; default: CNN output is like 1/4 the input width
+cnn_type: default64 # default64; CNN output width similar to input width; default: CNN output is like 1/4 the input width
 
 # CoordConv
   # x-scaled from -1 to 1
