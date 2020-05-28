@@ -224,6 +224,24 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
             self.window_layer = nn.Linear(hidden_size, 3 * K) # 3: alpha, beta, kappa
             self.output_layer = nn.Linear(n_layers * hidden_size, output_size)
 
+        if model_name == "combined":
+            self._phi = []
+            self.lstm_1_letters = nn.LSTM(self.gt_size + self.vocab_size, hidden_size, batch_first=True, dropout=.5)
+            self.lstm_1 = nn.LSTM(self.gt_size + self.vocab_size, hidden_size, batch_first=True, dropout=.5)
+            self.lstm_2 = nn.LSTM(
+                self.gt_size + self.vocab_size + hidden_size, hidden_size, batch_first=True, dropout=.5
+            )
+            # self.lstm_3 = nn.LSTM(
+            #     self.gt_size + hidden_size, hidden_size, batch_first=True
+            # )
+            self.lstm_3 = nn.LSTM(
+                self.gt_size + self.vocab_size + hidden_size, hidden_size, batch_first=True, dropout=.5
+            )
+
+            self.window_layer = nn.Linear(hidden_size, 3 * K) # 3: alpha, beta, kappa
+            self.output_layer = nn.Linear(n_layers * hidden_size, output_size)
+
+
         self.cnn = CNN(nc=1, cnn_type=self.cnn_type) # output dim: Width x Batch x 1024
 
     def compute_window_vector(self, mix_params, prev_kappa, feature_maps, mask, is_map=None):
