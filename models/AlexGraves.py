@@ -98,12 +98,62 @@ class AlexGravesCombined(AlexGraves):
         is_map=False,
         feature_maps=None,
         prev_eos=None,
+        letter_args=None,
+        letter_mask=None, #
         **kwargs
     ):
         batch_size = inputs.shape[0]
         if feature_maps is None:
             feature_maps = self.get_feature_maps(img)
 
+        if True:
+            hid_1, window_vec, all_eos, kappa, state_1, img_args = self.first_layer(
+                initial_hidden=initial_hidden,
+                prev_eos=prev_eos,
+                prev_kappa=prev_kappa,
+                batch_size=batch_size,
+                inputs=inputs,
+                feature_maps=feature_maps,
+                img_mask=img_mask,
+                lstm=self.lstm_1,
+            )
+            inp = torch.cat((inputs, hid_1, window_vec), dim=2) # BATCH x 394? x (1024+LSTM_hidden+gt_size)
+        else:
+            hid_1_L, window_vec_L, all_eos_L, kappa_L, state_1_L, letter_args = self.first_layer(
+                **letter_args,
+                feature_maps=THE_LETTER_GT
+                batch_size=batch_size,
+                inputs=inputs,
+                img_mask=letter_mask,
+                lstm=self.lstm_1_letters,
+            )
+            inp2 = torch.cat((inputs, hid_1, window_vec), dim=2)  # BATCH x 394? x (1024+LSTM_hidden+gt_size)
+
+        inp = torch.mean(inp2,inp)
+
+        state_2 = (initial_hidden[0][1:2], initial_hidden[1][1:2])
+
+        hid_2, state_2 = self.lstm_2(inp, state_2)
+        inp = torch.cat((inputs, hid_2, window_vec), dim=2)
+        # inp = torch.cat((inputs, hid_2), dim=2)
+        state_3 = (initial_hidden[0][2:], initial_hidden[1][2:])
+
+        hid_3, state_3 = self.lstm_3(inp, state_3)
+
+        inp = torch.cat([hid_1, hid_2, hid_3], dim=2)
+        y_hat = self.output_layer(inp)
+
+        return y_hat, [state_1, state_2, state_3], window_vec, prev_kappa, all_eos
+
+    def first_layer(self, initial_hidden,
+                    prev_eos,
+                    prev_window_vec,
+                    prev_kappa,
+                    batch_size,
+                    inputs,
+                    feature_maps,
+                    img_mask,
+                    lstm):
         hid_1 = []
         window_vec = []
 
@@ -118,7 +168,7 @@ class AlexGravesCombined(AlexGraves):
         for t in range(inputs.shape[1]): # loop through width and calculate windows; 1st LSTM no window
             inp = torch.cat((inputs[:, t : t + 1, :], prev_window_vec), dim=2) # BATCH x 1 x (GT_SIZE+1024)
 
-            hid_1_t, state_1 = self.lstm_1(inp, state_1) # hid_1_t: BATCH x 1 x HIDDEN
+            hid_1_t, state_1 = lstm(inp, state_1) # hid_1_t: BATCH x 1 x HIDDEN
             hid_1.append(hid_1_t)
 
             mix_params = self.window_layer(hid_1_t)
@@ -127,7 +177,6 @@ class AlexGravesCombined(AlexGraves):
                 prev_kappa,
                 feature_maps, # BATCH x MAX_FM_LEN x (1024)
                 img_mask,
-                is_map,
             )
 
             new_eos = prev_eos = torch.max(prev_eos, eos.cpu())
@@ -141,20 +190,9 @@ class AlexGravesCombined(AlexGraves):
         window_vec = torch.cat(window_vec, dim=1)
         all_eos = torch.cat(all_eos, dim=0).reshape(len(all_eos),-1).permute(1,0)
 
-        inp = torch.cat((inputs, hid_1, window_vec), dim=2) # BATCH x 394? x (1024+LSTM_hidden+gt_size)
-        state_2 = (initial_hidden[0][1:2], initial_hidden[1][1:2])
-
-        hid_2, state_2 = self.lstm_2(inp, state_2)
-        inp = torch.cat((inputs, hid_2, window_vec), dim=2)
-        # inp = torch.cat((inputs, hid_2), dim=2)
-        state_3 = (initial_hidden[0][2:], initial_hidden[1][2:])
-
-        hid_3, state_3 = self.lstm_3(inp, state_3)
-
-        inp = torch.cat([hid_1, hid_2, hid_3], dim=2)
-        y_hat = self.output_layer(inp)
-
-        return y_hat, [state_1, state_2, state_3], window_vec, prev_kappa, all_eos
+        # Last steps in everything -- mostly for generating
+        state_dict = {"prev_kappa":kappa, "prev_eos":new_eos, "initial_hidden":hid_1_t, "prev_window_vec":window}
+        return hid_1, window_vec, all_eos, kappa, state_1, state_dict
 
     def generate(
         self,
