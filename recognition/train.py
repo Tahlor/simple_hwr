@@ -383,14 +383,14 @@ def load_data(config):
 
 def check_gpu(config):
     # GPU stuff
-    use_gpu = torch.cuda.is_available() and config["GPU"]
+    use_gpu = torch.cuda.is_available() and config["gpu_if_available"]
     device = torch.device("cuda" if use_gpu else "cpu")
     dtype = torch.cuda.FloatTensor if use_gpu else torch.FloatTensor
     if use_gpu:
         log_print("Using GPU")
     elif not torch.cuda.is_available():
         log_print("No GPU found")
-    elif not config["GPU"]:
+    elif not config["gpu_if_available"]:
         log_print("GPU available, but not using per config")
         os.environ['CUDA_VISIBLE_DEVICES'] = ''
     return device, dtype

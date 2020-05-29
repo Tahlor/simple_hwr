@@ -12,12 +12,12 @@ import numpy as np
 from tqdm import tqdm
 
 from hwr_utils import stroke_recovery
-from hwr_utils.utils import unpickle_it, npy_loader
+from hwr_utils.utils import unpickle_it, npy_loader, dict_to_list
 import pickle
 from pathlib import Path
 import logging
 from hwr_utils.utils import EnhancedJSONEncoder
-from hwr_utils import distortions
+from hwr_utils import distortions, string_utils, character_set
 from hwr_utils.stroke_plotting import draw_from_gt, random_pad
 
 logger = logging.getLogger("root."+__name__)
@@ -25,6 +25,7 @@ logger = logging.getLogger("root."+__name__)
 PADDING_CONSTANT = 1 # 1=WHITE, 0=BLACK
 MAX_LEN = 64
 PARAMETER = "d" # t or d for time/distance resampling
+ALPHABET_SIZE = 0
 
 script_path = Path(os.path.realpath(__file__))
 project_root = script_path.parent.parent
@@ -251,7 +252,7 @@ class StrokeRecoveryDataset(Dataset):
                  config=None,
                  image_prep="pil_with_distortions",
                  **kwargs):
-
+        global ALPHABET_SIZE
         super().__init__()
         self.max_width = 2000
 
@@ -288,6 +289,14 @@ class StrokeRecoveryDataset(Dataset):
             logger.info(f"Loading data traditional way {data_paths}")
             self.data = self.load_data(root, max_images_to_load, data_paths)
         logger.info(("Dataloader size", len(self.data)))
+
+        ## Load GT text
+        self.gt_text_data = self.load_gt_text(self.root / "prepare_online_data/online_augmentation_good.json")
+        master_string = "".join([self.get_gt_text(d["image_path"], is_id=False) for d in self.data])
+        self.char_to_idx, self.idx_to_char, self.char_freq = character_set._make_char_set(master_string)
+        # Convert to a list to work with easydict
+        self.idx_to_char = dict_to_list(self.idx_to_char)
+        ALPHABET_SIZE = len(self.idx_to_char)
 
     def resample_one(self, item, parameter=PARAMETER):
         """ Resample will be based on time, unless the number of samples has been calculated;
@@ -371,7 +380,12 @@ class StrokeRecoveryDataset(Dataset):
 
         if images_to_load:
             logger.info(("Original dataloader size", len(data)))
-            data = data[:images_to_load]
+            a = int(images_to_load/2)
+            b = images_to_load-a
+            if a+b > len(data):
+                return data
+            else:
+                data = data[:a] + data[-b:] #get first few and last few
         logger.info(("Dataloader size", len(data)))
 
         if "gt" not in data[0].keys() and self.config.dataset.resample:
@@ -448,6 +462,44 @@ class StrokeRecoveryDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
+    def load_gt_text(self, gt_path):
+        gt_data = {}
+        from hwr_utils.hw_dataset import HwDataset
+        #data = HwDataset.load_data(data_paths=gt_path.glob("*.json"))
+        data = HwDataset.load_data(data_paths=[gt_path])
+
+        # {'gt': 'He rose from his breakfast-nook bench', 'image_path': 'prepare_IAM_Lines/lines/m01/m01-049/m01-049-00.png',
+        GT_DATA = {}
+        for i in data:
+            key = Path(i["image_path"]).stem.lower()
+            assert not key in GT_DATA
+            gt_data[key] = i["gt"]
+        # print(f"GT's found: {GT_DATA.keys()}")
+        np.save(gt_path.parent / "gt_text.npy", GT_DATA)
+        self.check(gt_data)
+        return gt_data
+
+    def get_gt_text(self, file_name, is_id=True):
+        if not is_id:
+            file_name = Path(file_name).stem.split("_")[0]
+        if re.match("[a-z][-0-9]+", file_name):
+            if file_name in self.gt_text_data.keys():
+                return self.gt_text_data[file_name]
+            else:
+                return None
+        else:
+            # GT text is the filename
+            return file_name
+
+    def check(self, gt_data):
+        i =0
+        for item in self.data:
+            image_path = self.root / item['image_path']
+            id = Path(image_path).stem.split("_")[0]
+            if not id in gt_data.keys():
+                i+=1
+        print("# of items in datasets:", len(self.data), "problem items: ", i)
+
     def __getitem__(self, idx):
         """ data[idx].keys() = 'full_img_path',
                                 'xml_path',
@@ -474,6 +526,7 @@ class StrokeRecoveryDataset(Dataset):
 
         # Stroke order
         #idx = 27; print("IDX 27")
+        #while gt_text is None:
         item = self.data[idx]
         #print(item["gt"].shape)
         #assert item["gt"].shape[0]==52
@@ -485,6 +538,9 @@ class StrokeRecoveryDataset(Dataset):
         #     # Swap to get current_stroke_order to look like new_stroke_order
 
         image_path = self.root / item['image_path']
+        id = Path(image_path).stem.split("_")[0]
+        gt_text = self.get_gt_text(id)
+        gt_text_indices = [self.char_to_idx[x] for x in gt_text]
 
         ## DEFAULT GT ARRAY
         # X, Y, FLAG_BEGIN_STROKE, FLAG_END_STROKE, FLAG_EOS - VOCAB x desired_num_of_strokes
@@ -576,6 +632,8 @@ class StrokeRecoveryDataset(Dataset):
             "line_img": img, # H,W,C
             "gt": gt, # B, W, 3/4
             "gt_reverse_strokes": gt_reverse_strokes,
+            "gt_text": gt_text,
+            "gt_text_indices": gt_text_indices,
             "sos_args": sos_args,
             "path": image_path,
             "x_func": item["x_func"] if "x_func" in item else None,
@@ -587,6 +645,23 @@ class StrokeRecoveryDataset(Dataset):
             "predicted_strokes_gt": None,
             "feature_map_width": img_width_to_pred_mapping(img.shape[1], self.cnn_type) # featuer maps not always same width as GT if using attention, window thing
         }
+
+    def char_stuff(self, master_string):
+        char_to_idx, idx_to_char, char_freq = character_set._make_char_set(master_string)
+
+        # Convert to a list to work with easydict
+        idx_to_char = dict_to_list(idx_to_char)
+
+
+        #gt_label = string_utils.str2label(gt, char_to_idx)
+
+        char_lens = [len(char_seq) for char_seq in char_seqs]
+        max_char_len = np.max(char_lens)
+
+        # char Mask
+        mask_shape = (n_items, max_char_len)  # (6000,64)
+        char_mask = np.zeros(mask_shape, dtype=np.float32) # zeros
+
 
 def create_gts_from_raw_dict(item, interval, noise, gt_format=None):
     """
@@ -898,9 +973,28 @@ def collate_stroke(batch, device="cpu", gt_opts=None, post_length_buffer=20):
 
     mask = torch.from_numpy(mask.astype(TYPE)).to(device)
     feature_map_mask = torch.from_numpy(feature_map_mask.astype(TYPE)).to(device)
+
+    # TEXT STUFF - THIS IS GOOD STUFF
+    ## get sequence lengths
+    text_lengths = torch.tensor([len(b["gt_text_indices"]) for b in batch])
+
+    ## pad
+    one_hot = [torch.nn.functional.one_hot(torch.tensor(t["gt_text_indices"]), ALPHABET_SIZE) for t in batch]
+
+    # BATCH, MAX LENGTH, ALPHA SIZE
+    padded_one_hot = torch.nn.utils.rnn.pad_sequence(one_hot, batch_first=True)
+
+    ## compute mask
+    text_mask = (torch.max(padded_one_hot, axis=-1).values != 0)
+
     return_d = {
         "feature_map_mask": feature_map_mask,
         "mask": mask,
+        "gt_text": [b["gt_text"] for b in batch], # encode this
+        "gt_text_indices": [b["gt_text_indices"] for b in batch],
+        "gt_text_mask": text_mask,
+        "gt_text_one_hot": padded_one_hot,
+        "gt_text_lengths": text_lengths,
         "line_imgs": line_imgs,
         "gt": stroke_points_gt, # Numpy Array, with padding
         "rel_gt": stroke_points_gt_rel,
@@ -923,6 +1017,7 @@ def collate_stroke(batch, device="cpu", gt_opts=None, post_length_buffer=20):
             return_d[i] = [b[i] for b in batch]
 
     return return_d
+
 
 
 def collate_stroke_eval(batch, device="cpu"):
