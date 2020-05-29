@@ -383,6 +383,10 @@ class AlexGravesTrainer(Trainer):
             suffix="_test"
         batch_size = item["line_imgs"].shape[0]
         initial_hidden, initial_window_vector, initial_kappa = self.model.init_hidden(batch_size, self.device)
+        initial_lstm_args = {"initial_hidden":initial_hidden,
+                             "prev_window_vec":prev_window_vec,
+                             "prev_eos": None,
+                             "prev_kappa": initial_kappa}
 
         imgs = item["line_imgs"].to(self.config.device)
         feature_maps = self.model.get_feature_maps(imgs)
@@ -394,12 +398,9 @@ class AlexGravesTrainer(Trainer):
         model_input = {"inputs": inputs, # the shifted GTs
                         "img": imgs,
                         "img_mask": feature_maps_mask, # ignore
-                        "initial_hidden": initial_hidden, # RNN state
-                        "prev_window_vec": initial_window_vector,
-                        "prev_kappa": initial_kappa,
+                        "image_lstm_args": initial_lstm_args,
                         "feature_maps": feature_maps,
                         #"lengths": item["label_lengths"],
-                        "is_map": False,
                         "reset": True} # reset hidden/cell states
 
         y_hat, states, window_vec, prev_kappa, eos = self.eval(model_input, ) # BATCH x 1 x H x W

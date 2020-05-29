@@ -92,14 +92,11 @@ class AlexGravesCombined(AlexGraves):
         inputs, # the shifted GTs
         img,   #
         img_mask, # ignore
-        initial_hidden, # RNN state
-        prev_window_vec,
-        prev_kappa,
-        is_map=False,
         feature_maps=None,
-        prev_eos=None,
-        letter_args=None,
+        image_lstm_args=None, # initial_hidden, prev_eos, prev_kappa, prev_window_vec
+        letter_lstm_args=None,
         letter_mask=None, #
+        letter_gt=None, # one hot
         **kwargs
     ):
         batch_size = inputs.shape[0]
@@ -108,9 +105,10 @@ class AlexGravesCombined(AlexGraves):
 
         if True:
             hid_1, window_vec, all_eos, kappa, state_1, img_args = self.first_layer(
-                initial_hidden=initial_hidden,
-                prev_eos=prev_eos,
-                prev_kappa=prev_kappa,
+                initial_hidden=image_lstm_args["initial_hidden"],
+                prev_eos=image_lstm_args["prev_eos"],
+                prev_kappa=image_lstm_args["prev_kappa"],
+                prev_window_vec=image_lstm_args["prev_window_vec"],
                 batch_size=batch_size,
                 inputs=inputs,
                 feature_maps=feature_maps,
@@ -118,16 +116,20 @@ class AlexGravesCombined(AlexGraves):
                 lstm=self.lstm_1,
             )
             inp = torch.cat((inputs, hid_1, window_vec), dim=2) # BATCH x 394? x (1024+LSTM_hidden+gt_size)
-        else:
-            hid_1_L, window_vec_L, all_eos_L, kappa_L, state_1_L, letter_args = self.first_layer(
-                **letter_args,
-                feature_maps=THE_LETTER_GT
+
+        if True:
+            hid_1_L, window_vec_L, all_eos_L, kappa_L, state_1_L, letter_lstm_args = self.first_layer(
+                **letter_lstm_args,
+                feature_maps=letter_gt,
                 batch_size=batch_size,
                 inputs=inputs,
                 img_mask=letter_mask,
                 lstm=self.lstm_1_letters,
             )
             inp2 = torch.cat((inputs, hid_1, window_vec), dim=2)  # BATCH x 394? x (1024+LSTM_hidden+gt_size)
+
+        if True:
+            inp = torch.mean(inp2, inp)
 
         inp = torch.mean(inp2,inp)
 
@@ -153,7 +155,8 @@ class AlexGravesCombined(AlexGraves):
                     inputs,
                     feature_maps,
                     img_mask,
-                    lstm):
+                    lstm,
+                    **kwargs):
         hid_1 = []
         window_vec = []
 
