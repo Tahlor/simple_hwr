@@ -657,7 +657,7 @@ def validate_and_prep_loss(config):
         if len(config.gt_format) != len(config.pred_opts):
             warnings.warn("GT format does not match pred_opts")
 
-    config.vocab_size = len(config.pred_format) # vocab size is the desired_num_of_strokes of the GT format
+    config.feature_map_dim = len(config.pred_format) # vocab size is the desired_num_of_strokes of the GT format
 
     # Process loss functions
     if "loss_fns" not in config.keys() and "loss_fns2" in config.keys():

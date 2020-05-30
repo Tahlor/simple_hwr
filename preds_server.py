@@ -45,7 +45,7 @@ def main(config_path):
 
         batch_size = config.batch_size
 
-        vocab_size = config.vocab_size
+        vocab_size = config.feature_map_dim
 
         device=torch.device(config.device)
         #device=torch.device("cpu")

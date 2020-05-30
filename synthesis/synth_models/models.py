@@ -184,46 +184,49 @@ class HandWritingPredictionNet(nn.Module):
         return gen_seq
 
 class HandWritingSynthesisNet(nn.Module):
-    def __init__(self, hidden_size=400, n_layers=3, output_size=121, window_size=77):
+    def __init__(self, hidden_size=400, n_layers=3, output_size=121, window_size=77, **kwargs):
         super(HandWritingSynthesisNet, self).__init__()
-        self.vocab_size = window_size
-        self.hidden_size = hidden_size
-        self.output_size = output_size
-        self.n_layers = n_layers
-        #self.text_mask = torch.ones(32, 64).to("cuda")
+        self.__dict__.update(kwargs)
 
-        K = 10
-        self.EOS = False
-        self._phi = []
+        if False:
+            self.feature_map_dim = window_size
+            self.hidden_size = hidden_size
+            self.output_size = output_size
+            self.n_layers = n_layers
+            #self.text_mask = torch.ones(32, 64).to("cuda")
 
-        self.lstm_1 = nn.LSTM(3 + self.vocab_size, hidden_size, batch_first=True)
-        self.lstm_2 = nn.LSTM(
-            3 + self.vocab_size + hidden_size, hidden_size, batch_first=True
-        )
-        # self.lstm_3 = nn.LSTM(
-        #     3 + hidden_size, hidden_size, batch_first=True
-        # )
-        self.lstm_3 = nn.LSTM(
-            3 + self.vocab_size + hidden_size, hidden_size, batch_first=True
-        )
+            K = 10
+            self.EOS = False
+            self._phi = []
 
-        self.window_layer = nn.Linear(hidden_size, 3 * K)
-        self.output_layer = nn.Linear(n_layers * hidden_size, output_size)
-        # self.init_weight()
+            self.lstm_1 = nn.LSTM(3 + self.feature_map_dim, hidden_size, batch_first=True)
+            self.lstm_2 = nn.LSTM(
+                3 + self.feature_map_dim + hidden_size, hidden_size, batch_first=True
+            )
+            # self.lstm_3 = nn.LSTM(
+            #     3 + hidden_size, hidden_size, batch_first=True
+            # )
+            self.lstm_3 = nn.LSTM(
+                3 + self.feature_map_dim + hidden_size, hidden_size, batch_first=True
+            )
+
+            self.window_layer = nn.Linear(hidden_size, 3 * K)
+            self.output_layer = nn.Linear(n_layers * hidden_size, output_size)
+            # self.init_weight()
 
     def init_hidden(self, batch_size, device):
         initial_hidden = (
             torch.zeros(self.n_layers, batch_size, self.hidden_size, device=device),
             torch.zeros(self.n_layers, batch_size, self.hidden_size, device=device),
         )
-        window_vector = torch.zeros(batch_size, 1, self.vocab_size, device=device)
+        window_vector = torch.zeros(batch_size, 1, self.feature_map_dim, device=device)
         kappa = torch.zeros(batch_size, 10, 1, device=device)
         return initial_hidden, window_vector, kappa
 
     def one_hot_encoding(self, text):
         N = text.shape[0]
         U = text.shape[1]
-        encoding = text.new_zeros((N, U, self.vocab_size))
+        encoding = text.new_zeros((N, U, self.feature_map_dim))
         for i in range(N):
             encoding[i, torch.arange(U), text[i].long()] = 1.0
         return encoding

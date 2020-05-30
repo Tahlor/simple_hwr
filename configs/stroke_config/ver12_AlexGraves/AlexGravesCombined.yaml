@@ -23,7 +23,7 @@ test_only: false # Do not train
 offline_pred: false
 logging: info
 gpu_if_available: true
-model_name: AlexGraves
+model_name: AlexGravesCombined
 
 # General
 output_folder: ./results
@@ -78,7 +78,7 @@ first_loss_epochs: 1
 training_nn_loss: false # calculate nearest neighbor loss on every training instance; <- this is basically just DTW loss, without the time constraint? really only useful for offline images with pixels etc.
 
 ## CNN
-cnn_type: default64 # default64; CNN output width similar to input width; default: CNN output is like 1/4 the input width
+cnn_type: default # default64; CNN output width similar to input width; default: CNN output is like 1/4 the input width
 
 # CoordConv
   # x-scaled from -1 to 1

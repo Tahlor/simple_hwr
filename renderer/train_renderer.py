@@ -197,7 +197,7 @@ def load_stroke_model(config_path, model_path=None):
         utils.kill_gpu_hogs()
 
     batch_size = config.batch_size
-    vocab_size = config.vocab_size
+    vocab_size = config.feature_map_dim
     device = torch.device(config.device)
 
     model = StrokeRecoveryModel(vocab_size=vocab_size, device=device, cnn_type=config.cnn_type,
@@ -224,7 +224,7 @@ def main(config_path, testing=False):
     test_size = config.test_size
     train_size = config.train_size
     batch_size = config.batch_size
-    vocab_size = config.vocab_size
+    vocab_size = config.feature_map_dim
     device = config.device if not utils.no_gpu_testing() else 'cpu'
     config.device = device  # these need to be the same
 

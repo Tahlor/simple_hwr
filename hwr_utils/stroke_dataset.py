@@ -173,8 +173,8 @@ class BasicDataset(Dataset):
                 logger.info(("Length of data", len(self.data)))
 
                 # Add label lengths - save to pickle
-                if self.cnn:
-                    add_output_size_to_data(self.data, self.cnn, key="label_length", root=self.root)
+                if self.cnn_type:
+                    add_output_size_to_data(self.data, self.cnn_type, key="label_length", root=self.root)
                     logger.info(f"DUMPING cached version to: {pickle_file}")
                     pickle.dump(self.data, pickle_file.open(mode="wb"))
 
@@ -249,6 +249,7 @@ class StrokeRecoveryDataset(Dataset):
                  max_images_to_load=None,
                  gt_format=None,
                  cnn=None,
+                 cnn_type=None,
                  config=None,
                  image_prep="pil_with_distortions",
                  **kwargs):
@@ -273,6 +274,7 @@ class StrokeRecoveryDataset(Dataset):
         self.interval = .05
         self.noise = False
         self.cnn = cnn
+        self.cnn_type = cnn_type if cnn is None else cnn.cnn_type
         self.config = config
         self.img_height = img_height
         self.image_prep = image_prep
@@ -296,7 +298,8 @@ class StrokeRecoveryDataset(Dataset):
         self.char_to_idx, self.idx_to_char, self.char_freq = character_set._make_char_set(master_string)
         # Convert to a list to work with easydict
         self.idx_to_char = dict_to_list(self.idx_to_char)
-        ALPHABET_SIZE = len(self.idx_to_char)
+        ALPHABET_SIZE = max(ALPHABET_SIZE, len(self.idx_to_char))
+        self.alphabet_size = len(self.idx_to_char)
 
     def resample_one(self, item, parameter=PARAMETER):
         """ Resample will be based on time, unless the number of samples has been calculated;
@@ -371,9 +374,8 @@ class StrokeRecoveryDataset(Dataset):
             data.extend(new_data)
 
         # Calculate how many points are needed
-        if self.cnn:
-            self.cnn_type = self.cnn.cnn_type
-            add_output_size_to_data(data, self.cnn, root=self.root, max_width=self.max_width)
+        if self.cnn_type:
+            add_output_size_to_data(data, self.cnn_type, root=self.root, max_width=self.max_width)
             self.cnn=True # remove CUDA-object from class for multiprocessing to work!!
 
         #print(data[0].keys())
@@ -812,7 +814,7 @@ def img_width_to_pred_mapping(width, cnn_type="default64"):
         raise Exception(f"Unknown CNN type {cnn_type}")
 
 
-def add_output_size_to_data(data, cnn, key="number_of_samples", root=None, img_height=61, max_width=2000, force_redo=False):
+def add_output_size_to_data(data, cnn_type, key="number_of_samples", root=None, img_height=61, max_width=2000, force_redo=False):
     """ IMAGE SIZE TO NUMBER OF GTs
     """
     bad_indicies = []
@@ -831,7 +833,7 @@ def add_output_size_to_data(data, cnn, key="number_of_samples", root=None, img_h
         if width > max_width:
             print("Too wide", width, image_path)
             bad_indicies.append(i)
-        instance[key] = img_width_to_pred_mapping(width, cnn.cnn_type)
+        instance[key] = img_width_to_pred_mapping(width, cnn_type)
 
     for index in sorted(bad_indicies, reverse=True):
         print("Deleting bad file: ", index)
@@ -892,7 +894,7 @@ def test_padding(pad_list, func):
     return x #[0,0]
 
 TYPE = np.float32 #np.float16
-def collate_stroke(batch, device="cpu", gt_opts=None, post_length_buffer=20):
+def collate_stroke(batch, device="cpu", gt_opts=None, post_length_buffer=20, alphabet_size=ALPHABET_SIZE):
     """ Pad ground truths with 0's
         Report lengths to get accurate average loss
 
@@ -979,7 +981,7 @@ def collate_stroke(batch, device="cpu", gt_opts=None, post_length_buffer=20):
     text_lengths = torch.tensor([len(b["gt_text_indices"]) for b in batch])
 
     ## pad
-    one_hot = [torch.nn.functional.one_hot(torch.tensor(t["gt_text_indices"]), ALPHABET_SIZE) for t in batch]
+    one_hot = [torch.nn.functional.one_hot(torch.tensor(t["gt_text_indices"]), alphabet_size) for t in batch]
 
     # BATCH, MAX LENGTH, ALPHA SIZE
     padded_one_hot = torch.nn.utils.rnn.pad_sequence(one_hot, batch_first=True)
@@ -993,7 +995,7 @@ def collate_stroke(batch, device="cpu", gt_opts=None, post_length_buffer=20):
         "gt_text": [b["gt_text"] for b in batch], # encode this
         "gt_text_indices": [b["gt_text_indices"] for b in batch],
         "gt_text_mask": text_mask,
-        "gt_text_one_hot": padded_one_hot,
+        "gt_text_one_hot": padded_one_hot.to(torch.float32),
         "gt_text_lengths": text_lengths,
         "line_imgs": line_imgs,
         "gt": stroke_points_gt, # Numpy Array, with padding

@@ -180,7 +180,7 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
     def __init__(self, hidden_size=400,
                  n_layers=3,
                  output_size=121,
-                 window_size=1024, # dim of feature map
+                 feature_map_dim=1024, # dim of feature map
                  cnn_type="default",
                  device="cuda",
                  model_name="default",
@@ -196,53 +196,32 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
             cnn_type:
             **kwargs:
         """
-        super().__init__(hidden_size, n_layers, output_size, window_size)
-        self.vocab_size = window_size
-        self.hidden_size = hidden_size
-        self.output_size = output_size
-        self.n_layers = n_layers
-        self.cnn_type = cnn_type
-        self.gt_size = 4 # X,Y,SOS,EOS
-        self.device = device
-        #self.text_mask = torch.ones(32, 64).to("cuda")
-
-        K = 10 # number of Gaussians in window
+        kwargs.update({k:v for k,v in locals().items() if k not in ["kwargs", "self"] and "__" not in k}) # exclude self, __class__, etc.
+        super().__init__(**kwargs)
 
         if model_name == "default":
+            self.gt_size = 4  # X,Y,SOS,EOS
+            self.device = device
+            # self.text_mask = torch.ones(32, 64).to("cuda")
+
+            K = 10  # number of Gaussians in window
+
             self._phi = []
-            self.lstm_1 = nn.LSTM(self.gt_size + self.vocab_size, hidden_size, batch_first=True, dropout=.5)
+            self.lstm_1 = nn.LSTM(self.gt_size + self.feature_map_dim, hidden_size, batch_first=True, dropout=.5)
             self.lstm_2 = nn.LSTM(
-                self.gt_size + self.vocab_size + hidden_size, hidden_size, batch_first=True, dropout=.5
+                self.gt_size + self.feature_map_dim + hidden_size, hidden_size, batch_first=True, dropout=.5
             )
             # self.lstm_3 = nn.LSTM(
             #     self.gt_size + hidden_size, hidden_size, batch_first=True
             # )
             self.lstm_3 = nn.LSTM(
-                self.gt_size + self.vocab_size + hidden_size, hidden_size, batch_first=True, dropout=.5
+                self.gt_size + self.feature_map_dim + hidden_size, hidden_size, batch_first=True, dropout=.5
             )
 
             self.window_layer = nn.Linear(hidden_size, 3 * K) # 3: alpha, beta, kappa
             self.output_layer = nn.Linear(n_layers * hidden_size, output_size)
 
-        if model_name == "combined":
-            self._phi = []
-            self.lstm_1_letters = nn.LSTM(self.gt_size + self.vocab_size, hidden_size, batch_first=True, dropout=.5)
-            self.lstm_1 = nn.LSTM(self.gt_size + self.vocab_size, hidden_size, batch_first=True, dropout=.5)
-            self.lstm_2 = nn.LSTM(
-                self.gt_size + self.vocab_size + hidden_size, hidden_size, batch_first=True, dropout=.5
-            )
-            # self.lstm_3 = nn.LSTM(
-            #     self.gt_size + hidden_size, hidden_size, batch_first=True
-            # )
-            self.lstm_3 = nn.LSTM(
-                self.gt_size + self.vocab_size + hidden_size, hidden_size, batch_first=True, dropout=.5
-            )
-
-            self.window_layer = nn.Linear(hidden_size, 3 * K) # 3: alpha, beta, kappa
-            self.output_layer = nn.Linear(n_layers * hidden_size, output_size)
-
-
-        self.cnn = CNN(nc=1, cnn_type=self.cnn_type) # output dim: Width x Batch x 1024
+            self.cnn = CNN(nc=1, cnn_type=self.cnn_type) # output dim: Width x Batch x 1024
 
     def compute_window_vector(self, mix_params, prev_kappa, feature_maps, mask, is_map=None):
         # Text would have been text LEN x alphabet
@@ -535,7 +514,7 @@ class AlexGraves2(AlexGraves):
             torch.zeros(self.n_layers, batch_size, self.hidden_size, device=device),
             torch.zeros(self.n_layers, batch_size, self.hidden_size, device=device),
         )
-        window_vector = torch.zeros(batch_size, 1, self.vocab_size, device=device)
+        window_vector = torch.zeros(batch_size, 1, self.feature_map_dim, device=device)
         kappa = torch.zeros(batch_size, 10, 1, device=device)
         return initial_hidden, window_vector, kappa
 
@@ -784,7 +763,7 @@ class TMinus1(nn.Module):
     # If sequence runs out, decrement batch size
 
 # class AlexGraves():
-#     def __init__(self, vocab_size=5,
+#     def __init__(self, feature_map_dim=5,
 #                  device="cuda",
 #                  cnn_type="default64",
 #                  first_conv_op=CoordConv,
@@ -795,4 +774,4 @@ class TMinus1(nn.Module):
 #         model = Synthesis_with_CNN(hidden_size=400,
 #                                         n_layers=3,
 #                                         output_size=121,
-#                                         window_size=vocab_size)
+#                                         window_size=feature_map_dim)

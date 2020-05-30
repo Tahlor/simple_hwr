@@ -12,6 +12,7 @@ import argparse
 from hwr_utils.hwr_logger import logger
 from loss_module import losses
 from models import start_points, stroke_model
+from models.AlexGraves import AlexGravesCombined
 from hwr_utils.stroke_plotting import *
 from hwr_utils.utils import update_LR, reset_LR
 from hwr_utils.stroke_plotting import draw_from_gt
@@ -227,7 +228,7 @@ def graph(batch, config=None, preds=None, _type="test", save_folder="auto", epoc
             break
     return save_folder
 
-def build_data_loaders(folder, cnn, train_size, test_size, **kwargs):
+def build_data_loaders(folder, cnn_type, train_size, test_size, **kwargs):
     ## LOAD DATASET
     NUM_WORKERS = 5
     if config.TESTING:
@@ -243,27 +244,30 @@ def build_data_loaders(folder, cnn, train_size, test_size, **kwargs):
         train_dataset=StrokeRecoveryDataset([folder / "train_online_coords.json", *kwargs["extra_dataset"]],
                                 root=config.data_root,
                                 max_images_to_load = train_size,
-                                cnn=cnn,
+                                cnn_type=cnn_type,
                                 training=True,
                                 **kwargs,
                                 )
 
+        cs = lambda x: train_dataset.collate(x, alphabet_size=train_dataset.alphabet_size)
+        config.alphabet_size = train_dataset.alphabet_size
         train_dataloader = DataLoader(train_dataset,
                                       batch_size=batch_size,
                                       shuffle=True,
                                       num_workers=NUM_WORKERS,
-                                      collate_fn=train_dataset.collate,
+                                      collate_fn=cs,
                                       pin_memory=False)
 
         config.n_train_instances = len(train_dataloader.dataset)
     else:
         config.n_train_instances = 1
         train_dataset = train_dataloader = None
+        cs = lambda x: train_dataset.collate(x, alphabet_size=config.alphabet_size)
 
     test_dataset=StrokeRecoveryDataset([folder / "test_online_coords.json"],
                             root=config.data_root,
                             max_images_to_load=test_size,
-                            cnn=cnn,
+                            cnn_type=cnn_type,
                             test_dataset = True,
                             **kwargs
                             )
@@ -272,7 +276,7 @@ def build_data_loaders(folder, cnn, train_size, test_size, **kwargs):
                                   batch_size=batch_size,
                                   shuffle=True,
                                   num_workers=NUM_WORKERS,
-                                  collate_fn=collate_stroke,
+                                  collate_fn=cs,
                                   pin_memory=False)
 
     n_test_points = 0
@@ -293,7 +297,7 @@ def main(config_path, testing=False):
     test_size = config.test_size
     train_size = config.train_size
     batch_size = config.batch_size
-    vocab_size = config.vocab_size
+    vocab_size = config.feature_map_dim
     device = config.device if not utils.no_gpu_testing() else 'cpu'
     config.device = device # these need to be the same
 
@@ -318,31 +322,40 @@ def main(config_path, testing=False):
         #input_vocab_size = 3
         pass
 
-    model_kwargs = {"vocab_size":vocab_size,
+    ### LOAD DATA
+    # Alphabet size needed to build model
+    # ALthough, the CNN used to be needed to build the dataset, ugh
+
+    logger.info(("Current dataset: ", folder))
+
+    train_dataloader, test_dataloader = build_data_loaders(folder, config.cnn_type, train_size, test_size, **config.dataset,
+                                            config=config)
+
+
+    model_kwargs = {"feature_map_dim": 1024,
                     "device":device,
                     "cnn_type":config.cnn_type,
                     "first_conv_op":config.coordconv,
                     "first_conv_opts":config.coordconv_opts,
+                    "alphabet_dim": max(config.training_dataset.alphabet_size, config.test_dataset.alphabet_size),
                     **config.model_opts}
 
     model_dict = {"start_point_lstm": start_points.StartPointModel,
-              "start_point_lstm2":start_points.StartPointModel2,
+              "start_point_lstm2": start_points.StartPointModel2,
               "start_point_attn": start_points.StartPointAttnModel,
               "start_point_attn_deep": start_points.StartPointAttnModelDeep,
               "start_point_attn_full": start_points.StartPointAttnModelFull,
-              "normal":stroke_model.StrokeRecoveryModel,
-              "AlexGraves":stroke_model.AlexGraves,
+              "normal": stroke_model.StrokeRecoveryModel,
+              "AlexGraves": stroke_model.AlexGraves,
               "TMinus1": stroke_model.TMinus1,
-              "AlexGraves2":stroke_model.AlexGraves2}
+              "AlexGraves2": stroke_model.AlexGraves2,
+              "AlexGravesCombined": AlexGravesCombined
+              }
 
     model_class = model_dict[config.model_name]
     model = model_class(**model_kwargs).to(device)
 
     cnn = model.cnn # if set to a cnn object, then it will resize the GTs to be the same size as the CNN output
-    logger.info(("Current dataset: ", folder))
-
-    train_dataloader, test_dataloader = build_data_loaders(folder, cnn, train_size, test_size, **config.dataset,
-                                            config=config)
 
     # example = next(iter(test_dataloader)) # BATCH, WIDTH, VOCAB
     # input_vocab_size = example["gt"].shape[-1]
