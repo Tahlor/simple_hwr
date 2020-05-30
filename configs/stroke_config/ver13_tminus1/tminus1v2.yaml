@@ -1,7 +1,3 @@
-## TO DO IMMEDIATELY:
-# DEBUG TEST/TRAIN LOSS
-# RELATIVE COORDS CONFIG
-
 # Load model
 load_path: /fslhome/tarch/fsl_groups/fslg_hwr/compute/taylor_simple_hwr/RESULTS/20200301-PRETRAIN/normal_preload_model.pt
 load_path: /media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_train_2.9/normal_preload_model.pt
