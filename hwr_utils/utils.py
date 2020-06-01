@@ -1591,6 +1591,13 @@ def prep_coords_to_graph(config, coords, is_gt=True):
             coords[idx] = relativefy_numpy(coords[idx], reverse=False)
     return coords
 
+def backup_alphabet(source_dict, destination_dict):
+    destination_dict.alphabet_size = source_dict.alphabet_size
+    destination_dict.char_freq = source_dict.char_freq
+    destination_dict.idx_to_char = source_dict.idx_to_char
+    destination_dict.char_to_idx = source_dict.char_to_idx
+
+
 if __name__=="__main__":
     from hwr_utils.visualize import Plot
     viz = Plot(port=9001)
