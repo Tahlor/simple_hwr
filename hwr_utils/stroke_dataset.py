@@ -25,7 +25,6 @@ logger = logging.getLogger("root."+__name__)
 PADDING_CONSTANT = 1 # 1=WHITE, 0=BLACK
 MAX_LEN = 64
 PARAMETER = "d" # t or d for time/distance resampling
-ALPHABET_SIZE = 0
 
 script_path = Path(os.path.realpath(__file__))
 project_root = script_path.parent.parent
@@ -253,7 +252,6 @@ class StrokeRecoveryDataset(Dataset):
                  config=None,
                  image_prep="pil_with_distortions",
                  **kwargs):
-        global ALPHABET_SIZE
         super().__init__()
         self.max_width = 2000
 
@@ -295,10 +293,13 @@ class StrokeRecoveryDataset(Dataset):
         ## Load GT text
         self.gt_text_data = self.load_gt_text(self.root / "prepare_online_data/online_augmentation_good.json")
         master_string = "".join([self.get_gt_text(d["image_path"], is_id=False) for d in self.data])
+        self.master_string = master_string
+        self.update_alphabet(master_string)
+
+    def update_alphabet(self, master_string):
         self.char_to_idx, self.idx_to_char, self.char_freq = character_set._make_char_set(master_string)
         # Convert to a list to work with easydict
         self.idx_to_char = dict_to_list(self.idx_to_char)
-        ALPHABET_SIZE = max(ALPHABET_SIZE, len(self.idx_to_char))
         self.alphabet_size = len(self.idx_to_char)
 
     def resample_one(self, item, parameter=PARAMETER):
@@ -542,7 +543,7 @@ class StrokeRecoveryDataset(Dataset):
         image_path = self.root / item['image_path']
         id = Path(image_path).stem.split("_")[0]
         gt_text = self.get_gt_text(id)
-        gt_text_indices = [self.char_to_idx[x] for x in gt_text]
+        gt_text_indices = [self.char_to_idx[x] if x in self.char_to_idx else 0 for x in gt_text] # chars not in training get index 0
 
         ## DEFAULT GT ARRAY
         # X, Y, FLAG_BEGIN_STROKE, FLAG_END_STROKE, FLAG_EOS - VOCAB x desired_num_of_strokes
@@ -894,7 +895,7 @@ def test_padding(pad_list, func):
     return x #[0,0]
 
 TYPE = np.float32 #np.float16
-def collate_stroke(batch, device="cpu", gt_opts=None, post_length_buffer=20, alphabet_size=ALPHABET_SIZE):
+def collate_stroke(batch, device="cpu", gt_opts=None, post_length_buffer=20, alphabet_size=0):
     """ Pad ground truths with 0's
         Report lengths to get accurate average loss
 

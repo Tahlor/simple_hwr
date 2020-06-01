@@ -250,7 +250,10 @@ def build_data_loaders(folder, cnn_type, train_size, test_size, **kwargs):
                                 )
 
         cs = lambda x: train_dataset.collate(x, alphabet_size=train_dataset.alphabet_size)
-        config.alphabet_size = train_dataset.alphabet_size
+
+        # Backup the alphabet
+        utils.backup_alphabet(train_dataset, config)
+
         train_dataloader = DataLoader(train_dataset,
                                       batch_size=batch_size,
                                       shuffle=True,
@@ -271,6 +274,9 @@ def build_data_loaders(folder, cnn_type, train_size, test_size, **kwargs):
                             test_dataset = True,
                             **kwargs
                             )
+    if set(test_dataset.char_to_idx.keys()) != set(config.char_to_idx.keys()):
+        utils.backup_alphabet(source_dict=config, destination_dict=test_dataset)
+        warnings.warn("Test and training alphabets are different!")
 
     test_dataloader = DataLoader(test_dataset,
                                   batch_size=batch_size,
@@ -278,6 +284,9 @@ def build_data_loaders(folder, cnn_type, train_size, test_size, **kwargs):
                                   num_workers=NUM_WORKERS,
                                   collate_fn=cs,
                                   pin_memory=False)
+
+    # Update alphabets
+
 
     n_test_points = 0
     for i in test_dataloader:

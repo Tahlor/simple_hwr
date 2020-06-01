@@ -152,7 +152,7 @@ class AlexGravesCombined(AlexGraves):
             )
             inp = torch.cat((inputs, hid_1, window_vec), dim=2) # BATCH x 394? x (1024+LSTM_hidden+gt_size)
 
-        elif self.mode == "letter_only":
+        elif self.mode in ["letter_only", "random"]:
             hid_1_L, window_vec_L, all_eos_L, kappa_L, state_1_L, letter_lstm_args = self.first_layer(
                 **letter_lstm_args,
                 feature_maps=letter_gt,
@@ -163,6 +163,10 @@ class AlexGravesCombined(AlexGraves):
                 output_embedding=self.embedding
             )
             inp = torch.cat((inputs, hid_1_L, window_vec_L), dim=2)  # BATCH x 394? x (1024+LSTM_hidden+gt_size)
+            window_vec = window_vec_L
+            hid_1 = hid_1_L
+        else:
+            raise Exception("Unknown mode")
 
         # if True:
             #inp = torch.cat((inputs, (hid_1_L+hid_1)/2, window_vec, window_vec_L), dim=2)
@@ -288,7 +292,19 @@ class AlexGravesCombined(AlexGraves):
 
                 y_hat = y_hat.squeeze(dim=1)
                 Z = model_utils.sample_batch_from_out_dist(y_hat, bias, gt_size=self.gt_size)
-                eos = ((image_lstm_args["prev_eos"]+letter_lstm_args["prev_eos"])/2).unsqueeze(1)
+                eos, total = 0,0
+
+                # Take average EOS
+                if not image_lstm_args["prev_eos"] is None:
+                    eos += image_lstm_args["prev_eos"]
+                    total+=1
+                if not letter_lstm_args["prev_eos"] is None:
+                    eos += letter_lstm_args["prev_eos"]
+                    total+=1
+                if total==2:
+                    eos = eos/2
+                eos = eos.unsqueeze(1)
+
                 if self.gt_size==4:
                     Z[:, 0:1, 3:4] = eos.unsqueeze(1)
                 # if Z.shape[-1] < self.gt_size:
