@@ -138,7 +138,7 @@ class AlexGravesCombined(AlexGraves):
             feature_maps = self.get_feature_maps(img)
 
         # And stuff not NONE!!!
-        if True or random.random() < .5:
+        if (random.random() < .5 and self.mode == "random") or self.mode == "image_only" or self.mode == "combine":
             hid_1, window_vec, all_eos, kappa, state_1, image_lstm_args = self.first_layer(
                 initial_hidden=image_lstm_args["initial_hidden"],
                 prev_eos=image_lstm_args["prev_eos"],
@@ -152,8 +152,7 @@ class AlexGravesCombined(AlexGraves):
             )
             inp = torch.cat((inputs, hid_1, window_vec), dim=2) # BATCH x 394? x (1024+LSTM_hidden+gt_size)
 
-        if True:
-
+        elif self.mode == "letter_only":
             hid_1_L, window_vec_L, all_eos_L, kappa_L, state_1_L, letter_lstm_args = self.first_layer(
                 **letter_lstm_args,
                 feature_maps=letter_gt,
@@ -163,11 +162,11 @@ class AlexGravesCombined(AlexGraves):
                 lstm=self.lstm_1_letters,
                 output_embedding=self.embedding
             )
-            inp2 = torch.cat((inputs, hid_1_L, window_vec_L), dim=2)  # BATCH x 394? x (1024+LSTM_hidden+gt_size)
+            inp = torch.cat((inputs, hid_1_L, window_vec_L), dim=2)  # BATCH x 394? x (1024+LSTM_hidden+gt_size)
 
-        if True:
+        # if True:
             #inp = torch.cat((inputs, (hid_1_L+hid_1)/2, window_vec, window_vec_L), dim=2)
-            inp = (inp+inp2)/2
+            # inp = (inp+inp2)/2
 
         hid_2, state_2 = self.lstm_2(inp, state_2)
         inp = torch.cat((inputs, hid_2, window_vec), dim=2)
