@@ -426,7 +426,7 @@ class StrokeRecoveryDataset(Dataset):
 
     @staticmethod
     def prep_image(gt, img_height=61, add_distortion=True, add_blur=False, use_stroke_number=None,
-                   random_pad=True, **kwargs):
+                   random_padding=True, **kwargs):
         """ Important that this modifies the actual GT so that plotting afterward still works
 
         Randomly SQUEEZE OR STRETCH? Would have to change GT length...???
@@ -440,15 +440,15 @@ class StrokeRecoveryDataset(Dataset):
         # Based on how the GTs were resampled, how big was the original image etc?
         image_width = gts_to_image_size(len(gt))
         # Returns image in upper origin format
-        if random_pad:
-            padded_gt_img = random_pad(gt,vpad=3, hpad=5) # pad top, left, bottom
+        if random_padding:
+            padded_gt_img = random_pad(gt, vpad=3, hpad=5) # pad top, left, bottom
         else:
             padded_gt_img = gt
         padded_gt_img = StrokeRecoveryDataset.shrink_gt(padded_gt_img, width=image_width) # shrink to fit
         # padded_gt = StrokeRecoveryDataset.enlarge_gt(padded_gt, width=image_width)  # enlarge to fit - needs to be at least as big as GTs
 
         img = draw_from_gt(padded_gt_img, show=False, save_path=None, min_width=None, height=img_height,
-                           right_padding="random" if random_pad else 0, max_width=8, use_stroke_number=use_stroke_number,
+                           right_padding="random" if random_padding else 0, max_width=8, use_stroke_number=use_stroke_number,
                            **kwargs)
 
         # img = img[::-1] # convert to lower origin format
@@ -576,7 +576,7 @@ class StrokeRecoveryDataset(Dataset):
             img, gt = self.prep_image(gt, img_height=self.img_height,
                                       add_distortion=add_distortion,
                                       add_blur=add_blur,
-                                      random_pad=not DETERMINISTIC,
+                                      random_padding=not DETERMINISTIC,
                                       use_stroke_number=("stroke_number" in self.gt_format),
                                       linewidth=None if self.config.dataset.linewidth is None else self.config.dataset.linewidth,
                                       )
