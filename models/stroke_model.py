@@ -196,7 +196,9 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
             cnn_type:
             **kwargs:
         """
+        l = locals()
         kwargs.update({k:v for k,v in locals().items() if k not in ["kwargs", "self"] and "__" not in k}) # exclude self, __class__, etc.
+        self.__dict__.update(kwargs)
         super().__init__(**kwargs)
 
         if model_name == "default":
@@ -211,9 +213,6 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
             self.lstm_2 = nn.LSTM(
                 self.gt_size + self.feature_map_dim + hidden_size, hidden_size, batch_first=True, dropout=.5
             )
-            # self.lstm_3 = nn.LSTM(
-            #     self.gt_size + hidden_size, hidden_size, batch_first=True
-            # )
             self.lstm_3 = nn.LSTM(
                 self.gt_size + self.feature_map_dim + hidden_size, hidden_size, batch_first=True, dropout=.5
             )
@@ -280,7 +279,6 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
         all_eos = []
         for t in range(inputs.shape[1]): # loop through width and calculate windows; 1st LSTM no window
             inp = torch.cat((inputs[:, t : t + 1, :], prev_window_vec), dim=2) # BATCH x 1 x (GT_SIZE+1024)
-
             hid_1_t, state_1 = self.lstm_1(inp, state_1) # hid_1_t: BATCH x 1 x HIDDEN
             hid_1.append(hid_1_t)
 
@@ -300,9 +298,9 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
             prev_kappa = kappa
             window_vec.append(window)
 
-        hid_1 = torch.cat(hid_1, dim=1)
-        window_vec = torch.cat(window_vec, dim=1)
-        all_eos = torch.cat(all_eos, dim=0).reshape(len(all_eos),-1).permute(1,0)
+        hid_1 = torch.cat(hid_1, dim=1) # convert list of states to tensor
+        window_vec = torch.cat(window_vec, dim=1) # convert list of weighted inputs to tensor
+        all_eos = torch.cat(all_eos, dim=0).reshape(len(all_eos),-1).permute(1,0) # eos is 1D, batch size
 
         inp = torch.cat((inputs, hid_1, window_vec), dim=2) # BATCH x 394? x (1024+LSTM_hidden+gt_size)
         state_2 = (initial_hidden[0][1:2], initial_hidden[1][1:2])
@@ -522,7 +520,7 @@ class AlexGraves2(AlexGraves):
 class TMinus1(nn.Module):
     def __init__(self, vocab_size=4, device="cuda", cnn_type="default64", first_conv_op=CoordConv,
                  first_conv_opts=None,
-                 rnn_mode="all_zeros",   # all_zeros - super fast (not implemented) ; correct_gts - super fast
+                 rnn_mode="all_zeros",   # all_zeros - super fast; correct_gts - super fast
                  mode="random", #"random"ly apply kd; always_fix=always apply kd; never_fix
                  **kwargs):
         super().__init__()
