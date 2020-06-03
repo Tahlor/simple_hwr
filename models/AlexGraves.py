@@ -11,7 +11,7 @@ from synthesis.synth_models import models as synth_models
 import models.model_utils as model_utils
 from models.stroke_model import AlexGraves
 
-class AlexGravesCombined(AlexGraves):
+class AlexGravesCombined(synth_models.HandWritingSynthesisNet):
     def __init__(self, hidden_size=400,
                  n_layers=3,
                  output_size=121,
@@ -32,7 +32,9 @@ class AlexGravesCombined(AlexGraves):
             cnn_type:
             **kwargs:
         """
+        l = locals()
         kwargs.update({k:v for k,v in locals().items() if k not in ["kwargs", "self"] and "__" not in k}) # exclude self, __class__, etc.
+        self.__dict__.update(kwargs)
         super().__init__(**kwargs)
 
         self.feature_map_dim = feature_map_dim
@@ -62,7 +64,7 @@ class AlexGravesCombined(AlexGraves):
             self.window_layer = nn.Linear(hidden_size, 3 * K) # 3: alpha, beta, kappa
             self.output_layer = nn.Linear(n_layers * hidden_size, output_size)
 
-        self.cnn = CNN(nc=1, cnn_type=self.cnn_type) # output dim: Width x Batch x 1024
+            self.cnn = CNN(nc=1, cnn_type=self.cnn_type) # output dim: Width x Batch x 1024
 
     def init_hidden(self, batch_size, device):
         initial_hidden = [

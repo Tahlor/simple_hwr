@@ -50,6 +50,7 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
         #print(item["gt"].shape, item["label_lengths"])
         last_one = (i+2==len(dataloader) or len(dataloader) <= 2)
         loss, preds, y_hat, *_ = trainer.train(item, train=True, return_preds=last_one) #
+        #y = y_hat.cpu().detach().numpy()
         if last_one and not preds is None and plot_graphs:
             graph_procedure(preds,item,other=y_hat)
 

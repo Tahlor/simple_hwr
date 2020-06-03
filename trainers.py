@@ -356,14 +356,18 @@ class GeneratorTrainer(Trainer):
 
 
 class AlexGravesTrainer(Trainer):
-    def __init__(self, model, optimizer, config, loss_criterion=None, training_dataset=None, **kwargs):
+    def __init__(self, model, optimizer, config, loss_criterion=None, training_dataset=None, DETERMINISTIC=False, **kwargs):
         super().__init__(model, optimizer, config, loss_criterion)
         self.loss_criterion = loss_criterion
         self.generator_model = model
         self.training_dataset = training_dataset
         self.device = self.config.device
-        print(model.__class__.__name__)
-        if model.__class__=="AlexGravesCombined":
+        self.DETERMINISTIC = DETERMINISTIC
+        if DETERMINISTIC:
+            for p in model.parameters():
+                p.data.fill_(.01)
+
+        if model.__class__.__name__=="AlexGravesCombined":
             self.train = self.train_new
         else:
             self.train = self.train_old
@@ -379,16 +383,7 @@ class AlexGravesTrainer(Trainer):
         pred_logits = self.stroke_model(input).cpu().permute(1, 0, 2)
         return pred_logits
 
-    def train(self, item, train=True, **kwargs):
-        if train:
-            self.model.train()
-            suffix="_train"
-        else:
-            self.model.eval()
-            suffix="_test"
-        batch_size = item["line_imgs"].shape[0]
-        initial_hidden, window_fm, window_letters, initial_kappa = self.model.init_hidden(batch_size, self.device)
-
+    def get_inital_lstm_args(self, initial_hidden, window_fm, window_letters, initial_kappa):
         image_lstm_args = {"initial_hidden":initial_hidden[0],
                              "prev_window_vec":window_fm,
                              "prev_eos": None,
@@ -398,6 +393,22 @@ class AlexGravesTrainer(Trainer):
                              "prev_window_vec": window_letters,
                              "prev_eos": None,
                              "prev_kappa": initial_kappa}
+        return image_lstm_args, letter_lstm_args
+
+    def train_new(self, item, train=True, **kwargs):
+        if self.DETERMINISTIC:
+            train = False
+
+        if train:
+            self.model.train()
+            suffix="_train"
+        else:
+            self.model.eval()
+            suffix="_test"
+
+        batch_size = item["line_imgs"].shape[0]
+        initial_hidden, window_fm, window_letters, initial_kappa = self.model.init_hidden(batch_size, self.device)
+        image_lstm_args, letter_lstm_args = self.get_inital_lstm_args(initial_hidden, window_fm, window_letters, initial_kappa)
 
         imgs = item["line_imgs"].to(self.config.device)
         feature_maps = self.model.get_feature_maps(imgs)
@@ -419,7 +430,7 @@ class AlexGravesTrainer(Trainer):
                        } # reset hidden/cell states
 
         y_hat, states, image_lstm_args, letter_lstm_args = self.eval(model_input, ) # BATCH x 1 x H x W
-        #m = y_hat.detach().cpu().numpy()
+        m = y_hat.detach().cpu().numpy()
         self.config.counter.update(epochs=0, instances=np.sum(item["label_lengths"]), updates=1)
         loss_tensor, loss = self.loss_criterion.main_loss(y_hat.cpu(), item, suffix=suffix, targ_key="rel_gt")
 
@@ -431,6 +442,9 @@ class AlexGravesTrainer(Trainer):
 
         preds = None
         if chk_flg("return_preds",kwargs):
+            image_lstm_args, letter_lstm_args = self.get_inital_lstm_args(initial_hidden, window_fm, window_letters,
+                                                                          initial_kappa)
+
             # Kind of inane, generating based on feature maps and chars
             preds = self.model.generate(feature_maps=feature_maps,
                                         feature_maps_mask=feature_maps_mask,
@@ -439,7 +453,6 @@ class AlexGravesTrainer(Trainer):
                                         letter_lstm_args=letter_lstm_args,
                                         letter_gt=letter_gt,
                                         letter_mask=letter_mask,
-                                        kappa=initial_kappa,
                                         reset=True)
             # Convert to absolute coords
             preds[:,:,0:1] = np.cumsum(preds[:,:,0:1], axis=1)
@@ -447,16 +460,21 @@ class AlexGravesTrainer(Trainer):
         return loss, preds, y_hat
 
     def train_old(self, item, train=True, **kwargs):
+        if self.DETERMINISTIC:
+            train = False
+
         if train:
             self.model.train()
             suffix = "_train"
         else:
             self.model.eval()
             suffix = "_test"
+
         batch_size = item["line_imgs"].shape[0]
         initial_hidden, initial_window_vector, initial_kappa = self.model.init_hidden(batch_size, self.device)
 
         imgs = item["line_imgs"].to(self.config.device)
+        #i = imgs.cpu().detach().numpy()
         feature_maps = self.model.get_feature_maps(imgs)
         feature_maps_mask = item["feature_map_mask"].to(self.config.device)
         gt_maps_makks = item["mask"]
@@ -475,7 +493,7 @@ class AlexGravesTrainer(Trainer):
                        "reset": True}  # reset hidden/cell states
 
         y_hat, states, window_vec, prev_kappa, eos = self.eval(model_input, )  # BATCH x 1 x H x W
-        # m = y_hat.detach().cpu().numpy()
+        m = y_hat.detach().cpu().numpy()
         self.config.counter.update(epochs=0, instances=np.sum(item["label_lengths"]), updates=1)
         loss_tensor, loss = self.loss_criterion.main_loss(y_hat.cpu(), item, suffix=suffix, targ_key="rel_gt")
 

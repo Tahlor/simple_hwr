@@ -222,6 +222,7 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
 
             self.cnn = CNN(nc=1, cnn_type=self.cnn_type) # output dim: Width x Batch x 1024
 
+
     def compute_window_vector(self, mix_params, prev_kappa, feature_maps, mask, is_map=None):
         # Text would have been text LEN x alphabet
         # Image: IMAGE_LEN x 1024ish
