@@ -1,5 +1,6 @@
 import torch.nn.functional as F
 from torch import nn
+import itertools
 import torch
 from .basic import CNN, BidirectionalRNN
 from .CoordConv import CoordConv
@@ -11,7 +12,7 @@ from synthesis.synth_models import models as synth_models
 import models.model_utils as model_utils
 from models.stroke_model import AlexGraves
 
-class AlexGravesCombined(AlexGraves):
+class AlexGravesCombined(synth_models.HandWritingSynthesisNet):
     def __init__(self, hidden_size=400,
                  n_layers=3,
                  output_size=121,
@@ -32,7 +33,9 @@ class AlexGravesCombined(AlexGraves):
             cnn_type:
             **kwargs:
         """
+        l = locals()
         kwargs.update({k:v for k,v in locals().items() if k not in ["kwargs", "self"] and "__" not in k}) # exclude self, __class__, etc.
+        self.__dict__.update(kwargs)
         super().__init__(**kwargs)
 
         self.feature_map_dim = feature_map_dim
@@ -43,6 +46,7 @@ class AlexGravesCombined(AlexGraves):
         self.cnn_type = cnn_type
         self.gt_size = 4 # X,Y,SOS,EOS
         self.device = device
+
         #self.text_mask = torch.ones(32, 64).to("cuda")
 
         K = 10 # number of Gaussians in window
@@ -62,7 +66,11 @@ class AlexGravesCombined(AlexGraves):
             self.window_layer = nn.Linear(hidden_size, 3 * K) # 3: alpha, beta, kappa
             self.output_layer = nn.Linear(n_layers * hidden_size, output_size)
 
-        self.cnn = CNN(nc=1, cnn_type=self.cnn_type) # output dim: Width x Batch x 1024
+            self.cnn = CNN(nc=1, cnn_type=self.cnn_type) # output dim: Width x Batch x 1024
+        #rnns = [key for key,network in self.__dict__.items() if isinstance(network, nn.modules.rnn.RNNBase)]
+        rnns = [self.lstm_1,self.lstm_2,self.lstm_1_letters, self.lstm_3, self.window_layer]
+        rnn_params = [network.parameters() for network in rnns]
+        self.rnn_parameters = list(itertools.chain(*rnn_params))
 
     def init_hidden(self, batch_size, device):
         initial_hidden = [
