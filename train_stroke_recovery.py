@@ -429,7 +429,7 @@ def main(config_path, testing=False):
             logger.info(f"Epoch: {epoch}, Test Loss: {test_loss}")
             check_epoch_build_loss(config)
             all_test_losses = [x for x in config.stats["Actual_Loss_Function_test"].y if x and x > 0]
-            if len(all_test_losses) and test_loss <= np.min(all_test_losses):
+            if len(all_test_losses) and test_loss <= np.nanmin(all_test_losses):
                 utils.save_model_stroke(config, bsf=True)
                 continue # already saved model and strokes
 

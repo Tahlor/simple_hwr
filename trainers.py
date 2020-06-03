@@ -438,6 +438,8 @@ class AlexGravesTrainer(Trainer):
             self.optimizer.zero_grad()
             loss_tensor.backward()
             torch.nn.utils.clip_grad_norm_(self.config.model.parameters(), 10)
+            if "rnn_parameters" in self.model.__dict__.keys():
+                nn.utils.clip_grad_value_(self.model.rnn_parameters, 1)
             self.optimizer.step()
 
         preds = None
@@ -501,6 +503,8 @@ class AlexGravesTrainer(Trainer):
             self.optimizer.zero_grad()
             loss_tensor.backward()
             torch.nn.utils.clip_grad_norm_(self.config.model.parameters(), 10)
+            if "rnn_parameters" in self.model.__dict__.keys():
+                nn.utils.clip_grad_value_(self.model.rnn_parameters.parameters(), 1)
             self.optimizer.step()
 
         preds = None

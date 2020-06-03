@@ -1,5 +1,6 @@
 import torch.nn.functional as F
 from torch import nn
+import itertools
 import torch
 from .basic import CNN, BidirectionalRNN
 from .CoordConv import CoordConv
@@ -45,6 +46,7 @@ class AlexGravesCombined(synth_models.HandWritingSynthesisNet):
         self.cnn_type = cnn_type
         self.gt_size = 4 # X,Y,SOS,EOS
         self.device = device
+
         #self.text_mask = torch.ones(32, 64).to("cuda")
 
         K = 10 # number of Gaussians in window
@@ -65,6 +67,10 @@ class AlexGravesCombined(synth_models.HandWritingSynthesisNet):
             self.output_layer = nn.Linear(n_layers * hidden_size, output_size)
 
             self.cnn = CNN(nc=1, cnn_type=self.cnn_type) # output dim: Width x Batch x 1024
+        #rnns = [key for key,network in self.__dict__.items() if isinstance(network, nn.modules.rnn.RNNBase)]
+        rnns = [self.lstm_1,self.lstm_2,self.lstm_1_letters, self.lstm_3, self.window_layer]
+        rnn_params = [network.parameters() for network in rnns]
+        self.rnn_parameters = list(itertools.chain(*rnn_params))
 
     def init_hidden(self, batch_size, device):
         initial_hidden = [
