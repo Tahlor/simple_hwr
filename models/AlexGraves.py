@@ -55,9 +55,6 @@ class AlexGravesCombined(AlexGraves):
             self.lstm_2 = nn.LSTM(
                 self.gt_size + self.feature_map_dim + hidden_size, hidden_size, batch_first=True, dropout=.5
             )
-            # self.lstm_3 = nn.LSTM(
-            #     self.gt_size + hidden_size, hidden_size, batch_first=True
-            # )
             self.lstm_3 = nn.LSTM(
                 self.gt_size + self.feature_map_dim + hidden_size, hidden_size, batch_first=True, dropout=.5
             )
@@ -71,7 +68,7 @@ class AlexGravesCombined(AlexGraves):
         initial_hidden = [
             (torch.zeros(1, batch_size, self.hidden_size, device=device),
             torch.zeros(1, batch_size, self.hidden_size, device=device))
-        ] * self.n_layers
+        ] * self.n_layers # [layer1, layer2 ...] ; layer1 = hidden, cell (1xbatchxdim)
         window_fm = torch.zeros(batch_size, 1, self.feature_map_dim, device=device)
         window_letters = torch.zeros(batch_size, 1, self.alphabet_dim, device=device)
         kappa = torch.zeros(batch_size, 10, 1, device=device)
