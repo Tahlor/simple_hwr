@@ -14,7 +14,7 @@ load_path: ./RESULTS/pretrained/with_EOS/normal_preload_model.pt # GT4
 load_path: /media/data/GitHub/simple_hwr/results/stroke_config/ver12_AlexGraves/20200513_223906-AlexGraves_MAIN/AlexGraves_model.pt
 load_path: /media/data/GitHub/simple_hwr/results/stroke_config/ver12_AlexGraves/20200519_173155-AlexGraves2/AlexGraves2_model.pt
 load_path: /media/data/GitHub/simple_hwr/RESULTS/ver12_AlexGraves/20200530_011807-AlexGravesCombined/AlexGravesCombined_model.pt
-load_path: ./results/AlexGravesCombined_super_images_only/20200602_225305-AlexGravesCombined_super_images_only/AlexGravesCombined_super_images_only_model.pt
+load_path: ./results/AlexGravesCombined_super_images_only/20200603_180552-AlexGravesCombined_super_alternate/AlexGravesCombined_super_alternate_model.pt
 
 load_optimizer: false # load LR and per-parameter LR's from saved state
 reset_LR: true # reset the global LR if loading optimizer - this resets it based on epoch
@@ -40,7 +40,7 @@ model_opts:
 
 dataset:
   img_height: 61
-  include_synthetic: false
+  include_synthetic: true
   num_of_channels: 1
   image_prep: pil_with_distortion
   #adapted_gt_path: ./RESULTS/pretrained/training_dataset.npy

@@ -326,16 +326,24 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
         window_vector,
         kappa,
         bias=10, # how close to max argument to be
+        forced_size=0,
         **kwargs):
 
         seq_len = 0
         gen_seq = []
+
+        # Keep going condition
+        if forced_size:
+            condition = lambda seq_len, eos, batch_size: seq_len<forced_size
+        else:
+            condition = lambda seq_len, eos, batch_size: seq_len < 2000 and tensor_sum(eos) < batch_size/2
+
         with torch.no_grad():
             batch_size = feature_maps.shape[0]
             #print("batch_size:", batch_size)
             Z = torch.zeros((batch_size, 1, self.gt_size)).to(self.device)
             eos = 0
-            while seq_len < 2000 and tensor_sum(eos) < batch_size/2:
+            while condition(seq_len, eos, batch_size):
 
                 y_hat, state, window_vector, kappa, eos = self.forward(
                     inputs=Z,
@@ -370,6 +378,9 @@ class AlexGraves(synth_models.HandWritingSynthesisNet):
         return gen_seq
 
 class AlexGraves2(AlexGraves):
+    """ Just do a BRNN instead of a window vector
+    """
+
     def __init__(self, hidden_size=400,
                  n_layers=2,
                  output_size=122,

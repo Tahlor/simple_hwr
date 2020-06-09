@@ -262,7 +262,7 @@ class GeneratorTrainer(Trainer):
         image = self.generator_model(input)
         return image
 
-    def stroke_eval(self, input):
+    def stroke_eval(self, input, **kwargs):
         pred_logits = self.stroke_model(input).cpu().permute(1, 0, 2)
         return pred_logits
 
@@ -273,7 +273,7 @@ class GeneratorTrainer(Trainer):
         white_loss_tensor = self.white_bias(pred_image, targs=1, label_lengths=None) * .01 # bias toward whiteness
 
         label_lengths = item["label_lengths"]
-        predicted_strokes = self.stroke_eval(pred_image[:, :, :])
+        predicted_strokes = self.stroke_eval(pred_image[:, :, :], item=item)
         predicted_strokes = relativefy_batch_torch(predicted_strokes, reverse=True, indices=0) # sum the x-axis
 
         # Manual truncation
@@ -284,7 +284,7 @@ class GeneratorTrainer(Trainer):
         if item["predicted_strokes_gt"][0] is None:
             self.stroke_model.eval()
             with torch.no_grad(): # don't need gradients for predicted GT strokes
-                predicted_strokes_gt_batch = self.stroke_eval(gt_image.to(self.config.device)).detach()
+                predicted_strokes_gt_batch = self.stroke_eval(gt_image.to(self.config.device), item=item).detach()
                 predicted_strokes_gt_batch = relativefy_batch_torch(predicted_strokes_gt_batch, reverse=True, indices=0)  # sum the x-axis
                 predicted_strokes_gt_batch[:,:,self.sigmoid_indices] = SIGMOID(predicted_strokes_gt_batch[:,:,self.sigmoid_indices])
                 ## Adjust GT SOS to Stroke Number
@@ -355,6 +355,35 @@ class GeneratorTrainer(Trainer):
         return loss, pred_image, predicted_strokes
 
 
+class GeneratorTrainer2(GeneratorTrainer):
+    def __init__(self, model, optimizer, config, stroke_model, loss_criterion=None, training_dataset=None, **kwargs):
+        super().__init__(model, optimizer, config, stroke_model,
+                         loss_criterion=loss_criterion,
+                         training_dataset=training_dataset,
+                         **kwargs)
+
+    def stroke_eval(self, input, item, **kwargs):
+        # Get the item and generate
+        batch_size = item["line_imgs"].shape[0]
+        initial_hidden, initial_window_vector, initial_kappa = self.stroke_model.init_hidden(batch_size, self.device)
+
+        feature_maps = self.stroke_model.get_feature_maps(input)
+        feature_maps_mask = torch.ones(feature_maps.shape[:2]).to(self.config.device) # B x W
+        #feature_maps_mask = item["feature_map_mask"].to(self.config.device)
+
+        preds = self.stroke_model.generate(feature_maps=feature_maps,
+                                    feature_maps_mask=feature_maps_mask,
+                                    hidden=initial_hidden,
+                                    window_vector=initial_window_vector,
+                                    kappa=initial_kappa,
+                                    reset=True,
+                                    forced_size=item["gt"].shape[1])
+
+        preds[:, :, 0:1] = np.cumsum(preds[:, :, 0:1], axis=1) # SHOULD THEY BE SUMMED
+        preds = torch.from_numpy(preds) # requires_grad=False
+        return preds[:,:,:3] # SHAPE?
+
+
 class AlexGravesTrainer(Trainer):
     def __init__(self, model, optimizer, config, loss_criterion=None, training_dataset=None, DETERMINISTIC=False, **kwargs):
         super().__init__(model, optimizer, config, loss_criterion)
@@ -380,7 +409,7 @@ class AlexGravesTrainer(Trainer):
         return self.generator_model(**input)
 
     def stroke_eval(self, input):
-        pred_logits = self.stroke_model(input).cpu().permute(1, 0, 2)
+        pred_logits = self.stroke_model(input).cpu().permute(1, 0, 2) # -> B,W,VOCAB
         return pred_logits
 
     def get_inital_lstm_args(self, initial_hidden, window_fm, window_letters, initial_kappa):
