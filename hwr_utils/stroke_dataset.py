@@ -657,7 +657,8 @@ class StrokeRecoveryDataset(Dataset):
             "kdtree": kdtree, # Will force preds to get nearer to nearest GTs; really want GTs forced to nearest pred; this will finish strokes better
             "gt_idx": idx,
             "predicted_strokes_gt": None,
-            "feature_map_width": img_width_to_pred_mapping(img.shape[1], self.cnn_type) # featuer maps not always same width as GT if using attention, window thing
+            "feature_map_width": img_width_to_pred_mapping(img.shape[1], self.cnn_type),
+            "feature_map_width_default": img_width_to_pred_mapping(img.shape[1], 'default')# featuer maps not always same width as GT if using attention, window thing
         }
 
     def char_stuff(self, master_string):
@@ -906,7 +907,7 @@ def test_padding(pad_list, func):
     return x #[0,0]
 
 TYPE = np.float32 #np.float16
-def collate_stroke(batch, device="cpu", gt_opts=None, post_length_buffer=20, alphabet_size=0):
+def collate_stroke(batch, device="cpu", ignore_alphabet=False, gt_opts=None, post_length_buffer=20, alphabet_size=0):
     """ Pad ground truths with 0's
         Report lengths to get accurate average loss
 
@@ -993,13 +994,18 @@ def collate_stroke(batch, device="cpu", gt_opts=None, post_length_buffer=20, alp
     text_lengths = torch.tensor([len(b["gt_text_indices"]) for b in batch])
 
     ## pad
-    one_hot = [torch.nn.functional.one_hot(torch.tensor(t["gt_text_indices"]), alphabet_size) for t in batch]
+    if ignore_alphabet:
+        one_hot = []
+        padded_one_hot = torch.zeros(1)
+        text_mask = []
+    else:
+        one_hot = [torch.nn.functional.one_hot(torch.tensor(t["gt_text_indices"]), alphabet_size) for t in batch]
 
-    # BATCH, MAX LENGTH, ALPHA SIZE
-    padded_one_hot = torch.nn.utils.rnn.pad_sequence(one_hot, batch_first=True)
+        # BATCH, MAX LENGTH, ALPHA SIZE
+        padded_one_hot = torch.nn.utils.rnn.pad_sequence(one_hot, batch_first=True)
 
-    ## compute mask
-    text_mask = (torch.max(padded_one_hot, axis=-1).values != 0)
+        ## compute mask
+        text_mask = (torch.max(padded_one_hot, axis=-1).values != 0)
 
     return_d = {
         "feature_map_mask": feature_map_mask,
