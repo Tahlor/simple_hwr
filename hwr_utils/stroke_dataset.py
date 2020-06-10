@@ -492,13 +492,13 @@ class StrokeRecoveryDataset(Dataset):
         return gt_data
 
     def get_gt_text(self, file_name, is_id=True):
-        if not is_id:
+        if not is_id: # has extra suffixes appened to file identifier after the _
             file_name = Path(file_name).stem.split("_")[0]
-        if re.match("[a-z][-0-9]+", file_name):
+        if re.match("[a-z][-0-9]+", file_name): # this isn't perfect, but good enough
             if file_name in self.gt_text_data.keys():
                 return self.gt_text_data[file_name]
             else:
-                return None
+                return ""
         else:
             # GT text is the filename
             return file_name
