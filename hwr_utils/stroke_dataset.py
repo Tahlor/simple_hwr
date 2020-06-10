@@ -293,7 +293,11 @@ class StrokeRecoveryDataset(Dataset):
 
         ## Load GT text
         self.gt_text_data = self.load_gt_text(self.root / "prepare_online_data/online_augmentation_good.json")
-        master_string = "".join([self.get_gt_text(d["image_path"], is_id=False) for d in self.data])
+        if "image_path" in self.data[0].keys():
+            master_string = "".join([self.get_gt_text(d["image_path"], is_id=False) for d in self.data])
+        else:
+            master_string = "".join([self.get_gt_text(d["image_path"], is_id=False) for d in self.data])
+
         self.master_string = master_string
         self.update_alphabet(master_string)
 
@@ -1110,7 +1114,6 @@ def some_kind_of_test():
     x = test_padding(the_list, pad)
     # y = test_padding(the_list, pad2)
     # assert np.allclose(x,y)
-
 
 if __name__=="__main__":
     kwargs = {'img_height': 121, 'include_synthetic': False, 'num_of_channels': 1, 'image_prep': 'no_warp_distortion', 'gt_format': ['x', 'y', 'stroke_number'], 'batch_size': 28, 'extra_dataset': []}
