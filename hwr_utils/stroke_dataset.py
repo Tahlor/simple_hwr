@@ -216,6 +216,7 @@ class BasicDataset(Dataset):
 
     def __getitem__(self, idx):
         item = self.data[idx]
+
         image_path = self.root / item['image_path']
         img = read_img(image_path, num_of_channels=self.num_of_channels, vertical_pad=True)
 
@@ -424,7 +425,8 @@ class StrokeRecoveryDataset(Dataset):
         return gt
 
     @staticmethod
-    def prep_image(gt, img_height=61, add_distortion=True, add_blur=False, use_stroke_number=None, **kwargs):
+    def prep_image(gt, img_height=61, add_distortion=True, add_blur=False, use_stroke_number=None,
+                   random_padding=True, **kwargs):
         """ Important that this modifies the actual GT so that plotting afterward still works
 
         Randomly SQUEEZE OR STRETCH? Would have to change GT length...???
@@ -438,12 +440,15 @@ class StrokeRecoveryDataset(Dataset):
         # Based on how the GTs were resampled, how big was the original image etc?
         image_width = gts_to_image_size(len(gt))
         # Returns image in upper origin format
-        padded_gt_img = random_pad(gt,vpad=3, hpad=5) # pad top, left, bottom
+        if random_padding:
+            padded_gt_img = random_pad(gt, vpad=3, hpad=5) # pad top, left, bottom
+        else:
+            padded_gt_img = gt
         padded_gt_img = StrokeRecoveryDataset.shrink_gt(padded_gt_img, width=image_width) # shrink to fit
         # padded_gt = StrokeRecoveryDataset.enlarge_gt(padded_gt, width=image_width)  # enlarge to fit - needs to be at least as big as GTs
 
         img = draw_from_gt(padded_gt_img, show=False, save_path=None, min_width=None, height=img_height,
-                           right_padding="random", max_width=8, use_stroke_number=use_stroke_number,
+                           right_padding="random" if random_padding else 0, max_width=8, use_stroke_number=use_stroke_number,
                            **kwargs)
 
         # img = img[::-1] # convert to lower origin format
@@ -530,6 +535,11 @@ class StrokeRecoveryDataset(Dataset):
         # Stroke order
         #idx = 27; print("IDX 27")
         #while gt_text is None:
+        DETERMINISTIC = False
+        if DETERMINISTIC:
+            idx = 0
+            self.config.dataset.linewidth = 1
+
         item = self.data[idx]
         #print(item["gt"].shape)
         #assert item["gt"].shape[0]==52
@@ -550,7 +560,7 @@ class StrokeRecoveryDataset(Dataset):
         if self.image_prep.startswith("pil") and not ("no_warp" in self.image_prep):
             if True:
                 gt = item["gt"].copy() # LENGTH, VOCAB
-            if not self.test_dataset: # don't warp the test data
+            if not self.test_dataset and not DETERMINISTIC: # don't warp the test data
                 gt = distortions.warp_points(gt * self.img_height) / self.img_height  # convert to pixel space
                 gt = np.c_[gt,item["gt"][:,2:]]
 
@@ -560,12 +570,13 @@ class StrokeRecoveryDataset(Dataset):
         assert gt.shape[0] == item["gt"].shape[0]
 
         # Render image
-        add_distortion = "distortion" in self.image_prep.lower() and not self.test_dataset # don't distort the test data
-        add_blur = "blur" in self.image_prep.lower()
+        add_distortion = "distortion" in self.image_prep.lower() and not self.test_dataset and not DETERMINISTIC # don't distort the test data
+        add_blur = "blur" in self.image_prep.lower() and not DETERMINISTIC
         if self.image_prep.lower().startswith("pil"):
             img, gt = self.prep_image(gt, img_height=self.img_height,
                                       add_distortion=add_distortion,
                                       add_blur=add_blur,
+                                      random_padding=not DETERMINISTIC,
                                       use_stroke_number=("stroke_number" in self.gt_format),
                                       linewidth=None if self.config.dataset.linewidth is None else self.config.dataset.linewidth,
                                       )
@@ -646,7 +657,8 @@ class StrokeRecoveryDataset(Dataset):
             "kdtree": kdtree, # Will force preds to get nearer to nearest GTs; really want GTs forced to nearest pred; this will finish strokes better
             "gt_idx": idx,
             "predicted_strokes_gt": None,
-            "feature_map_width": img_width_to_pred_mapping(img.shape[1], self.cnn_type) # featuer maps not always same width as GT if using attention, window thing
+            "feature_map_width": img_width_to_pred_mapping(img.shape[1], self.cnn_type),
+            "feature_map_width_default": img_width_to_pred_mapping(img.shape[1], 'default')# featuer maps not always same width as GT if using attention, window thing
         }
 
     def char_stuff(self, master_string):
@@ -895,7 +907,7 @@ def test_padding(pad_list, func):
     return x #[0,0]
 
 TYPE = np.float32 #np.float16
-def collate_stroke(batch, device="cpu", gt_opts=None, post_length_buffer=20, alphabet_size=0):
+def collate_stroke(batch, device="cpu", ignore_alphabet=False, gt_opts=None, post_length_buffer=20, alphabet_size=0):
     """ Pad ground truths with 0's
         Report lengths to get accurate average loss
 
@@ -982,13 +994,18 @@ def collate_stroke(batch, device="cpu", gt_opts=None, post_length_buffer=20, alp
     text_lengths = torch.tensor([len(b["gt_text_indices"]) for b in batch])
 
     ## pad
-    one_hot = [torch.nn.functional.one_hot(torch.tensor(t["gt_text_indices"]), alphabet_size) for t in batch]
+    if ignore_alphabet:
+        one_hot = []
+        padded_one_hot = torch.zeros(1)
+        text_mask = []
+    else:
+        one_hot = [torch.nn.functional.one_hot(torch.tensor(t["gt_text_indices"]), alphabet_size) for t in batch]
 
-    # BATCH, MAX LENGTH, ALPHA SIZE
-    padded_one_hot = torch.nn.utils.rnn.pad_sequence(one_hot, batch_first=True)
+        # BATCH, MAX LENGTH, ALPHA SIZE
+        padded_one_hot = torch.nn.utils.rnn.pad_sequence(one_hot, batch_first=True)
 
-    ## compute mask
-    text_mask = (torch.max(padded_one_hot, axis=-1).values != 0)
+        ## compute mask
+        text_mask = (torch.max(padded_one_hot, axis=-1).values != 0)
 
     return_d = {
         "feature_map_mask": feature_map_mask,

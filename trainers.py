@@ -262,7 +262,7 @@ class GeneratorTrainer(Trainer):
         image = self.generator_model(input)
         return image
 
-    def stroke_eval(self, input):
+    def stroke_eval(self, input, **kwargs):
         pred_logits = self.stroke_model(input).cpu().permute(1, 0, 2)
         return pred_logits
 
@@ -273,7 +273,7 @@ class GeneratorTrainer(Trainer):
         white_loss_tensor = self.white_bias(pred_image, targs=1, label_lengths=None) * .01 # bias toward whiteness
 
         label_lengths = item["label_lengths"]
-        predicted_strokes = self.stroke_eval(pred_image[:, :, :])
+        predicted_strokes = self.stroke_eval(pred_image[:, :, :], item=item)
         predicted_strokes = relativefy_batch_torch(predicted_strokes, reverse=True, indices=0) # sum the x-axis
 
         # Manual truncation
@@ -284,7 +284,7 @@ class GeneratorTrainer(Trainer):
         if item["predicted_strokes_gt"][0] is None:
             self.stroke_model.eval()
             with torch.no_grad(): # don't need gradients for predicted GT strokes
-                predicted_strokes_gt_batch = self.stroke_eval(gt_image.to(self.config.device)).detach()
+                predicted_strokes_gt_batch = self.stroke_eval(gt_image.to(self.config.device), item=item).detach()
                 predicted_strokes_gt_batch = relativefy_batch_torch(predicted_strokes_gt_batch, reverse=True, indices=0)  # sum the x-axis
                 predicted_strokes_gt_batch[:,:,self.sigmoid_indices] = SIGMOID(predicted_strokes_gt_batch[:,:,self.sigmoid_indices])
                 ## Adjust GT SOS to Stroke Number
@@ -355,13 +355,51 @@ class GeneratorTrainer(Trainer):
         return loss, pred_image, predicted_strokes
 
 
+class GeneratorTrainer2(GeneratorTrainer):
+    def __init__(self, model, optimizer, config, stroke_model, loss_criterion=None, training_dataset=None, **kwargs):
+        super().__init__(model, optimizer, config, stroke_model,
+                         loss_criterion=loss_criterion,
+                         training_dataset=training_dataset,
+                         **kwargs)
+
+    def stroke_eval(self, input, item, **kwargs):
+        # Get the item and generate
+        batch_size = item["line_imgs"].shape[0]
+        initial_hidden, initial_window_vector, initial_kappa = self.stroke_model.init_hidden(batch_size, self.device)
+
+        feature_maps = self.stroke_model.get_feature_maps(input)
+        feature_maps_mask = torch.ones(feature_maps.shape[:2]).to(self.config.device) # B x W
+        #feature_maps_mask = item["feature_map_mask"].to(self.config.device)
+
+        preds = self.stroke_model.generate(feature_maps=feature_maps,
+                                    feature_maps_mask=feature_maps_mask,
+                                    hidden=initial_hidden,
+                                    window_vector=initial_window_vector,
+                                    kappa=initial_kappa,
+                                    reset=True,
+                                    forced_size=item["gt"].shape[1])
+
+        preds[:, :, 0:1] = np.cumsum(preds[:, :, 0:1], axis=1) # SHOULD THEY BE SUMMED
+        preds = torch.from_numpy(preds) # requires_grad=False
+        return preds[:,:,:3] # SHAPE?
+
+
 class AlexGravesTrainer(Trainer):
-    def __init__(self, model, optimizer, config, loss_criterion=None, training_dataset=None, **kwargs):
+    def __init__(self, model, optimizer, config, loss_criterion=None, training_dataset=None, DETERMINISTIC=False, **kwargs):
         super().__init__(model, optimizer, config, loss_criterion)
         self.loss_criterion = loss_criterion
         self.generator_model = model
         self.training_dataset = training_dataset
         self.device = self.config.device
+        self.DETERMINISTIC = DETERMINISTIC
+        if DETERMINISTIC:
+            for p in model.parameters():
+                p.data.fill_(.01)
+
+        if model.__class__.__name__=="AlexGravesCombined":
+            self.train = self.train_new
+        else:
+            self.train = self.train_old
 
     def test(self, item, **kwargs):
         self.model.eval()
@@ -371,19 +409,10 @@ class AlexGravesTrainer(Trainer):
         return self.generator_model(**input)
 
     def stroke_eval(self, input):
-        pred_logits = self.stroke_model(input).cpu().permute(1, 0, 2)
+        pred_logits = self.stroke_model(input).cpu().permute(1, 0, 2) # -> B,W,VOCAB
         return pred_logits
 
-    def train(self, item, train=True, **kwargs):
-        if train:
-            self.model.train()
-            suffix="_train"
-        else:
-            self.model.eval()
-            suffix="_test"
-        batch_size = item["line_imgs"].shape[0]
-        initial_hidden, window_fm, window_letters, initial_kappa = self.model.init_hidden(batch_size, self.device)
-
+    def get_inital_lstm_args(self, initial_hidden, window_fm, window_letters, initial_kappa):
         image_lstm_args = {"initial_hidden":initial_hidden[0],
                              "prev_window_vec":window_fm,
                              "prev_eos": None,
@@ -393,6 +422,22 @@ class AlexGravesTrainer(Trainer):
                              "prev_window_vec": window_letters,
                              "prev_eos": None,
                              "prev_kappa": initial_kappa}
+        return image_lstm_args, letter_lstm_args
+
+    def train_new(self, item, train=True, **kwargs):
+        if self.DETERMINISTIC:
+            train = False
+
+        if train:
+            self.model.train()
+            suffix="_train"
+        else:
+            self.model.eval()
+            suffix="_test"
+
+        batch_size = item["line_imgs"].shape[0]
+        initial_hidden, window_fm, window_letters, initial_kappa = self.model.init_hidden(batch_size, self.device)
+        image_lstm_args, letter_lstm_args = self.get_inital_lstm_args(initial_hidden, window_fm, window_letters, initial_kappa)
 
         imgs = item["line_imgs"].to(self.config.device)
         feature_maps = self.model.get_feature_maps(imgs)
@@ -414,7 +459,7 @@ class AlexGravesTrainer(Trainer):
                        } # reset hidden/cell states
 
         y_hat, states, image_lstm_args, letter_lstm_args = self.eval(model_input, ) # BATCH x 1 x H x W
-        #m = y_hat.detach().cpu().numpy()
+        m = y_hat.detach().cpu().numpy()
         self.config.counter.update(epochs=0, instances=np.sum(item["label_lengths"]), updates=1)
         loss_tensor, loss = self.loss_criterion.main_loss(y_hat.cpu(), item, suffix=suffix, targ_key="rel_gt")
 
@@ -422,10 +467,15 @@ class AlexGravesTrainer(Trainer):
             self.optimizer.zero_grad()
             loss_tensor.backward()
             torch.nn.utils.clip_grad_norm_(self.config.model.parameters(), 10)
+            if "rnn_parameters" in self.model.__dict__.keys():
+                nn.utils.clip_grad_value_(self.model.rnn_parameters, 1)
             self.optimizer.step()
 
         preds = None
         if chk_flg("return_preds",kwargs):
+            image_lstm_args, letter_lstm_args = self.get_inital_lstm_args(initial_hidden, window_fm, window_letters,
+                                                                          initial_kappa)
+
             # Kind of inane, generating based on feature maps and chars
             preds = self.model.generate(feature_maps=feature_maps,
                                         feature_maps_mask=feature_maps_mask,
@@ -434,10 +484,67 @@ class AlexGravesTrainer(Trainer):
                                         letter_lstm_args=letter_lstm_args,
                                         letter_gt=letter_gt,
                                         letter_mask=letter_mask,
-                                        kappa=initial_kappa,
                                         reset=True)
             # Convert to absolute coords
             preds[:,:,0:1] = np.cumsum(preds[:,:,0:1], axis=1)
             preds = torch.from_numpy(preds)
         return loss, preds, y_hat
 
+    def train_old(self, item, train=True, **kwargs):
+        if self.DETERMINISTIC:
+            train = False
+
+        if train:
+            self.model.train()
+            suffix = "_train"
+        else:
+            self.model.eval()
+            suffix = "_test"
+
+        batch_size = item["line_imgs"].shape[0]
+        initial_hidden, initial_window_vector, initial_kappa = self.model.init_hidden(batch_size, self.device)
+
+        imgs = item["line_imgs"].to(self.config.device)
+        #i = imgs.cpu().detach().numpy()
+        feature_maps = self.model.get_feature_maps(imgs)
+        feature_maps_mask = item["feature_map_mask"].to(self.config.device)
+        gt_maps_makks = item["mask"]
+        inputs = item["rel_gt"][:, :-1].to(self.config.device)
+        # inputs = torch.zeros(item["rel_gt"][:,:-1].shape).to(self.config.device)
+
+        model_input = {"inputs": inputs,  # the shifted GTs
+                       "img": imgs,
+                       "img_mask": feature_maps_mask,  # ignore
+                       "initial_hidden": initial_hidden,  # RNN state
+                       "prev_window_vec": initial_window_vector,
+                       "prev_kappa": initial_kappa,
+                       "feature_maps": feature_maps,
+                       # "lengths": item["label_lengths"],
+                       "is_map": False,
+                       "reset": True}  # reset hidden/cell states
+
+        y_hat, states, window_vec, prev_kappa, eos = self.eval(model_input, )  # BATCH x 1 x H x W
+        m = y_hat.detach().cpu().numpy()
+        self.config.counter.update(epochs=0, instances=np.sum(item["label_lengths"]), updates=1)
+        loss_tensor, loss = self.loss_criterion.main_loss(y_hat.cpu(), item, suffix=suffix, targ_key="rel_gt")
+
+        if train:
+            self.optimizer.zero_grad()
+            loss_tensor.backward()
+            torch.nn.utils.clip_grad_norm_(self.config.model.parameters(), 10)
+            if "rnn_parameters" in self.model.__dict__.keys():
+                nn.utils.clip_grad_value_(self.model.rnn_parameters.parameters(), 1)
+            self.optimizer.step()
+
+        preds = None
+        if chk_flg("return_preds", kwargs):
+            preds = self.model.generate(feature_maps=feature_maps,
+                                        feature_maps_mask=feature_maps_mask,
+                                        hidden=initial_hidden,
+                                        window_vector=initial_window_vector,
+                                        kappa=initial_kappa,
+                                        reset=True)
+            # Convert to absolute coords
+            preds[:, :, 0:1] = np.cumsum(preds[:, :, 0:1], axis=1)
+            preds = torch.from_numpy(preds)
+        return loss, preds, y_hat
