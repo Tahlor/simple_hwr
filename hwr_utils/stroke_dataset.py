@@ -498,7 +498,8 @@ class StrokeRecoveryDataset(Dataset):
             if file_name in self.gt_text_data.keys():
                 return self.gt_text_data[file_name]
             else:
-                return ""
+                print(file_name)
+                return file_name
         else:
             # GT text is the filename
             return file_name
