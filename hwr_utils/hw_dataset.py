@@ -45,7 +45,7 @@ def collate_basic(batch, device="cpu"):
 
     all_labels = []
     label_lengths = []
-
+    img_widths = []
     input_batch = np.full((len(batch), dim0, dim1, dim2), PADDING_CONSTANT).astype(np.float32)
     for i in range(len(batch)):
         b_img = batch[i]['line_img']
@@ -54,7 +54,7 @@ def collate_basic(batch, device="cpu"):
         l = batch[i]['gt_label']
         all_labels.append(l)
         label_lengths.append(len(l))
-
+        img_widths.append(b_img.shape[1])
 
     all_labels = np.concatenate(all_labels)
     label_lengths = np.array(label_lengths)
@@ -73,7 +73,8 @@ def collate_basic(batch, device="cpu"):
         "writer_id": torch.FloatTensor([b['writer_id'] for b in batch]),
         "actual_writer_id": torch.FloatTensor([b['actual_writer_id'] for b in batch]),
         "paths": [b["path"] for b in batch],
-        "online": online
+        "online": online,
+        "img_widths": img_widths
     }
 
     # STROKE

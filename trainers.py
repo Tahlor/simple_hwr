@@ -3,6 +3,7 @@ from models.deprecated.deprecated_crnn import *
 from torch.autograd import Variable
 from hwr_utils import utils
 from hwr_utils.stroke_recovery import relativefy_batch_torch, conv_weight, conv_window, PredConvolver
+from hwr_utils.stroke_dataset import img_width_to_pred_mapping
 import logging
 from loss_module import loss_metrics
 from loss_module import losses
@@ -356,6 +357,9 @@ class GeneratorTrainer(Trainer):
 
 
 class GeneratorTrainer2(GeneratorTrainer):
+    """ The generator for AG stuff???
+
+    """
     def __init__(self, model, optimizer, config, stroke_model, loss_criterion=None, training_dataset=None, **kwargs):
         super().__init__(model, optimizer, config, stroke_model,
                          loss_criterion=loss_criterion,
@@ -400,6 +404,7 @@ class AlexGravesTrainer(Trainer):
             self.train = self.train_new
         else:
             self.train = self.train_old
+        self.cnn_type = self.model.cnn.cnn_type
 
     def test(self, item, **kwargs):
         self.model.eval()
@@ -424,7 +429,42 @@ class AlexGravesTrainer(Trainer):
                              "prev_kappa": initial_kappa}
         return image_lstm_args, letter_lstm_args
 
+    def generate(self, item):
+        imgs = item["line_imgs"].to(self.config.device)
+        feature_maps = self.model.get_feature_maps(imgs) # B, W, 1024
+        if "feature_map_mask" in item.keys():
+            feature_maps_mask = item["feature_map_mask"].to(self.config.device) # Batch X Width
+        else:
+            lens = [img_width_to_pred_mapping(b, cnn_type=self.cnn_type) for b in item["img_widths"]]
+            max_len = feature_maps.shape[1]
+            feature_maps_mask = (torch.arange(max_len).expand(len(lens), max_len) < torch.tensor(lens).unsqueeze(1)).to(self.config.device)
+
+        # letter_mask = item["gt_text_mask"].to(self.device)
+        # letter_gt = item["gt_text_one_hot"].to(self.device)
+        batch_size = item["line_imgs"].shape[0]
+        initial_hidden, window_fm, window_letters, initial_kappa = self.model.init_hidden(batch_size, self.device)
+        image_lstm_args, letter_lstm_args = self.get_inital_lstm_args(initial_hidden, window_fm, window_letters, initial_kappa)
+        preds = self.model.generate(feature_maps=feature_maps,
+                                    feature_maps_mask=feature_maps_mask,
+                                    initial_hidden=initial_hidden,
+                                    image_lstm_args=image_lstm_args,
+                                    # letter_lstm_args=letter_lstm_args,
+                                    # letter_gt=letter_gt,
+                                    # letter_mask=letter_mask,
+                                    reset=True)
+        return preds
+
     def train_new(self, item, train=True, **kwargs):
+        """ Alternate, letters only, image only
+
+        Args:
+            item:
+            train:
+            **kwargs:
+
+        Returns:
+
+        """
         if self.DETERMINISTIC:
             train = False
 
@@ -491,6 +531,9 @@ class AlexGravesTrainer(Trainer):
         return loss, preds, y_hat
 
     def train_old(self, item, train=True, **kwargs):
+        """ My original Alex Graves method with IMAGES (not letters)
+        """
+
         if self.DETERMINISTIC:
             train = False
 

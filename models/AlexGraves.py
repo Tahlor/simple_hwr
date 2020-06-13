@@ -300,10 +300,10 @@ class AlexGravesCombined(synth_models.HandWritingSynthesisNet):
                 eos, total = 0,0
 
                 # Take average EOS
-                if not image_lstm_args["prev_eos"] is None:
+                if image_lstm_args and not image_lstm_args["prev_eos"] is None:
                     eos += image_lstm_args["prev_eos"]
                     total+=1
-                if not letter_lstm_args["prev_eos"] is None:
+                if letter_lstm_args and not letter_lstm_args["prev_eos"] is None:
                     eos += letter_lstm_args["prev_eos"]
                     total+=1
                 if total==2:

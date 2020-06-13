@@ -298,7 +298,7 @@ def build_data_loaders(folder, cnn_type, train_size, test_size, **kwargs):
     config.test_dataset = test_dataset
     return train_dataloader, test_dataloader
 
-def main(config_path, testing=False):
+def main(config_path, testing=False, eval_only=False, eval_dataset=None, load_path_override=None):
     global epoch, device, trainer, batch_size, output, loss_obj, config, LOGGER
     torch.cuda.empty_cache()
     os.chdir(ROOT_DIR)
@@ -338,16 +338,17 @@ def main(config_path, testing=False):
 
     logger.info(("Current dataset: ", folder))
 
-    train_dataloader, test_dataloader = build_data_loaders(folder, config.cnn_type, train_size, test_size, **config.dataset,
-                                            config=config)
+    if not eval_only:
+        train_dataloader, test_dataloader = build_data_loaders(folder, config.cnn_type, train_size, test_size, **config.dataset,
+                                                config=config)
 
-
+    alphabet_size = config.alphabet_size if "alphabet_size" in config.keys() else max(config.training_dataset.alphabet_size, config.test_dataset.alphabet_size)
     model_kwargs = {"feature_map_dim": 1024,
                     "device":device,
                     "cnn_type":config.cnn_type,
                     "first_conv_op":config.coordconv,
                     "first_conv_opts":config.coordconv_opts,
-                    "alphabet_dim": max(config.training_dataset.alphabet_size, config.test_dataset.alphabet_size),
+                    "alphabet_dim": alphabet_size,
                     **config.model_opts}
 
     model_dict = {"start_point_lstm": start_points.StartPointModel,
@@ -380,7 +381,11 @@ def main(config_path, testing=False):
     utils.stat_prep_strokes(config)
 
     # Create loss object
-    trainset_data = None if config.training_dataset is None else config.training_dataset.data
+    if "training_dataset" not in config or config.training_dataset is None:
+        trainset_data = None
+    else:
+        trainset_data = config.training_dataset.data
+
     config.loss_obj = StrokeLoss(loss_stats=config.stats, counter=config.counter, device=device, training_dataset=trainset_data)
 
     LR = config.learning_rate * batch_size/24
@@ -401,6 +406,8 @@ def main(config_path, testing=False):
     config.trainer=trainer
     config.model = model
     logger.info(f"LR before loading model: {next(iter(config.optimizer.param_groups))['lr']}")
+    if load_path_override:
+        config.load_path = load_path_override
     if config.load_path: #and not utils.no_gpu_testing(): # don't load model if not using GPU
         utils.load_model_strokes(config, config.load_optimizer)  # should be load_model_strokes??????
         print(config.counter.epochs)
@@ -411,34 +418,39 @@ def main(config_path, testing=False):
 
     logger.info(f"Starting LR is {next(iter(config.optimizer.param_groups))['lr']}")
 
-    check_epoch_build_loss(config, loss_exists=False)
-    current_epoch = config.counter.epochs
-    for i in range(current_epoch,config.epochs_to_run):
-        epoch = i+1
-        #config.counter.epochs = epoch
-        config.counter.update(epochs=1)
-        plot_graphs = True if epoch % config.test_freq == 0 else False
+    def main_loop():
+        check_epoch_build_loss(config, loss_exists=False)
+        current_epoch = config.counter.epochs
+        for i in range(current_epoch,config.epochs_to_run):
+            epoch = i+1
+            #config.counter.epochs = epoch
+            config.counter.update(epochs=1)
+            plot_graphs = True if epoch % config.test_freq == 0 else False
 
-        if train_dataloader:
-            loss = run_epoch(train_dataloader, report_freq=config.update_freq, plot_graphs=plot_graphs)
-            logger.info(f"Epoch: {epoch}, Training Loss: {loss}")
+            if train_dataloader:
+                loss = run_epoch(train_dataloader, report_freq=config.update_freq, plot_graphs=plot_graphs)
+                logger.info(f"Epoch: {epoch}, Training Loss: {loss}")
 
-        # Test and save models
-        if epoch % config.test_freq == 0:
-            test_loss = test(test_dataloader)
-            logger.info(f"Epoch: {epoch}, Test Loss: {test_loss}")
-            check_epoch_build_loss(config)
-            all_test_losses = [x for x in config.stats["Actual_Loss_Function_test"].y if x and x > 0]
-            if len(all_test_losses) and test_loss <= np.nanmin(all_test_losses):
-                utils.save_model_stroke(config, bsf=True)
-                continue # already saved model and strokes
+            # Test and save models
+            if epoch % config.test_freq == 0:
+                test_loss = test(test_dataloader)
+                logger.info(f"Epoch: {epoch}, Test Loss: {test_loss}")
+                check_epoch_build_loss(config)
+                all_test_losses = [x for x in config.stats["Actual_Loss_Function_test"].y if x]
+                if len(all_test_losses) and test_loss <= np.nanmin(all_test_losses):
+                    utils.save_model_stroke(config, bsf=True)
+                    continue # already saved model and strokes
 
-        if epoch % config.save_freq == 0: # how often to save
-            utils.save_model_stroke(config, bsf=False) # also saves stats
-        else:
-            utils.save_stats_stroke(config, bsf=False)
-        if config.test_only:
-            break
+            if epoch % config.save_freq == 0: # how often to save
+                utils.save_model_stroke(config, bsf=False) # also saves stats
+            else:
+                utils.save_stats_stroke(config, bsf=False)
+            if config.test_only:
+                break
+    if not eval_only:
+        main_loop()
+    else:
+        return config
 
     ## Bezier curve
     # Have network predict whether it has reached the end of a stroke or not

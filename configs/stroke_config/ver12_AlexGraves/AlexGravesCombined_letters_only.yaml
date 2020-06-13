@@ -42,11 +42,12 @@ model_opts:
 
 dataset:
   img_height: 61
-  include_synthetic: false
+  include_synthetic: true
   num_of_channels: 1
   image_prep: pil_with_distortion
   #adapted_gt_path: ./RESULTS/pretrained/training_dataset.npy
   resample: false
+
 
 
 # Training data

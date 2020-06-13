@@ -1073,9 +1073,11 @@ def collate_stroke_eval(batch, device="cpu"):
     # Make input square (variable vidwth
     input_batch = np.full((batch_size, dim0, dim1, dim2), PADDING_CONSTANT).astype(np.float32)
 
+    img_widths = []
     for i in range(len(batch)):
         b_img = batch[i]['line_img']
         input_batch[i,:,: b_img.shape[1],:] = b_img
+        img_widths.append(b_img.shape[1])
 
     line_imgs = input_batch.transpose([0,3,1,2]) # batch, channel, h, w
     line_imgs = torch.from_numpy(line_imgs).to(device)
@@ -1090,6 +1092,8 @@ def collate_stroke_eval(batch, device="cpu"):
         "x_func": None,
         "y_func": None,
         "start_times": None,
+        "img_widths": img_widths,
+
     }
 
 def some_kind_of_test():

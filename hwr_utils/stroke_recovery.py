@@ -261,7 +261,8 @@ def resample(gt, distance=True):
     return gt
 
 ## DOES THIS WORK? SHOULD BE THE SAME AS BATCH_TORCH, NEED TO TEST
-def relativefy_batch(batch, reverse=False):
+# This sucks
+def relativefy_batch(batch, reverse=False, indices=0):
     """ A tensor: Batch, Width, Vocab
 
     Args:
@@ -277,8 +278,8 @@ def relativefy_batch(batch, reverse=False):
         #print(batch.size(), batch)
         #print(batch[i,:,0])
         #print(i, b)
-        relativefy(b[:, 0], reverse=reverse)
-        batch[i] = relativefy(b[:,0], reverse=reverse)
+        relativefy(b[:, indices], reverse=reverse)
+        batch[i] = relativefy(b[:, indices], reverse=reverse)
     return batch
 
 class PredConvolver:
