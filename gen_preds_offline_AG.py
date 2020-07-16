@@ -176,7 +176,6 @@ def eval_only(dataloader, model, trainer):
             new_stem = path.stem + f"_{str(avg_distance)[:8].replace('.',',')}"
             #print(distance, new_stem)
             item["paths"][ii] = (path.parent / new_stem).with_suffix(path.suffix)
-
             if "_" in name:
                 name = name[:name.find("_")]
             if name in GT_DATA:
@@ -201,7 +200,7 @@ def eval_only(dataloader, model, trainer):
             save_folder = graph(item, preds=preds_to_graph, _type="eval", epoch="current", config=config)
             output_path = (Path(save_folder) / "data")
             output_path.mkdir(exist_ok=True, parents=True)
-
+            print("OUTPUT FOLDER", output_path)
         #utils.pickle_it(output, output_path / f"{i}.pickle")
         #np.save(output_path / f"{i}.npy", output)
         final_out += output

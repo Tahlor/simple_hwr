@@ -35,7 +35,7 @@ def parse_args():
     return opts
 
 
-def run_epoch(dataloader, report_freq=500, plot_graphs=True):
+def run_epoch(dataloader, epoch, report_freq=500, plot_graphs=True):
     # for i in range(0, 16):
     #     line_imgs = torch.rand(batch, 1, 60, 60)
     #     targs = torch.rand(batch, 16, 5)
@@ -52,7 +52,7 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
         loss, preds, y_hat, *_ = trainer.train(item, train=True, return_preds=last_one) #
         #y = y_hat.cpu().detach().numpy()
         if last_one and not preds is None and plot_graphs:
-            graph_procedure(preds,item,other=y_hat)
+            graph_procedure(preds, item, epoch=epoch, other=y_hat)
 
         if loss is None:
             continue
@@ -78,8 +78,10 @@ def run_epoch(dataloader, report_freq=500, plot_graphs=True):
     training_loss = config.stats["Actual_Loss_Function_train"].get_last_epoch()
     return training_loss
 
-def graph_procedure(preds, item, _type="train", other=None):
+def graph_procedure(preds, item, epoch=None, _type="train", other=None):
     # GRAPH
+    if epoch is None:
+        epoch = config.counter.epochs
     preds_to_graph = [p.permute([1, 0]) for p in preds]
     save_folder = graph(item, config=config, preds=preds_to_graph, _type=_type, epoch=epoch)
     if other is None:
@@ -117,7 +119,7 @@ def test(dataloader):
         if loss is None:
             continue
         if i==0 and not preds is None:
-            graph_procedure(preds, item, _type="test",other=y_hat)
+            graph_procedure(preds, item, epoch=None, _type="test",other=y_hat)
 
         config.stats["Actual_Loss_Function_test"].accumulate(loss)
 
@@ -428,7 +430,7 @@ def main(config_path, testing=False, eval_only=False, eval_dataset=None, load_pa
             plot_graphs = True if epoch % config.test_freq == 0 else False
 
             if train_dataloader:
-                loss = run_epoch(train_dataloader, report_freq=config.update_freq, plot_graphs=plot_graphs)
+                loss = run_epoch(train_dataloader, epoch=epoch, report_freq=config.update_freq, plot_graphs=plot_graphs)
                 logger.info(f"Epoch: {epoch}, Training Loss: {loss}")
 
             # Test and save models

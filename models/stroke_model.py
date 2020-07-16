@@ -532,7 +532,7 @@ class AlexGraves2(AlexGraves):
 class TMinus1(nn.Module):
     def __init__(self, vocab_size=4, device="cuda", cnn_type="default64", first_conv_op=CoordConv,
                  first_conv_opts=None,
-                 rnn_mode="all_zeros",   # all_zeros - super fast; correct_gts - super fast
+                 rnn_mode="all_zeros",   # all_zeros - super fast; correct_gts - super fast; "NA" - use hte previous one?
                  mode="random", #"random"ly apply kd; always_fix=always apply kd; never_fix
                  **kwargs):
         super().__init__()
@@ -599,7 +599,7 @@ class TMinus1(nn.Module):
         item=None,
         inputs=None,
         feature_maps=None,
-        inital_hidden=None,
+        initial_hidden=None,
         lengths=None,
         reset=False,
         mode="random", # always_fix, never_fix
@@ -611,7 +611,7 @@ class TMinus1(nn.Module):
             inputs:
             img:
             feature_maps:
-            inital_hidden:
+            initial_hidden:
             lengths:
             reset:
             **kwargs:
@@ -642,7 +642,7 @@ class TMinus1(nn.Module):
         if lengths is not None:
             feature_maps_upsample = torch.nn.utils.rnn.pack_padded_sequence(feature_maps_upsample, lengths, batch_first=True, enforce_sorted=False)
 
-        if reset or inital_hidden is None:
+        if reset or initial_hidden is None:
             brnn_states, rnn_states = None, None
         else:
             brnn_states, rnn_states = initial_hidden
@@ -660,7 +660,7 @@ class TMinus1(nn.Module):
         item=None,
         inputs=None,
         feature_maps=None,
-        inital_hidden=None,
+        initial_hidden=None,
         lengths=None,
         reset=False,
         **kwargs
@@ -672,7 +672,7 @@ class TMinus1(nn.Module):
             inputs:
             img:
             feature_maps:
-            inital_hidden:
+            initial_hidden:
             lengths:
             reset:
             mode: always_fix, never_fix
@@ -686,9 +686,9 @@ class TMinus1(nn.Module):
             feature_maps = self.get_feature_maps(img) # B,W,1024
 
         inputs = item["gt"]
-        # Upsample to be the same length as the (lontest) GT-strokepoint-width dimension
+        # Upsample to be the same length as the (longest) GT-strokepoint-width dimension
         shp = inputs.shape[1]
-        feature_maps_upsample = torch.nn.functional.interpolate(feature_maps.permute(0,2,1),
+        feature_maps_upsample = torch.nn.functional.interpolate(feature_maps.permute(0,2,1), # put width last, interpolate, put width back
                                                                 size=shp,
                                                                 mode='linear',
                                                                 align_corners=None).permute(0,2,1)
@@ -697,37 +697,46 @@ class TMinus1(nn.Module):
         if lengths is not None:
             feature_maps_upsample = torch.nn.utils.rnn.pack_padded_sequence(feature_maps_upsample, lengths, batch_first=True, enforce_sorted=False)
 
-        if reset or inital_hidden is None:
+        if reset or initial_hidden is None:
             brnn_states, rnn_states = None, None
         else:
             brnn_states, rnn_states = initial_hidden
 
+        # Put feature maps through a B-LSTM
         brnn_output, brnn_states = self.brnn1(feature_maps_upsample, brnn_states) # B, W, hidden
 
         _input = torch.zeros(inputs[:,0,:].shape).to(self.device) # 28x4
         output = []
-        curr_locations = _input[:,:2] # B x 2
-        for t in range(feature_maps_upsample.shape[1]):
+        curr_locations = _input[:,:2] # B x 2 (x,y)
+
+        # Preds should all be relative!
+        for t in range(feature_maps_upsample.shape[1]): # B, W, 1024
             rnn_input = torch.cat((_input, brnn_output[:,t]), dim=1).unsqueeze(1 )#.contiguous() # B,1,hidden+4
             rnn_output, rnn_states = self.rnn2(rnn_input, rnn_states) # B, W, hidden
-            if (self.mode=="random" and random.random()) < .5 or self.mode=="always_fix":
+
+            ## Y IS ABSOLUTE
+            ##
+            if (self.mode=="random" and random.random() < .5) or self.mode=="always_fix":
                 # RNN output needs to be added to running sum
                 # gts need to be in absolute coordinates
                 new_points = (rnn_output.squeeze(1)[:,:2]+curr_locations).detach().cpu() # BATCH X 4
 
                 # Query GTs, find best prediction
+                # Only do it for 0 through label_length
+                # These are nearest indices in GT, -1 => last point in GT
                 idx = [kd.query(new_points[i,:2])[1] if t < item["label_lengths"][i] else -1 for i,kd in enumerate(item["kdtree"])]
-                i = range(0, len(idx)), idx
+                i = range(0, len(idx)), idx # batch_idx, GT_match_idx
                 best_gts = item["gt"][i][:,:2].to(self.device) # Bx2; these need to be ABS
 
                 # Calculate delta -- vector to push prediction to nearest GT
+                # delta = abs_position - (current_abs_position + pred_relative_movement)
                 delta = best_gts - (curr_locations + rnn_output[:, -1, :2].detach()) # vector to push
-                rnn_output[:, -1, :2] += delta #.to(self.device)
+                rnn_output[:, -1, :2] += delta #.to(self.device) # nudges prediction to GT
 
                 # Curr location is just this best position, feed into next iteration
                 curr_locations = best_gts
                 output.append(rnn_output)
-                _input = rnn_output.detach().squeeze(1)
+                _input = rnn_output.detach().squeeze(1) # WHAT IS BEING SQUEEZED HERE?
             else:
                 curr_locations += rnn_output[:, -1, :2].detach()
                 output.append(rnn_output)

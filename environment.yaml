@@ -19,6 +19,7 @@ dependencies:
   #- scikit-learn
   #- scikit-image
   - pip:
+    - drawSvg
     - easydict
     - jsonpatch
     - biopython==1.73
