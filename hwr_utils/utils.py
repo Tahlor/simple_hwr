@@ -255,11 +255,16 @@ def load_config(config_path, hwr=True,
         output_root = Path(config_path).parent
         experiment = config.experiment
 
-        # Backup some stuff
+        # Backup all_stats.json etc.
+        backup = incrementer(output_root, "backup")
+        print(backup)
+        try:
+            shutil.copy(output_root / "RESUME_model.pt", backup)
+        except:
+            pass
         for f in itertools.chain(output_root.glob("*.json"),output_root.glob("*.log")):
-            backup = incrementer(output_root, "backup")
-            print(backup)
             shutil.copy(str(f), backup)
+
         output_root = output_root.as_posix()
     elif results_dir_override or ("results_dir_override" in config and config.results_dir_override):
         experiment = Path(results_dir_override).stem
@@ -1524,14 +1529,13 @@ def make_resume_sh( sh_path, config_path, python_script="train_stroke_recovery.p
     if python_script[-3:] != ".py":
         python_script += ".py"
 
-    script = f"""
-#!/bin/bash
+    script = f"""#!/bin/bash
 #SBATCH --gres=gpu:1
 #SBATCH -C 'rhel7&pascal'
 #SBATCH --mem-per-cpu 12500MB
 #SBATCH --ntasks 8
 #SBATCH --nodes=1
-#SBATCH --output="/panfs/pan.fsl.byu.edu/scr/grp/fslg_hwr/taylor_simple_hwr/slurm_scripts/scripts/stroke_config/ver11_proper_eos/log_dtw_adaptive_no_truncation_default64v2.slurm"
+#SBATCH --output="{config_path.name}.slurm"
 #SBATCH --time 72:00:00
 #SBATCH --mail-user=taylornarchibald@gmail.com   # email address
 #SBATCH --mail-type=BEGIN

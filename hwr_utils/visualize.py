@@ -290,6 +290,8 @@ if __name__=="__main__":
                  '/media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr/results/stroke_config/20200301-PRETRAIN']
 
         paths = ["/simple_hwr/results/recognition/strokes_v1"]
+        paths = ['/home/taylor/shares/SuperComputerHWR/taylor_simple_hwr/results/dtw_no_truncation',
+                 '/home/taylor/shares/SuperComputerHWR/taylor_simple_hwr/results/dtw_adaptive_no_truncation']
         path = prep_path(paths)
     else:
         path = Path("/media/data/GitHub/simple_hwr/RESULTS/COMPARISON/11_")
