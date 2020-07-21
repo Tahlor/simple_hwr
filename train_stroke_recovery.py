@@ -47,6 +47,8 @@ def run_epoch(dataloader, epoch, report_freq=500, plot_graphs=True):
         #print(item["label_lengths"])
         current_batch_size = item["line_imgs"].shape[0]
         instances += current_batch_size
+        if instances > 75000:
+            break
         #print(item["gt"].shape, item["label_lengths"])
         last_one = (i+2==len(dataloader) or len(dataloader) <= 2)
         loss, preds, y_hat, *_ = trainer.train(item, train=True, return_preds=last_one) #

@@ -26,12 +26,22 @@ sed -i ':a;N;$!ba;s|\n#!/bin/bash|#!/bin/bash|g' resume.sh
 # find . -type f -name "*$3" -exec sed -i "s@$1@$2@g" {} \;
 # Recursive replace
 find . -type f -name "RESUME.yaml" -exec sed -i 's/.*reset_LR.*/reset_LR: true/' {} \;
+find . -type f -name "RESUME.yaml" -exec sed -i 's/.*load_optimizer.*/load_optimizer: false/' {} \;
 find . -type f -name "RESUME.yaml" -exec sed -i 's/.*learning_rate.*/learning_rate: 1e-05/' {} \;
-find . -type f -name "RESUME.yaml" -exec sed -i 's/.*scheduler_gamma:.*/scheduler_gamma: 0.97/'  {} \;
-find . -type f -name "RESUME.yaml" -exec sed -i 's|dtw_no_truncation/2020|dtw_no_truncation/no_adaptation/2020|'  {} \;
-
+find . -type f -name "RESUME.yaml" -exec sed -i 's/.*scheduler_gamma:.*/scheduler_gamma: 0.96/'  {} \;
 find . -type f -name "resume.sh" -exec sed -i ':a;N;$!ba;s|\n#!/bin/bash|#!/bin/bash|g' {} \;
+
+## No adaptation
+find . -type f -name "RESUME.yaml" -exec sed -i 's|dtw_no_truncation/2020|dtw_no_truncation/no_adaptation/2020|'  {} \;
 find . -type f -name "resume.sh" -exec sed -i 's|dtw_no_truncation/2020|dtw_no_truncation/no_adaptation/2020|' {} \;
+
+# With adaptation
+find . -type f -name "RESUME.yaml" -exec sed -i 's|dtw_no_truncation/2020|dtw_no_truncation/with_adaptation/2020|'  {} \;
+find . -type f -name "resume.sh" -exec sed -i 's|dtw_no_truncation/2020|dtw_no_truncation/with_adaptation/2020|' {} \;
+
+find . -type f -name "RESUME.yaml" -exec sed -i ':a;N;$!ba;s/name: dtw\n/name: dtw_adaptive\n/g'  {} \;
+find . -type f -name "resume.sh"   -exec sed -i ':a;N;$!ba;s|\n#!/bin/bash|#!/bin/bash|g' {} \;
+
 
 #sed -i 's/.*reset_LR.*/reset_LR: true/' RESUME.yaml
 #sed -i 's/.*learning_rate.*/learning_rate: 1e-05/' RESUME.yaml

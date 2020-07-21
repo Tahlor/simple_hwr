@@ -47,15 +47,14 @@ dataset_folder: online_coordinate_data/MAX_stroke_vFull
 dataset_folder: online_coordinate_data/MAX_stroke_vTEST_AUGMENTFull
 dataset_folder: online_coordinate_data/MAX_stroke_vlargeTrnSetFull
 dataset_folder: online_coordinate_data/MAX_stroke_vNORMAL_TRAINING_TESTFull
-online_augmentation: true
 
 # WARP
 warp: true
 
 # LR schedule
-learning_rate: 1e-5          # LR
+learning_rate: 2e-5          # LR
 scheduler_step: null         # Every X steps, multiply LR by gamma
-scheduler_gamma: .95         # LR decay rate
+scheduler_gamma: .96         # LR decay rate
 
 ## Loss options:
   # Based on width of image, determine how many outputs there should be

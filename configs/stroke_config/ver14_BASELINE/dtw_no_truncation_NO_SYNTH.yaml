@@ -33,7 +33,7 @@ truncate: false
 
 dataset:
   img_height: 61
-  include_synthetic: true
+  include_synthetic: false
   num_of_channels: 1
   image_prep: pil_with_distortion
   #adapted_gt_path: ./RESULTS/pretrained/training_dataset.npy
@@ -46,7 +46,6 @@ data_root_local: data
 dataset_folder: online_coordinate_data/MAX_stroke_vFull
 dataset_folder: online_coordinate_data/MAX_stroke_vTEST_AUGMENTFull
 dataset_folder: online_coordinate_data/MAX_stroke_vlargeTrnSetFull
-dataset_folder: online_coordinate_data/MAX_stroke_vNORMAL_TRAINING_TESTFull
 
 # WARP
 warp: true
