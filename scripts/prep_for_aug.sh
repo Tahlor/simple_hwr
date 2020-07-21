@@ -7,8 +7,10 @@ cp -r $original_path $original_path_NOA
 
 # Change to no adaptation
 cd $original_path_NOA
-find . -type f -name "resume.sh"   -exec sed -i 's/$original_path/$original_path_NOA/' {} \;
-find . -type f -name "RESUME.yaml" -exec sed -i 's/$original_path/$original_path_NOA/' {} \;
+
+# DOUBLE QUOTES EXPANDS VARIABLES, SINGLE QUOTES DON'T
+find . -type f -name "resume.sh"   -exec sed -i "s@/${original_path}/@/${original_path}_NOA/@" {} \;
+find . -type f -name "RESUME.yaml" -exec sed -i "s@/${original_path}/@/${original_path}_NOA/@" {} \;
 sed -i 's/    //g' resume.sh
 # sed ':a;N;$!ba;s|\n#!/bin/bash|#!/bin/bash|g' resume.sh # test
 sed -i ':a;N;$!ba;s|\n#!/bin/bash|#!/bin/bash|g' resume.sh

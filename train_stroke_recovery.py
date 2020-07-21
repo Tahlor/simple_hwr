@@ -353,7 +353,7 @@ def main(config_path, testing=False, eval_only=False, eval_dataset=None, load_pa
                     "first_conv_op":config.coordconv,
                     "first_conv_opts":config.coordconv_opts,
                     "alphabet_dim": alphabet_size,
-                    **config.model_opts}
+                    **config.model_definition}
 
     model_dict = {"start_point_lstm": start_points.StartPointModel,
               "start_point_lstm2": start_points.StartPointModel2,
