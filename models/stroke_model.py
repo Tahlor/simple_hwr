@@ -19,7 +19,7 @@ class StrokeRecoveryModel(nn.Module):
             self.nHidden = 128
         if not "num_layers" in kwargs:
             self.num_layers = 2
-
+        print("Layers", self.num_layers, "nHidden", self.nHidden)
         if first_conv_op:
             first_conv_op = CoordConv
         if not no_gpu_testing():
