@@ -165,7 +165,7 @@ stroke_defaults = {"SMALL_TRAINING": False,
                                 "kdtree": False
                                 },
                     "coordconv_method": "y_abs",
-                    "model_opts" : {"nHidden": 128, "num_layers": 2},
+                    "model_definition" : {"nHidden": 128, "num_layers": 2},
                     "model": None,
                     "reset_LR": True,
                     "load_optimizer": False,

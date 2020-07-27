@@ -236,7 +236,7 @@ def prep_path(foreign_paths):
 
     for foreign_path in foreign_paths:
         for stats_file in Path(foreign_path).rglob("all_stats.json"):
-            if "BSF" in stats_file.parent.name:
+            if "BSF" in stats_file.parent.name or "backup" in stats_file.parent.name:
                 continue
             experiment_folder_name = stats_file.parent.name
             experiment_folder_name2 = stats_file.parent.parent.name
@@ -290,8 +290,8 @@ if __name__=="__main__":
                  '/media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr/results/stroke_config/20200301-PRETRAIN']
 
         paths = ["/simple_hwr/results/recognition/strokes_v1"]
-        paths = ['/home/taylor/shares/SuperComputerHWR/taylor_simple_hwr/results/dtw_no_truncation',
-                 '/home/taylor/shares/SuperComputerHWR/taylor_simple_hwr/results/dtw_adaptive_no_truncation']
+        paths = ['/home/taylor/shares/SuperComputerHWR/taylor_simple_hwr/results/dtw_no_truncation/no_adaptation',
+                 '/home/taylor/shares/SuperComputerHWR/taylor_simple_hwr/results/dtw_no_truncation/with_adaptation']
         path = prep_path(paths)
     else:
         path = Path("/media/data/GitHub/simple_hwr/RESULTS/COMPARISON/11_")

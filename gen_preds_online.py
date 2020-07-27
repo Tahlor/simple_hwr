@@ -56,7 +56,7 @@ def main(config_path):
         #load_path_override = PROJ_ROOT + "RESULTS/OFFLINE_PREDS/all_data.npy"
         _load_path_override = Path(load_path_override)
 
-        OUTPUT = PROJ_ROOT / Path("RESULTS/OFFLINE_PREDS/") / _load_path_override.stem
+        OUTPUT = PROJ_ROOT / Path(f"RESULTS/{'ONLINE' if ONLINE else 'OFFLINE'}_PREDS/") / _load_path_override.stem
 
         _t = utils.increment_path(name="eval", base_path=OUTPUT / "imgs/current")
         model_output_dir = OUTPUT / _t / "data"
@@ -85,10 +85,19 @@ def main(config_path):
         output.mkdir(parents=True, exist_ok=True)
         folder = Path(config.dataset_folder)
 
-        # OVERLOAD
+
         if True:
-            folder = PROJ_ROOT / Path("data/prepare_IAM_Lines/lines/")
-            gt_path = PROJ_ROOT / Path("data/prepare_IAM_Lines/gts/lines/txt")
+            if not ONLINE:
+                folder = PROJ_ROOT / Path("data/prepare_IAM_Lines/lines/")
+                gt_path = PROJ_ROOT / Path("data/prepare_IAM_Lines/gts/lines/txt")
+                extension = ".png"
+                meta_data_files = "*.json"
+            else:
+                folder = PROJ_ROOT / Path("data/prepare_online_data/lineImages/")
+                gt_path = PROJ_ROOT / Path("data/prepare_online_data/")
+                extension = ".tif"
+                meta_data_files = "*online_augmentation.json"
+
         else:
             folder = Path("/media/data/GitHub/simple_hwr/data/prepare_IAM_Lines/words")
             gt_path = PROJ_ROOT / Path("data/prepare_IAM_Lines/gts/words")
@@ -98,8 +107,18 @@ def main(config_path):
         ## Loader
         logger.info(("Current dataset: ", folder))
         # Dataset - just expecting a folder
-        eval_dataset=BasicDataset(root=folder, cnn=model.cnn, )
-        next(iter(eval_dataset))
+        eval_dataset=BasicDataset(root=folder, cnn=model.cnn, rebuild=False, extension=extension, crop=True)
+
+        if ONLINE:
+            # Remove items from BasicDataset not in Test set
+            fpath = "/media/data/GitHub/simple_hwr/data/online_coordinate_data/MAX_stroke_vlargeTrnSetFull/test_online_coords.npy"
+            test_data = np.load(fpath, allow_pickle=True)
+            test_set = {Path(item['xml_path']).stem: 0 for item in test_data}
+            for i in range(len(eval_dataset.data)-1,-1,-1):
+                if Path(eval_dataset.data[i]["image_path"]).stem not in test_set:
+                    eval_dataset.data.pop(i)
+
+        #next(iter(eval_dataset))
         eval_loader=DataLoader(eval_dataset,
                                       batch_size=batch_size,
                                       shuffle=True,
@@ -127,15 +146,18 @@ def main(config_path):
         config.sigmoid_indices = TrainerStrokeRecovery.get_indices(config.pred_opts, "sigmoid")
 
         # Load the GTs
-        GT_DATA = load_all_gts(gt_path)
+        GT_DATA = load_all_gts(gt_path, extension=meta_data_files)
         print("Number of images: {}".format(len(eval_loader.dataset)))
         print("Number of GTs: {}".format(len(GT_DATA)))
 
         ## LOAD THE WEIGHTS
         utils.load_model_strokes(config) # should be load_model_strokes??????
+        for parameter in model.parameters():
+            parameter.requires_grad = False
         model = model.to(device)
         model.eval()
-        eval_only(eval_loader, model)
+
+        eval_only(eval_loader, model, output_path=model_output_dir)
         globals().update(locals())
 
 def post_process(pred,gt, calculate_distance=True, kd=None):
@@ -153,9 +175,16 @@ def post_process(pred,gt, calculate_distance=True, kd=None):
     else:
         return pred.numpy(), distances, kd
 
+
+# OVERLOAD
+ONLINE = True
 KDTREE_PATH = "/media/data/GitHub/simple_hwr/RESULTS/OFFLINE_PREDS/kd_trees.npy"
 LOAD_KDTREE = False
-def eval_only(dataloader, model):
+SAVE_KD = False
+NN_DISTANCES = True
+SAVE_IMGS = False
+
+def eval_only(dataloader, model, output_path=None):
     distances = []
     final_out = []
     if Path(KDTREE_PATH).exists() and LOAD_KDTREE:
@@ -182,11 +211,12 @@ def eval_only(dataloader, model):
             kd = kd_trees[name] if name in kd_trees else None
 
             # MOVE PRED TO MATCH GT
-            gt = convert_reference(item["line_imgs"][ii], threshold=-.25)
-            pred, distance, kd = post_process(p, gt, kd=kd)
+            gt = convert_reference(item["line_imgs"][ii], threshold=0)
+            remove_end = min(50, int(p.shape[0]/2))
+            pred, distance, kd = post_process(p[:-remove_end], gt, calculate_distance=NN_DISTANCES, kd=kd)
 
-            # MOVE GT TO MATCH PRED - too expensive
-            if item_number < 3:
+            # MOVE GT TO MATCH PRED - this will improve as you increase the number of samples, not what we want right now
+            if NN_DISTANCES and False: #item_number < 0:
                 _, distances2, _ = stroke_recovery.get_nearest_point(p, gt, reference_is_image=False)
                 avg_distance2 = np.average(distances2)
             else:
@@ -196,11 +226,12 @@ def eval_only(dataloader, model):
             # Warning if the name already exists in the dictionary and it wasn't loaded
             if name in kd_trees and not Path(KDTREE_PATH).exists():
                 print(f"{name} already in KDTree dict")
-            kd_trees[name] = kd
+            if SAVE_KD:
+                kd_trees[name] = kd
 
             preds_to_graph.append(pred.transpose([1, 0])) # Convert to VOCAB X WIDTH
             path = item['paths'][ii]
-            avg_distance = np.average(distance)
+            avg_distance = np.average(distance) #- (2*.5**2)**.5 / 61
             new_stem = path.stem + f"_{str(avg_distance)[:8].replace('.',',')}"
             #print(distance, new_stem)
             item["paths"][ii] = (path.parent / new_stem).with_suffix(path.suffix)
@@ -218,20 +249,32 @@ def eval_only(dataloader, model):
                                "text": GT_DATA[name],
                                "id": name,
                                "distance": avg_distance,
-                               "pts": len(distance),
+                               "pts": p.shape,
                                "distance2": avg_distance2,
-                               "pts2": len(distances2),
+                               "pts2": gt.shape,
                                })
             else:
                 print(f"{name} not found")
 
 
         # Get GTs, save to file
-        if True or i<4:
+        if not output_path is None:
+            img_folder = output_path.parent / "imgs"
+            img_folder.mkdir(exist_ok=True, parents=True)
+        else:
+            img_folder = "auto"
+
+        if (True or i<4) and SAVE_IMGS:
             # Save a sample
-            save_folder = graph(item, preds=preds_to_graph, _type="eval", epoch="current", config=config)
-            output_path = (Path(save_folder) / "data")
-            output_path.mkdir(exist_ok=True, parents=True)
+            save_folder = graph(item, preds=preds_to_graph,
+                                _type="eval",
+                                epoch="current",
+                                config=config,
+                                save_folder=img_folder,
+                                max_plots=50)
+            if output_path is None:
+                output_path = (Path(save_folder) / "data")
+                output_path.mkdir(exist_ok=True, parents=True)
 
         #utils.pickle_it(output, output_path / f"{i}.pickle")
         #np.save(output_path / f"{i}.npy", output)
@@ -265,10 +308,10 @@ def eval_only(dataloader, model):
     logger.info("ALL DONE")
 
 # Loading GTs for offline data
-def load_all_gts(gt_path):
+def load_all_gts(gt_path, extension="*.json"):
     global GT_DATA
     from hwr_utils.hw_dataset import HwDataset
-    data = HwDataset.load_data(data_paths=gt_path.glob("*.json"))
+    data = HwDataset.load_data(data_paths=gt_path.glob(extension))
     #{'gt': 'He rose from his breakfast-nook bench', 'image_path': 'prepare_IAM_Lines/lines/m01/m01-049/m01-049-00.png',
     GT_DATA = {}
     for i in data:

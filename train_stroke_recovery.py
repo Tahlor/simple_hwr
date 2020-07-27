@@ -47,14 +47,10 @@ def run_epoch(dataloader, epoch, report_freq=500, plot_graphs=True):
         #print(item["label_lengths"])
         current_batch_size = item["line_imgs"].shape[0]
         instances += current_batch_size
-        if instances > 75000:
-            break
         #print(item["gt"].shape, item["label_lengths"])
         last_one = (i+2==len(dataloader) or len(dataloader) <= 2)
         loss, preds, y_hat, *_ = trainer.train(item, train=True, return_preds=last_one) #
         #y = y_hat.cpu().detach().numpy()
-        if last_one and not preds is None and plot_graphs:
-            graph_procedure(preds, item, epoch=epoch, other=y_hat)
 
         if loss is None:
             continue
@@ -72,6 +68,10 @@ def run_epoch(dataloader, epoch, report_freq=500, plot_graphs=True):
             logger.info(("GTs", item["gt_list"][0]))
 
         update_LR(config)
+
+        if instances > 75000 or (last_one and not preds is None and plot_graphs):
+            graph_procedure(preds, item, epoch=epoch, other=y_hat)
+            break
 
     end_time = timer()
     logger.info(("Epoch duration:", end_time-start_time))
@@ -148,7 +148,15 @@ def test(dataloader):
     return config.stats["Actual_Loss_Function_test"].get_last()
 
 
-def graph(batch, config=None, preds=None, _type="test", save_folder="auto", epoch="current", show=False, plot_points=True):
+def graph(batch,
+          config=None,
+          preds=None,
+          _type="test",
+          save_folder="auto",
+          epoch="current",
+          show=False,
+          plot_points=True,
+          max_plots=10):
     if save_folder == "auto":
         _epoch = str(epoch)
         save_folder = (config.image_dir / _epoch / _type)
@@ -229,7 +237,7 @@ def graph(batch, config=None, preds=None, _type="test", save_folder="auto", epoc
             elif config.model_name=="start_points":
                 subgraph(batch["start_points"][i], gt_img, name, is_gt=True)
         subgraph(preds, gt_img, name, is_gt=False)
-        if i > 10 or i+2 > len(preds):
+        if i > max_plots or i+2 > len(preds):
             break
     return save_folder
 

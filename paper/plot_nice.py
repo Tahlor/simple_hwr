@@ -3,9 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-fig, ax = plt.subplots()
-clrs = sns.color_palette("husl", 5)
-
 def test():
     d = {}
     d['means'] = np.array([1,2,3,4])
@@ -48,6 +45,9 @@ def plot_data(list_of_data_dict):
     Returns:
 
     """
+    fig, ax = plt.subplots()
+    clrs = sns.color_palette("husl", 5)
+
     with sns.axes_style("darkgrid"):
         for i,d in enumerate(list_of_data_dict):
             meanst = np.array(d['means'], dtype=np.float64)

@@ -45,7 +45,7 @@ dataset_folder: online_coordinate_data/MAX_stroke_vFull
 dataset_folder: online_coordinate_data/MAX_stroke_vTEST_AUGMENTFull
 dataset_folder: online_coordinate_data/MAX_stroke_vlargeTrnSetFull
 
-model_opts:
+model_definition:
   rnn_mode: normal
   mode: random
   nHidden": 256

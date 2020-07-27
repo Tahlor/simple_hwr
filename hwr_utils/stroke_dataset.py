@@ -29,7 +29,10 @@ PARAMETER = "d" # t or d for time/distance resampling
 script_path = Path(os.path.realpath(__file__))
 project_root = script_path.parent.parent
 
-def read_img(image_path, num_of_channels=1, target_height=61, resize=True, add_distortion=False, vertical_pad=False):
+def read_img(image_path, num_of_channels=1, target_height=61, resize=True,
+             add_distortion=False,
+             vertical_pad=False,
+             crop=False):
     """
 
     Args:
@@ -59,16 +62,19 @@ def read_img(image_path, num_of_channels=1, target_height=61, resize=True, add_d
         logging.warning(f"Warning: image is None: {image_path}")
         return None
 
+    if crop:
+        img = distortions.cropy(distortions.crop(img, padding=0),padding=0)
+
     #vertical_pad = False # vertical pad makes the last predictions totally haywire!!
     if vertical_pad:
-        target_height -= 4
+        target_height -= 2
 
     percent = float(target_height) / img.shape[0]
     if percent != 1 and resize:
         img = cv2.resize(img, (0, 0), fx=percent, fy=percent, interpolation=cv2.INTER_CUBIC)
 
     if vertical_pad:
-        img = cv2.copyMakeBorder(img, 2, 2, 0, 0, cv2.BORDER_CONSTANT,value=[255,255,255])
+        img = cv2.copyMakeBorder(img, 1, 1, 0, 0, cv2.BORDER_CONSTANT,value=[255,255,255])
 
     img = img.astype(np.float32)
 
@@ -134,14 +140,16 @@ class BasicDataset(Dataset):
     """ The kind of dataset used for e.g. offline data. Just looks at images, and calculates the output size etc.
 
     """
-    def __init__(self, root, extension=".png", cnn=None, pickle_file=None, adapted_gt_path=None, **kwargs):
+    def __init__(self, root, extension=".png", cnn=None, pickle_file=None, adapted_gt_path=None, rebuild=False,
+                 crop=False,
+                 **kwargs):
         # Create dictionary with all the paths and some index
         root = Path(root)
         self.root = root
         self.data = []
         self.num_of_channels = 1
         self.collate = collate_stroke_eval
-
+        self.crop = crop
         self.cnn = cnn
 
         if not cnn is None and cnn.cnn_type:
@@ -162,7 +170,8 @@ class BasicDataset(Dataset):
                 output = Path(root / "stroke_cached")
                 output.mkdir(parents=True, exist_ok=True)
                 pickle_file = output / (self.cnn.cnn_type + ".pickle")
-            if Path(pickle_file).exists():
+
+            if Path(pickle_file).exists() and not rebuild:
                 self.data = unpickle_it(pickle_file)
             else:
                 print("Pickle not found, rebuilding")
@@ -178,7 +187,7 @@ class BasicDataset(Dataset):
                     pickle.dump(self.data, pickle_file.open(mode="wb"))
 
     @staticmethod
-    def get_item_from_path(image_path, output_path):
+    def get_item_from_path(image_path, output_path, crop=False):
         """ This is used in the server right now?
 
         Args:
@@ -189,7 +198,7 @@ class BasicDataset(Dataset):
 
         """
 
-        img = read_img(image_path, num_of_channels=1, vertical_pad=True)
+        img = read_img(image_path, num_of_channels=1, vertical_pad=True, crop=crop)
         image_path = output_path
         # plt.imshow(img[:,:,0], cmap="gray")
         # plt.show()
@@ -218,7 +227,7 @@ class BasicDataset(Dataset):
         item = self.data[idx]
 
         image_path = self.root / item['image_path']
-        img = read_img(image_path, num_of_channels=self.num_of_channels, vertical_pad=True)
+        img = read_img(image_path, num_of_channels=self.num_of_channels, vertical_pad=True, crop=self.crop)
 
         # plt.imshow(img[:,:,0], cmap="gray")
         # plt.show()

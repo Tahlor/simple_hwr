@@ -122,6 +122,7 @@ def calculate_nn_distance(item, preds):
         cum_dist = sum(kd.query(gt[i][:, :2])[0])  # How far do we have to move the GT's to match the predictions?
         n_pts += gt[i].shape[0]
 
-    return (cum_dist / n_pts) * batch_size  # THIS WILL BE DIVIDED BY THE NUMBER OF INSTANCES LATER
+    return cum_dist  # THIS WILL BE DIVIDED BY THE NUMBER OF PTS!! LATER
+    # OLD METHOD: (cum_dist / n_pts) * batch_size
     # print("cum_dist: ", cum_dist, "n_pts: ", n_pts)
     # print("Distance: ", cum_dist / n_pts)
