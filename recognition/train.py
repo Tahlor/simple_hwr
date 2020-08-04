@@ -14,6 +14,7 @@ from torch.autograd import Variable
 from torch import tensor
 import types
 from hwr_utils import utils
+from hwr_utils.utils import plot_recognition_images
 
 #python -m visdom.server -p 8080
 
@@ -105,7 +106,7 @@ def test(model, dataloader, idx_to_char, device, config, with_analysis=False, pl
 
         if plot_all:
             imgs = x["line_imgs"][:, 0, :, :, :] if config["n_warp_iterations"] else x['line_imgs']
-            plot_images(imgs, f"{config['current_epoch']}_{i}_testing", pred_str, config["image_test_dir"], plot_count=4)
+            plot_recognition_images(imgs, f"{config['current_epoch']}_{i}_testing", pred_str, config["image_test_dir"], plot_count=4)
 
         # Only do one test
         if config["TESTING"]:
@@ -117,7 +118,7 @@ def test(model, dataloader, idx_to_char, device, config, with_analysis=False, pl
 
         if not plot_all:
             imgs = x["line_imgs"][:, 0, :, :, :] if with_iterations else x['line_imgs']
-            plot_images(imgs, f"{config['current_epoch']}_testing", pred_str, config["image_test_dir"], plot_count=4)
+            plot_recognition_images(imgs, f"{config['current_epoch']}_testing", pred_str, config["image_test_dir"], plot_count=4)
 
         LOGGER.debug(config["stats"])
         return cer
@@ -133,51 +134,7 @@ def to_numpy(tensor):
 
 # Test plot
 #img = np.random.rand(3,3,3)
-#plot_images(img, "name", ["a","b","c"])
-
-def plot_images(line_imgs, name, text_str, dir=None, plot_count=None, live=False):
-    if dir is None:
-        dir = config["image_dir"]
-    # Save images
-    batch_size = len(line_imgs)
-    if plot_count is None or plot_count > batch_size:
-        plot_count = max(1, int(min(batch_size, 8)/2)*2) # must be even, capped at 8
-    columns = min(plot_count,1)
-    rows = int(plot_count/columns)
-    f, axarr = plt.subplots(rows, columns)
-    f.tight_layout()
-
-    if isinstance(text_str, types.GeneratorType):
-        text_str = list(text_str)
-
-    if len(line_imgs) > 1:
-
-        for j, img in enumerate(line_imgs):
-            if j >= plot_count:
-                break
-            coords = (j % rows, int(j/rows))
-            if columns == 1:
-                coords = coords[0]
-            ax = axarr[coords]
-            ax.set_xlabel(f"{text_str[j]}", fontsize=8)
-
-            ax.set_xticklabels(labels=ax.get_xticklabels(), fontdict={"fontsize":6}) #label.set_fontsize(6)
-            ax.set_yticklabels(labels=ax.get_yticklabels(), fontdict={"fontsize": 6})  # label.set_fontsize(6)
-            ax.xaxis.set_ticklabels([])
-            ax.yaxis.set_ticklabels([])
-
-            ax.imshow(to_numpy(img.squeeze()), cmap='gray')
-            # more than 8 images is too crowded
-    else:
-         axarr.imshow(to_numpy(line_imgs.squeeze()), cmap='gray')
-
-    # plt.show()
-    if live:
-        plt.show()
-    else:
-        path = os.path.join(dir, '{}.png'.format(name))
-        plt.savefig(path, dpi=400)
-        plt.close('all')
+#plot_recognition_images(img, "name", ["a","b","c"])
 
 def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
     LOGGER.debug(f"Switching model to train")
@@ -207,7 +164,7 @@ def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
 
 
         # GT testing
-        # plot_images(x['line_imgs'], f"{config['current_epoch']}_training", gt, live=True, plot_count=4)
+        # plot_recognition_images(x['line_imgs'], f"{config['current_epoch']}_training", gt, live=True, plot_count=4)
         # print(labels, label_lengths, gt)
         # print(x['paths'])
         # input()
@@ -224,7 +181,7 @@ def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
         LOGGER.debug("Finished with batch")
 
         if i == 0:
-            plot_images(x['line_imgs'], f"{config['current_epoch']}_{local_instance_counter}_training", first_pred_str,
+            plot_recognition_images(x['line_imgs'], f"{config['current_epoch']}_{local_instance_counter}_training", first_pred_str,
                         dir=config["image_train_dir"], plot_count=4)
 
 
@@ -235,7 +192,7 @@ def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
             next_update += test_freq
 
             # Save out example images on the first go
-            plot_images(x['line_imgs'], f"{config['current_epoch']}_{local_instance_counter}_training", first_pred_str,
+            plot_recognition_images(x['line_imgs'], f"{config['current_epoch']}_{local_instance_counter}_training", first_pred_str,
                         dir=config["image_train_dir"], plot_count=4)
 
 
@@ -258,7 +215,7 @@ def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
         training_cer = training_cer_list[-1]  # most recent training CER
 
         # Save out example images on the first go
-        plot_images(x['line_imgs'], f"{config['current_epoch']}_training", first_pred_str,
+        plot_recognition_images(x['line_imgs'], f"{config['current_epoch']}_training", first_pred_str,
                     dir=config["image_train_dir"], plot_count=4)
 
         return training_cer

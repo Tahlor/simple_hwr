@@ -633,3 +633,15 @@ def overlay_images(background_img=None, foreground_gt=None, normalized=True, sav
     if save_path:
         bg.save(save_path)
     return bg
+
+
+if __name__ == "__main__":
+    test_conv_weight()
+    # test_gt_stroke_length_generator()
+    Stop
+    os.chdir("../data")
+    with open("online_coordinate_data/3_stroke_16_v2/train_online_coords.json") as f:
+        output_dict = json.load(f)
+
+    instance = output_dict[11]
+    render_points_on_image(instance['gt'], img=instance['image_path'], x_to_y=instance["x_to_y"])

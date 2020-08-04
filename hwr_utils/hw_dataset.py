@@ -250,7 +250,7 @@ class HwDataset(Dataset):
 
         if images_to_load:
             data = data[:images_to_load]
-        print("Dataloader size", len(data))
+        print("HW dataloader size", len(data))
         return data
 
     def join_writer_ids(self, root, writer_id_paths):

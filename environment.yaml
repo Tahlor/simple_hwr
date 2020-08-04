@@ -19,6 +19,7 @@ dependencies:
   #- scikit-learn
   #- scikit-image
   - pip:
+    - drawSvg
     - easydict
     - jsonpatch
     - biopython==1.73
@@ -36,6 +37,7 @@ dependencies:
     - git+https://github.com/Tahlor/robust_loss_pytorch
     - git+https://github.com/tahlor/pydtw
     - forbiddenfruit
+    - seaborn
 #prefix: /panfs/pan.fsl.byu.edu/scr/grp/fslg_hwr/env/hwr
 
 # conda env create -f environment.yaml --name munit2

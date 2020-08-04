@@ -20,7 +20,7 @@ from pathlib import Path
 import json
 from easydict import EasyDict as edict
 import logging
-from hwr_utils.stroke_plotting import *
+#from hwr_utils.stroke_plotting import *
 from torch.nn import functional
 from torch import Tensor, tensor
 from scipy.spatial import KDTree
@@ -850,6 +850,14 @@ def remove_bad_points(gt, max_dist=.2):
     gt[idx, 2] = 1
     return gt
 
+def convert_reference(reference, threshold=150 / 127.5 - 1):
+    if len(reference.shape) == 3:
+        reference = np.squeeze(reference)
+    height = reference.shape[0]
+    y_coords, x_coords = np.where(reference < threshold)
+    reference = np.c_[x_coords, height - y_coords].astype(np.float64) / height  # rescale to be 0-1 based on height!
+    return reference
+
 def get_nearest_point(reference, moving_component, reference_is_image=False, **kwargs):
     """ For calculating error, reference should be preds (how far do we need to move the GTs)
         For post-process, reference should be GT image/pts (where should we move this pred to?)
@@ -863,19 +871,14 @@ def get_nearest_point(reference, moving_component, reference_is_image=False, **k
 
     """
     if reference_is_image:
-        if len(reference.shape)==3:
-            reference = np.squeeze(reference)
-        height = reference.shape[0]
-        y_coords,x_coords = np.where(reference<150/127.5-1)
-        reference = np.c_[x_coords, height-y_coords].astype(np.float64) / height # rescale to be 0-1 based on height!
-
+        reference = convert_reference(reference)
     if "kd" in kwargs and kwargs["kd"] is not None:
         kd = kwargs["kd"]
     else:
         warnings.warn("Generating KD tree")
         kd = KDTree(reference[:, :2])
 
-    distances, neighbor_indices = kd.query(moving_component[:, :2])  # How far do we have to move the GT's to match the predictions? Based on 0-1 height scale
+    distances, neighbor_indices = kd.query(moving_component[:, :2])  # How far do we have to move the pred to nearest GT? Based on 0-1 height scale
     nearest_points = reference[neighbor_indices]
     return nearest_points, distances, kd
 
@@ -1170,15 +1173,3 @@ def swap_to_minimize_l1(pred, gt, exponent=2, stroke_numbers=True, center_of_mas
 ## ANY SUFFICIENTLY LARGE JUMP -> MAKE A START STROKE
 ## DTW -> PAIR POINTS TOGETHER, EVALUATE HOW ACCURATE ON STROKE BY STROKE LEVEL
 
-
-
-if __name__=="__main__":
-    test_conv_weight()
-    #test_gt_stroke_length_generator()
-    Stop
-    os.chdir("../data")
-    with open("online_coordinate_data/3_stroke_16_v2/train_online_coords.json") as f:
-        output_dict = json.load(f)
-
-    instance = output_dict[11]
-    render_points_on_image(instance['gt'], img=instance['image_path'], x_to_y=instance["x_to_y"])

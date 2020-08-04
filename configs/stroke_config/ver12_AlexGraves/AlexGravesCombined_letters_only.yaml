@@ -37,7 +37,7 @@ use_visdom: true
 debug: off
 truncate: false
 
-model_opts:
+model_definition:
   mode: letter_only
 
 dataset:

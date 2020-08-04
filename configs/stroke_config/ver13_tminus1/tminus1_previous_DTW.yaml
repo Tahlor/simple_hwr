@@ -30,7 +30,7 @@ use_visdom: true
 debug: off
 truncate: false
 model_name: TMinus1
-model_opts:
+model_definition:
   rnn_mode: correct_gts
   mode: NA
   nHidden": 256

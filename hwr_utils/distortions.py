@@ -229,15 +229,29 @@ def noise(img, occlusion_level=1, logger=None, noise_type="gaussian"):
     else:
         raise Exception("Not implemented")
 
-def crop(img, threshold=200, padding=10):
+def crop(img, threshold=200, padding=10, min_width=50):
     all_ink = np.where(img < threshold)
     try:
         first_ink = max(0, np.min(all_ink[1]) - padding)
         last_ink = min(np.max(all_ink[1])+padding, img.shape[1])
 
         # Must be at least 50 pixels wide
-        if last_ink - first_ink > 50:
+        if last_ink - first_ink > min_width:
             return img[:, first_ink:last_ink]
+        else:
+            return img
+    except:
+        return img
+
+def cropy(img, threshold=200, padding=10, min_height=10):
+    all_ink = np.where(img < threshold)
+    try:
+        first_ink = max(0, np.min(all_ink[0]) - padding)
+        last_ink = min(np.max(all_ink[0])+padding, img.shape[0])
+
+        # Must be at least 50 pixels wide
+        if last_ink - first_ink > min_height:
+            return img[first_ink:last_ink, :]
         else:
             return img
     except:

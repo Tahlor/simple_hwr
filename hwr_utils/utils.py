@@ -1,3 +1,4 @@
+import types
 import inspect
 import itertools
 import numbers
@@ -81,9 +82,8 @@ def find_config(config_name, config_root="./configs"):
         raise Exception("{} config not found".format(config_name))
 
 def incrementer(root, base, make_folder=True):
-    new_folder = Path(root / base)
+    new_folder = Path(root) / base
     increment = 0
-    increment_string = ""
 
     while new_folder.exists():
         increment += 1
@@ -165,7 +165,7 @@ stroke_defaults = {"SMALL_TRAINING": False,
                                 "kdtree": False
                                 },
                     "coordconv_method": "y_abs",
-                    "model_opts" : {"nHidden": 128, "num_layers": 2},
+                    "model_definition" : {"nHidden": 128, "num_layers": 2},
                     "model": None,
                     "reset_LR": True,
                     "load_optimizer": False,
@@ -255,11 +255,16 @@ def load_config(config_path, hwr=True,
         output_root = Path(config_path).parent
         experiment = config.experiment
 
-        # Backup some stuff
+        # Backup all_stats.json etc.
+        backup = incrementer(output_root, "backup")
+        print(backup)
+        try:
+            shutil.copy(output_root / "RESUME_model.pt", backup)
+        except:
+            pass
         for f in itertools.chain(output_root.glob("*.json"),output_root.glob("*.log")):
-            backup = incrementer(output_root, "backup")
-            print(backup)
             shutil.copy(str(f), backup)
+
         output_root = output_root.as_posix()
     elif results_dir_override or ("results_dir_override" in config and config.results_dir_override):
         experiment = Path(results_dir_override).stem
@@ -1524,33 +1529,32 @@ def make_resume_sh( sh_path, config_path, python_script="train_stroke_recovery.p
     if python_script[-3:] != ".py":
         python_script += ".py"
 
-    script = f"""
-            #!/bin/bash
-            #SBATCH --gres=gpu:1
-            #SBATCH -C 'rhel7&pascal'
-            #SBATCH --mem-per-cpu 12500MB
-            #SBATCH --ntasks 8
-            #SBATCH --nodes=1
-            #SBATCH --output="/panfs/pan.fsl.byu.edu/scr/grp/fslg_hwr/taylor_simple_hwr/slurm_scripts/scripts/stroke_config/ver11_proper_eos/log_dtw_adaptive_no_truncation_default64v2.slurm"
-            #SBATCH --time 72:00:00
-            #SBATCH --mail-user=taylornarchibald@gmail.com   # email address
-            #SBATCH --mail-type=BEGIN
-            #SBATCH --mail-type=END
-            #SBATCH --mail-type=FAIL
-            
-            #%Module
-            
-            module purge
-            module load cuda/10.1
-            module load cudnn/7.6
-            
-            export PATH="/panfs/pan.fsl.byu.edu/scr/grp/fslg_hwr/env/hwr4_env:$PATH"
-            eval "$(conda shell.bash hook)"
-            conda activate /panfs/pan.fsl.byu.edu/scr/grp/fslg_hwr/env/hwr4_env
-            
-            cd "/panfs/pan.fsl.byu.edu/scr/grp/fslg_hwr/taylor_simple_hwr"
-            which python
-            python -u {python_script} --config '{config_path}'
+    script = f"""#!/bin/bash
+#SBATCH --gres=gpu:1
+#SBATCH -C 'rhel7&pascal'
+#SBATCH --mem-per-cpu 12500MB
+#SBATCH --ntasks 8
+#SBATCH --nodes=1
+#SBATCH --output="{config_path.name}.slurm"
+#SBATCH --time 72:00:00
+#SBATCH --mail-user=taylornarchibald@gmail.com   # email address
+#SBATCH --mail-type=BEGIN
+#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
+
+#%Module
+
+module purge
+module load cuda/10.1
+module load cudnn/7.6
+
+export PATH="/panfs/pan.fsl.byu.edu/scr/grp/fslg_hwr/env/hwr4_env:$PATH"
+eval "$(conda shell.bash hook)"
+conda activate /panfs/pan.fsl.byu.edu/scr/grp/fslg_hwr/env/hwr4_env
+
+cd "/panfs/pan.fsl.byu.edu/scr/grp/fslg_hwr/taylor_simple_hwr"
+which python
+python -u {python_script} --config '{config_path}'
     """
     with Path(sh_path).open("w") as f:
         f.write(script)
@@ -1596,6 +1600,51 @@ def backup_alphabet(source_dict, destination_dict):
     destination_dict.char_freq = source_dict.char_freq
     destination_dict.idx_to_char = source_dict.idx_to_char
     destination_dict.char_to_idx = source_dict.char_to_idx
+
+
+def plot_recognition_images(line_imgs, name, text_str, dir=None, plot_count=None, live=False):
+    if dir is None:
+        dir = config["image_dir"]
+    # Save images
+    batch_size = len(line_imgs)
+    if plot_count is None or plot_count > batch_size:
+        plot_count = max(1, int(min(batch_size, 8)/2)*2) # must be even, capped at 8
+    columns = min(plot_count,1)
+    rows = int(plot_count/columns)
+    f, axarr = plt.subplots(rows, columns)
+    f.tight_layout()
+
+    if isinstance(text_str, types.GeneratorType):
+        text_str = list(text_str)
+
+    if len(line_imgs) > 1:
+
+        for j, img in enumerate(line_imgs):
+            if j >= plot_count:
+                break
+            coords = (j % rows, int(j/rows))
+            if columns == 1:
+                coords = coords[0]
+            ax = axarr[coords]
+            ax.set_xlabel(f"{text_str[j]}", fontsize=8)
+
+            ax.set_xticklabels(labels=ax.get_xticklabels(), fontdict={"fontsize":6}) #label.set_fontsize(6)
+            ax.set_yticklabels(labels=ax.get_yticklabels(), fontdict={"fontsize": 6})  # label.set_fontsize(6)
+            ax.xaxis.set_ticklabels([])
+            ax.yaxis.set_ticklabels([])
+
+            ax.imshow(to_numpy(img.squeeze()), cmap='gray')
+            # more than 8 images is too crowded
+    else:
+         axarr.imshow(to_numpy(line_imgs.squeeze()), cmap='gray')
+
+    # plt.show()
+    if live:
+        plt.show()
+    else:
+        path = os.path.join(dir, '{}.png'.format(name))
+        plt.savefig(path, dpi=400)
+        plt.close('all')
 
 
 if __name__=="__main__":

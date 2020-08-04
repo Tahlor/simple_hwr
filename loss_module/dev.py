@@ -315,7 +315,7 @@ def swap_strokes(instruction_dict, gt, stroke_numbers):
 def check(new_gt, _preds, cost_mat, a, b, start_idx, end_idx, constraint, buffer, verbose, testing):
     """ Refill matrix: need to refill to last stroke + window + window2, but only to first stroke - window
         Traceback: traceback need to start at alignment [last stroke + window + window2] and go to [last stroke - window - window2]
-
+        window is the original dtw window, window2 is the
     Args:
         new_gt:
         _preds:
@@ -682,3 +682,4 @@ if __name__=='__main__':
     plt.hist(WORST["percentile"])
     plt.show()
     #test_swap_strokes()
+

@@ -32,6 +32,7 @@ def main(config_path):
     config_path = "/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_v3/normal_preload.yaml"
     config_path = PROJ_ROOT + "/configs/stroke_configs/ver8/dtw_adaptive.yaml"
     config_path = "/media/data/GitHub/simple_hwr/results/stroke_config/pretrained/with_EOS/RESUME.yaml"
+    config_path = "/media/data/GitHub/simple_hwr/RESULTS/OFFLINE_PREDS/RESUME_model/dtw_adaptive.yaml"
 
     load_path_override = "/media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr/results/stroke_config/GOOD/baseline_model.pt"
     load_path_override = "/media/data/GitHub/simple_hwr/~RESULTS/20191213_155358-baseline-GOOD_long"
@@ -45,6 +46,7 @@ def main(config_path):
     load_path_override = "/home/taylor/shares/brodie/home/taylor/github/simple_hwr/RESULTS/ver8/20200406_131747-dtw_adaptive_new2_restartLR_RESUME/RESUME_model.pt"
     load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/pretrained/with_EOS/dtw_adaptive_no_truncation_model.pt"
     load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/pretrained/with_EOS/RESUME_Bigger_Window_model.pt"
+    load_path_override = "/media/data/GitHub/simple_hwr/RESULTS/OFFLINE_PREDS/RESUME_model/imgs/current/eval/data/RESUME_model.pt"
 
     for load_path_override in [load_path_override
                                ]:
@@ -55,7 +57,9 @@ def main(config_path):
         _load_path_override = Path(load_path_override)
 
         OUTPUT = PROJ_ROOT / Path("RESULTS/OFFLINE_PREDS/") / _load_path_override.stem
-        model_output_dir = OUTPUT / "imgs/current/eval/data"
+
+        _t = utils.increment_path(name="eval", base_path=OUTPUT / "imgs/current")
+        model_output_dir = OUTPUT / _t / "data"
         model_output_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy(_load_path_override, model_output_dir) # save the model ya hoser
 
@@ -137,7 +141,7 @@ def main(config_path):
 def post_process(pred,gt, calculate_distance=True, kd=None):
     #return make_more_starts(move_bad_points(reference=gt, moving_component=pred, reference_is_image=True), max_dist=.15)
     if calculate_distance:
-        _, distances, kd = stroke_recovery.get_nearest_point(gt, pred, reference_is_image=True, kd=kd)
+        _, distances, kd = stroke_recovery.get_nearest_point(gt, pred, reference_is_image=False, kd=kd)
     else:
         distances = 0
 
@@ -159,7 +163,8 @@ def eval_only(dataloader, model):
     else:
         kd_trees = {}
     for i, item in enumerate(tqdm(dataloader)):
-        preds = TrainerStrokeRecovery.eval(item["line_imgs"], model,
+        preds = TrainerStrokeRecovery.eval(item["line_imgs"],
+                                           model,
                                            label_lengths=item["label_lengths"],
                                            relative_indices=config.pred_relativefy,
                                            sigmoid_activations=config.sigmoid_indices)
@@ -170,10 +175,23 @@ def eval_only(dataloader, model):
         # Pred comes out of eval WIDTH x VOCAB
         preds_to_graph = []
         for ii, p in enumerate(preds): # Loop within batch
+            item_number = i*config.batch_size+ii
+            print("image number:", item_number)
+
             name = names[ii]
             kd = kd_trees[name] if name in kd_trees else None
 
-            pred, distance, kd = post_process(p, item["line_imgs"][ii], kd=kd)
+            # MOVE PRED TO MATCH GT
+            gt = convert_reference(item["line_imgs"][ii], threshold=-.25)
+            pred, distance, kd = post_process(p, gt, kd=kd)
+
+            # MOVE GT TO MATCH PRED - too expensive
+            if item_number < 3:
+                _, distances2, _ = stroke_recovery.get_nearest_point(p, gt, reference_is_image=False)
+                avg_distance2 = np.average(distances2)
+            else:
+                distances2 = []
+                avg_distance2 = 0
 
             # Warning if the name already exists in the dictionary and it wasn't loaded
             if name in kd_trees and not Path(KDTREE_PATH).exists():
@@ -199,14 +217,17 @@ def eval_only(dataloader, model):
                 output.append({"stroke": p,
                                "text": GT_DATA[name],
                                "id": name,
-                               "distance": np.average(distance)
+                               "distance": avg_distance,
+                               "pts": len(distance),
+                               "distance2": avg_distance2,
+                               "pts2": len(distances2),
                                })
             else:
                 print(f"{name} not found")
 
 
         # Get GTs, save to file
-        if i < 4:
+        if True or i<4:
             # Save a sample
             save_folder = graph(item, preds=preds_to_graph, _type="eval", epoch="current", config=config)
             output_path = (Path(save_folder) / "data")
@@ -217,7 +238,7 @@ def eval_only(dataloader, model):
         final_out += output
 
         distances += [x["distance"] for x in output]
-        print(np.sum(distances < .1) / len(distance))
+        #print(np.sum(distances < .1) / len(distance))
     #utils.pickle_it(final_out, output_path / f"all_data.pickle")
     np.save(output_path / f"all_data.npy", final_out)
 
