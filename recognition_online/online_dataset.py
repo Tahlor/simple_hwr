@@ -135,121 +135,7 @@ def fake_gt():
     gt2[:, 3] = [0, 0, 0, 0, 0, 0, 0, 0, 1]
     return gt2
 
-
-class BasicDataset(Dataset):
-    """ The kind of dataset used for e.g. offline data. Just looks at images, and calculates the output size etc.
-
-    """
-    def __init__(self, root, extension=".png", cnn=None, pickle_file=None, adapted_gt_path=None, rebuild=False,
-                 crop=False,
-                 **kwargs):
-        # Create dictionary with all the paths and some index
-        root = Path(root)
-        self.root = root
-        self.data = []
-        self.num_of_channels = 1
-        self.collate = collate_stroke_eval
-        self.crop = crop
-        self.cnn = cnn
-
-        if not cnn is None and cnn.cnn_type:
-            self.cnn_type = cnn.cnn_type
-        else:
-            self.cnn_type = "default64"
-
-        if "contrast" in kwargs:
-            self.contrast = kwargs["contrast"]
-
-        if adapted_gt_path:
-            print(f"LOADING FROM {adapted_gt_path}")
-            self.data = np.load(adapted_gt_path, allow_pickle=True)
-
-        else:
-            if pickle_file is None and cnn:
-                self.cnn_type = self.cnn.cnn_type
-                output = Path(root / "stroke_cached")
-                output.mkdir(parents=True, exist_ok=True)
-                pickle_file = output / (self.cnn.cnn_type + ".pickle")
-
-            if Path(pickle_file).exists() and not rebuild:
-                self.data = unpickle_it(pickle_file)
-            else:
-                print("Pickle not found, rebuilding")
-                # Rebuild the dataset - find all PNG files
-                for i in root.rglob("*" + extension):
-                    self.data.append({"image_path":i.as_posix()})
-                logger.info(("Length of data", len(self.data)))
-
-                # Add label lengths - save to pickle
-                if self.cnn_type:
-                    add_output_size_to_data(self.data, self.cnn_type, key="label_length", root=self.root)
-                    logger.info(f"DUMPING cached version to: {pickle_file}")
-                    pickle.dump(self.data, pickle_file.open(mode="wb"))
-
-    @staticmethod
-    def get_item_from_path(image_path, output_path, crop=False):
-        """ This is used in the server right now?
-
-        Args:
-            image_path:
-            output_path:
-
-        Returns:
-
-        """
-
-        img = read_img(image_path, num_of_channels=1, vertical_pad=True, crop=crop)
-        image_path = output_path
-        # plt.imshow(img[:,:,0], cmap="gray")
-        # plt.show()
-
-        img = (distortions.change_contrast((img+1)*127.5, contrast=2)/ 127.5 - 1.0)[:,:,np.newaxis]
-        # plt.imshow(img, cmap="gray")
-        # plt.show()
-        # STPO
-        label_length = None
-        return {
-            "line_img": img,
-            "gt": [],
-            "path": image_path,
-            "x_func": None,
-            "y_func": None,
-            "start_times": None,
-            "x_relative": None,
-            "label_length": label_length,
-        }
-
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        item = self.data[idx]
-
-        image_path = self.root / item['image_path']
-        img = read_img(image_path, num_of_channels=self.num_of_channels, vertical_pad=True, crop=self.crop)
-
-        # plt.imshow(img[:,:,0], cmap="gray")
-        # plt.show()
-
-        img = (distortions.change_contrast((img+1)*127.5, contrast=2)/ 127.5 - 1.0)[:,:,np.newaxis]
-        # plt.imshow(img, cmap="gray")
-        # plt.show()
-        # STPO
-        label_length = item["label_length"] if self.cnn else None
-        return {
-            "line_img": img,
-            "gt": [],
-            "path": image_path,
-            "x_func": None,
-            "y_func": None,
-            "start_times": None,
-            "x_relative": None,
-            "label_length": label_length,
-        }
-
-
-class StrokeRecoveryDataset(Dataset):
+class OnlineDataset(Dataset):
     def __init__(self,
                  data_paths,
                  img_height=61,
@@ -405,7 +291,7 @@ class StrokeRecoveryDataset(Dataset):
                 data = data[:a] + data[-b:] #get first few and last few
         logger.info(("Dataloader size", len(data)))
 
-        if "gt" not in data[0].keys() and self.config.dataset.resample:
+        if "gt" not in data[0].keys() and self.config and self.config.dataset.resample:
             data = self.prepare_data(data, parallel=True)
         else:
             data = self.prepare_data(data, parallel=True, fn=self.no_resample)
@@ -492,8 +378,8 @@ class StrokeRecoveryDataset(Dataset):
         # {'gt': 'He rose from his breakfast-nook bench', 'image_path': 'prepare_IAM_Lines/lines/m01/m01-049/m01-049-00.png',
         GT_DATA = {}
         for i in data:
-            key = Path(i["image_path"]).stem.lower()
-            assert not key in GT_DATA
+            key = Path(i["image_path"]).stem.lower() # file id e.g. a00-01-01
+            assert not key in GT_DATA # make sure there are no duplicates
             gt_data[key] = i["gt"]
         # print(f"GT's found: {GT_DATA.keys()}")
         np.save(gt_path.parent / "gt_text.npy", GT_DATA)
@@ -518,7 +404,7 @@ class StrokeRecoveryDataset(Dataset):
         for item in self.data:
             image_path = self.root / item['image_path']
             id = Path(image_path).stem.split("_")[0]
-            if not id in gt_data.keys():
+            if not id in gt_data.keys(): # if ID not in gt_text data
                 i+=1
         print("# of items in dataset:", len(self.data), "items without GT text: ", i)
 
@@ -656,13 +542,10 @@ class StrokeRecoveryDataset(Dataset):
 
         np.testing.assert_allclose(item["gt"].shape, gt.shape)
 
-        gt_label = string_utils.str2label(gt_text, self.char_to_idx) # character loss_indices of text
-
         return {
             "line_img": img, # H,W,C
             "gt": gt, # B, W, 3/4
             "gt_reverse_strokes": gt_reverse_strokes,
-            "gt_label": gt_label, # the indices of the gt text
             "gt_text": gt_text,
             "gt_text_indices": gt_text_indices,
             "sos_args": sos_args,
@@ -1133,16 +1016,8 @@ def some_kind_of_test():
     # assert np.allclose(x,y)
 
 if __name__=="__main__":
-    if False:
-        kwargs = {'img_height': 121, 'include_synthetic': False, 'num_of_channels': 1, 'image_prep': 'no_warp_distortion', 'gt_format': ['x', 'y', 'stroke_number'], 'batch_size': 28, 'extra_dataset': []}
-        dataset = StrokeRecoveryDataset(data_paths=['online_coordinate_data/ICDAR/train_online_coords.json'],
-                                        root="../data",
-                                        max_images_to_load = 10,
-                                        cnn=None,
-                                        **kwargs)
-    else:
-        kwargs = {'img_height': 61, 'include_synthetic': True, 'num_of_channels': 1, 'image_prep': 'no_warp_distortion', 'gt_format': ['x', 'y', 'stroke_number'], 'batch_size': 28, 'extra_dataset': []}
-        dataset = StrokeRecoveryDataset(data_paths=['online_coordinate_data/ICDAR/train_online_coords.json'],
+    kwargs = {'img_height': 121, 'include_synthetic': False, 'num_of_channels': 1, 'image_prep': 'no_warp_distortion', 'gt_format': ['x', 'y', 'stroke_number'], 'batch_size': 28, 'extra_dataset': []}
+    dataset = OnlineDataset(data_paths=['online_coordinate_data/ICDAR/train_online_coords.json'],
                                     root="../data",
                                     max_images_to_load = 10,
                                     cnn=None,

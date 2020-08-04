@@ -20,7 +20,7 @@ from pathlib import Path
 import json
 from easydict import EasyDict as edict
 import logging
-from hwr_utils.stroke_plotting import *
+#from hwr_utils.stroke_plotting import *
 from torch.nn import functional
 from torch import Tensor, tensor
 from scipy.spatial import KDTree
@@ -1173,15 +1173,3 @@ def swap_to_minimize_l1(pred, gt, exponent=2, stroke_numbers=True, center_of_mas
 ## ANY SUFFICIENTLY LARGE JUMP -> MAKE A START STROKE
 ## DTW -> PAIR POINTS TOGETHER, EVALUATE HOW ACCURATE ON STROKE BY STROKE LEVEL
 
-
-
-if __name__=="__main__":
-    test_conv_weight()
-    #test_gt_stroke_length_generator()
-    Stop
-    os.chdir("../data")
-    with open("online_coordinate_data/3_stroke_16_v2/train_online_coords.json") as f:
-        output_dict = json.load(f)
-
-    instance = output_dict[11]
-    render_points_on_image(instance['gt'], img=instance['image_path'], x_to_y=instance["x_to_y"])

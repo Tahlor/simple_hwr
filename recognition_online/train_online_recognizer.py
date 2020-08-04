@@ -2,53 +2,22 @@ from __future__ import print_function
 
 import sys
 sys.path.extend(["..", "."])
-
+import torch, os
+from hwr_utils.utils import unpickle_it, npy_loader, dict_to_list
+from hwr_utils.hwr_logger import logger
+import traceback
 from builtins import range
 import faulthandler
 from hwr_utils import hw_dataset, character_set
-from hwr_utils.hw_dataset import HwDataset
-import crnn
-import trainer
+from online_dataset import OnlineDataset
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
 from torch import tensor
 import types
 from hwr_utils import utils
 from hwr_utils.utils import plot_recognition_images
-
-#python -m visdom.server -p 8080
-
-### TO DO:
-# Add ONLINE flag to regular CRNN
-# Download updated JSONs/Processing
-
-
-# EMAIL SUPERCOMPUTER?
-# "right" way to make an embedding
-# CycleGAN - threshold
-# Deepwriting - clean up generated images?
-# Dropout schedule
-
-from torch.nn import CrossEntropyLoss
-import traceback
-
-# matplotlib.use('TkAgg')
+import numpy as np
 from hwr_utils.utils import *
-from torch.optim import lr_scheduler
-
-## Notes on usage
-# conda activate hw2
-# python -m visdom.server -p 8080
-
-
-faulthandler.enable()
-#torch.set_num_threads(torch.get_num_threads())
-#print(torch.get_num_threads())
-
-threads = max(1, min(torch.get_num_threads()-2,6))
-log_print(f"Threads: {threads}")
-#threads = 1
-torch.set_num_threads(threads)
 
 def validate(model, dataloader, idx_to_char, device, config):
     """ Validate a model -- save if best so far"""
@@ -67,7 +36,6 @@ def validate(model, dataloader, idx_to_char, device, config):
         config['lowest_loss'] = validation_cer
         save_model(config, bsf=True)
     return validation_cer
-
 
 def test(model, dataloader, idx_to_char, device, config, with_analysis=False, plot_all=False, validation=True, with_iterations=False):
     """ Test/validate a model. Validation bool just specifies which stats to update
@@ -126,16 +94,6 @@ def test(model, dataloader, idx_to_char, device, config, with_analysis=False, pl
         log_print(f"No {stat} data!")
         return np.inf
 
-def to_numpy(tensor):
-    if isinstance(tensor,torch.FloatTensor) or isinstance(tensor,torch.cuda.FloatTensor):
-        return tensor.detach().cpu().numpy()
-    else:
-        return tensor
-
-# Test plot
-#img = np.random.rand(3,3,3)
-#plot_recognition_images(img, "name", ["a","b","c"])
-
 def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
     LOGGER.debug(f"Switching model to train")
     model.train()
@@ -160,22 +118,6 @@ def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
             logger.info("Problem with epoch")
             traceback.print_exc()
 
-        #config["stats"]["instances"] += config["global_instances_counter"]
-
-
-        # GT testing
-        # plot_recognition_images(x['line_imgs'], f"{config['current_epoch']}_training", gt, live=True, plot_count=4)
-        # print(labels, label_lengths, gt)
-        # print(x['paths'])
-        # input()
-
-        # Add online/offline binary flag
-        if "strokes" in x and x["strokes"] is not None:
-            online = x["strokes"].type(dtype)
-        else:
-            online = Variable(x['online'].type(dtype), requires_grad=False).view(1, -1, 1) if config[
-                "online_augmentation"] and config["online_flag"] else None
-
         loss, initial_err, first_pred_str = config["trainer"].train(line_imgs, online, labels, label_lengths, gt, step=config["global_step"])
 
         LOGGER.debug("Finished with batch")
@@ -186,14 +128,14 @@ def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
 
 
         # Run a validation set if training set is HUGE and no end in sight
-        if local_instance_counter>=next_update and config['n_train_instances']-local_instance_counter > test_freq:
-            log_print("Validating - mid epoch!")
-            validate(config["model"], config.validation_dataloader, config["idx_to_char"], config["device"], config)
-            next_update += test_freq
-
-            # Save out example images on the first go
-            plot_recognition_images(x['line_imgs'], f"{config['current_epoch']}_{local_instance_counter}_training", first_pred_str,
-                        dir=config["image_train_dir"], plot_count=4)
+        # if local_instance_counter>=next_update and config['n_train_instances']-local_instance_counter > test_freq:
+        #     logger.info("Validating - mid epoch!")
+        #     validate(config["model"], config.validation_dataloader, config["idx_to_char"], config["device"], config)
+        #     next_update += test_freq
+        # 
+        #     # Save out example images on the first go
+        #     plot_recognition_images(x['line_imgs'], f"{config['current_epoch']}_{local_instance_counter}_training", first_pred_str,
+        #                 dir=config["image_train_dir"], plot_count=4)
 
 
         # Update stats every 50 instances
@@ -202,7 +144,7 @@ def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
             config["stats"]["epoch_decimal"] += [
                 config["current_epoch"] + i * config["batch_size"] * 1.0 / config['n_train_instances']]
             LOGGER.info(f"updates: {config['global_step']}")
-            reset_all_stats(config, keyword="Training")
+            utils.reset_all_stats(config, keyword="Training")
 
         if config["TESTING"] or config["SMALL_TRAINING"]:
             break
@@ -220,12 +162,13 @@ def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
 
         return training_cer
     except:
-        log_print("Problem with calculating error")
+        logger.info("Problem with calculating error")
         return np.inf
 
 def make_dataloaders(config, device="cpu"):
+    threads = 5
     default_collate = lambda x: hw_dataset.collate(x, device=device)
-    train_dataset = HwDataset(config.training_jsons,
+    train_dataset = OnlineDataset(config.training_jsons,
                               config["char_to_idx"],
                               img_height=config["input_height"],
                               num_of_channels=config["num_of_channels"],
@@ -262,7 +205,7 @@ def make_dataloaders(config, device="cpu"):
     #                          images_to_load=config["images_to_load"],
     #                          logger=config["logger"])
 
-    test_dataset = HwDataset(config["testing_jsons"],
+    test_dataset = OnlineDataset(config["testing_jsons"],
                              config["char_to_idx"],
                              img_height=config["input_height"],
                              num_of_channels=config["num_of_channels"],
@@ -283,7 +226,7 @@ def make_dataloaders(config, device="cpu"):
                                  collate_fn=default_collate)
 
     if "validation_jsons" in config and config.validation_jsons: # must be present and non-empty
-        validation_dataset = HwDataset(config["validation_jsons"],
+        validation_dataset = OnlineDataset(config["validation_jsons"],
                                        config["char_to_idx"],
                                        img_height=config["input_height"],
                                        num_of_channels=config["num_of_channels"],
@@ -328,14 +271,14 @@ def load_data(config):
     config['alphabet_size'] = len(config["idx_to_char"])   # alphabet size to be recognized
     config['num_of_writers'] = train_dataset.classes_count + 1
 
-    log_print("Number of training instances:", config['n_train_instances'])
+    logger.info("Number of training instances:", config['n_train_instances'])
 
     if config["validation_jsons"]:
-        log_print("Number of validation instances:", config.n_validation_instances)
+        logger.info("Number of validation instances:", config.n_validation_instances)
 
     assert config['n_train_instances'] > 0
 
-    log_print("Number of test instances:", config.n_test_instances, '\n')
+    logger.info("Number of test instances:", config.n_test_instances, '\n')
     return train_dataloader, test_dataloader, train_dataset, test_dataset, validation_dataset, validation_dataloader
 
 def check_gpu(config):
@@ -344,19 +287,21 @@ def check_gpu(config):
     device = torch.device("cuda" if use_gpu else "cpu")
     dtype = torch.cuda.FloatTensor if use_gpu else torch.FloatTensor
     if use_gpu:
-        log_print("Using GPU")
+        logger.info("Using GPU")
     elif not torch.cuda.is_available():
-        log_print("No GPU found")
+        logger.info("No GPU found")
     elif not config["gpu_if_available"]:
-        log_print("GPU available, but not using per config")
+        logger.info("GPU available, but not using per config")
         os.environ['CUDA_VISIBLE_DEVICES'] = ''
     return device, dtype
+
+
 
 def build_model(config_path):
     global config, LOGGER
     # Set GPU
-    choose_optimal_gpu()
-    config = load_config(config_path)
+    utils.choose_optimal_gpu()
+    config = utils.load_config(config_path)
     LOGGER = config["logger"]
     config["global_step"] = 0
     config["global_instances_counter"] = 0
@@ -486,11 +431,7 @@ def main(opts):
     config.validation_dataloader = validation_dataloader
     config.test_dataloader = test_dataloader
 
-    # Improve
-    if config["improve_image"]:
-        training_cer = improver(config["model"], test_dataloader, config["criterion"], config["optimizer"],
-                                config["dtype"], config)
-    elif config["test_only"]:
+    if config["test_only"]:
         final_test(config, test_dataloader)
     # Actually train
     else:
@@ -514,7 +455,7 @@ def main(opts):
             # Save periodically / save BSF
             if not config["results_dir"] is None and not config["SMALL_TRAINING"]:
                 if epoch % config["save_freq"] == 0:
-                    log_print("Saving most recent model")
+                    logger.info("Saving most recent model")
                     save_model(config, bsf=False)
 
                 plt_loss(config)
@@ -572,7 +513,7 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        log_print(e)
+        logger.info(e)
         traceback.print_exc()
     finally:
         torch.cuda.empty_cache()

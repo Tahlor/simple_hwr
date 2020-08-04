@@ -5,6 +5,8 @@ import json
 from easydict import EasyDict as edict
 import numpy as np
 import seaborn as sns
+import hwr_utils.utils as utils
+
 root = Path("/home/taylor/shares/SuperComputerHWR/taylor_simple_hwr/results/dtw_no_truncation/")
 
 def plot_data(list_of_data_dict):
@@ -32,10 +34,10 @@ def plot_data(list_of_data_dict):
         ax.legend()
         #ax.set_yscale('log')
 
-    ax.set(xlabel='Epochs', ylabel='Change in nearest neighbor loss after pretraining')
+    ax.set(xlabel='Epochs', ylabel=f'Change in {STAT} loss after pretraining')
     fig.show()
 
-
+old_k = np.load("./ablation/progress/k_dict0.npy", allow_pickle=True).item()
 k = edict({})
 N = 20
 
@@ -69,12 +71,30 @@ for ada in "with_adaptation", "no_adaptation", "pre_adapted_set":
 
             if False: # make relative
                 k[experiment][ada].x = k[experiment][ada].x - k[experiment][ada].x[0]
-                k[experiment][ada].y = k[experiment][ada].y - k[experiment][ada].y[0]
+                #k[experiment][ada].y = k[experiment][ada].y - k[experiment][ada].y[0]
+            elif False:
+                pass
+            elif True:
+                l = len(old_k[experiment][ada].x)
+                l2 = len(k[experiment][ada].x)
+                print(l,l2)
+                k[experiment][ada].y = k[experiment][ada].y[l:]
+                k[experiment][ada].x = k[experiment][ada].x[l:]
 
+            elif True:
+                print(k[experiment][ada].x[0])
+                print(ada, experiment, old_k[experiment][ada].x[-1])
+                k[experiment][ada].x = k[experiment][ada].x - old_k[experiment][ada].x[-1]
+                print(k[experiment][ada].x[0])
+                #k[experiment][ada].y = k[experiment][ada].y - old_k[experiment][ada].y[-1]
+
+
+save_folder = utils.incrementer(root=Path("./ablation/"), base="progress")
+np.save( save_folder / "k_dict.npy", k, allow_pickle=True)
 
 adapt = []
 no_adapt = []
-max_epoch = 250
+max_epoch = 500
 no_adapt = np.full([5,max_epoch], np.nan)
 pre = np.full([5,max_epoch], np.nan)
 adapt = np.full([5,max_epoch], np.nan)
@@ -112,8 +132,8 @@ nam = np.mean(no_adapt, axis=0)
 nstd = np.std(no_adapt, axis=0)/factor2
 nd = {"means":nam, "stds":nstd, "xaxis":range(0,max_epoch), "label":"No adaptive"}
 
-pma = np.mean(pre, axis=0)
-pstd = np.std(pre, axis=0)/factor2
+pma = np.nanmean(pre, axis=0)
+pstd = np.nanstd(pre, axis=0)/factor2
 pad = {"means":pma, "stds":pstd, "xaxis":range(0,max_epoch), "label":"Pre Adapted"}
 
 

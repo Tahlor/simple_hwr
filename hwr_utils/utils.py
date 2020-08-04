@@ -1,3 +1,4 @@
+import types
 import inspect
 import itertools
 import numbers
@@ -81,9 +82,8 @@ def find_config(config_name, config_root="./configs"):
         raise Exception("{} config not found".format(config_name))
 
 def incrementer(root, base, make_folder=True):
-    new_folder = Path(root / base)
+    new_folder = Path(root) / base
     increment = 0
-    increment_string = ""
 
     while new_folder.exists():
         increment += 1
@@ -1600,6 +1600,51 @@ def backup_alphabet(source_dict, destination_dict):
     destination_dict.char_freq = source_dict.char_freq
     destination_dict.idx_to_char = source_dict.idx_to_char
     destination_dict.char_to_idx = source_dict.char_to_idx
+
+
+def plot_recognition_images(line_imgs, name, text_str, dir=None, plot_count=None, live=False):
+    if dir is None:
+        dir = config["image_dir"]
+    # Save images
+    batch_size = len(line_imgs)
+    if plot_count is None or plot_count > batch_size:
+        plot_count = max(1, int(min(batch_size, 8)/2)*2) # must be even, capped at 8
+    columns = min(plot_count,1)
+    rows = int(plot_count/columns)
+    f, axarr = plt.subplots(rows, columns)
+    f.tight_layout()
+
+    if isinstance(text_str, types.GeneratorType):
+        text_str = list(text_str)
+
+    if len(line_imgs) > 1:
+
+        for j, img in enumerate(line_imgs):
+            if j >= plot_count:
+                break
+            coords = (j % rows, int(j/rows))
+            if columns == 1:
+                coords = coords[0]
+            ax = axarr[coords]
+            ax.set_xlabel(f"{text_str[j]}", fontsize=8)
+
+            ax.set_xticklabels(labels=ax.get_xticklabels(), fontdict={"fontsize":6}) #label.set_fontsize(6)
+            ax.set_yticklabels(labels=ax.get_yticklabels(), fontdict={"fontsize": 6})  # label.set_fontsize(6)
+            ax.xaxis.set_ticklabels([])
+            ax.yaxis.set_ticklabels([])
+
+            ax.imshow(to_numpy(img.squeeze()), cmap='gray')
+            # more than 8 images is too crowded
+    else:
+         axarr.imshow(to_numpy(line_imgs.squeeze()), cmap='gray')
+
+    # plt.show()
+    if live:
+        plt.show()
+    else:
+        path = os.path.join(dir, '{}.png'.format(name))
+        plt.savefig(path, dpi=400)
+        plt.close('all')
 
 
 if __name__=="__main__":

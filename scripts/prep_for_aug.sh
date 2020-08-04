@@ -75,4 +75,23 @@ find . -type f -name "RESUME.yaml" -exec sed -i 's/.*scheduler_gamma:.*/schedule
 find . -type f -name "RESUME.yaml" -exec sed -i 's@.*adapted_gt_path:.*@    adapted_gt_path: ./results/dtw_no_truncation/pre_adapted_set/training_dataset.npy@'  {} \;
 find . -type f -name "resume.sh"   -exec sed -i ':a;N;$!ba;s|\n#!/bin/bash|#!/bin/bash|g' {} \;
 
-adapted_gt_path
+# Fix resume.sh
+find . -type f -name "resume.sh"   -exec sed -i ':a;N;$!ba;s|\n#!/bin/bash|#!/bin/bash|g' {} \;
+
+# Change name - pre-adapted
+find . -type f -name "RESUME.yaml" -exec sed -i 's|dtw_no_truncation/2020|dtw_no_truncation/pre_adapted_set/2020|'  {} \;
+find . -type f -name "resume.sh" -exec sed -i 's|dtw_no_truncation/2020|dtw_no_truncation/pre_adapted_set/2020|' {} \;
+
+# Reset LR
+find . -type f -name "RESUME.yaml" -exec sed -i 's/.*reset_LR.*/reset_LR: true/' {} \;
+find . -type f -name "RESUME.yaml" -exec sed -i 's/.*load_optimizer.*/load_optimizer: false/' {} \;
+find . -type f -name "RESUME.yaml" -exec sed -i 's/.*learning_rate.*/learning_rate: 2e-05/' {} \;
+find . -type f -name "RESUME.yaml" -exec sed -i 's/.*scheduler_gamma:.*/scheduler_gamma: 0.96/'  {} \;
+
+# Change DTW Window
+find . -type f -name "RESUME.yaml" -exec sed -i 's/window_size: 80/window_size: 200/'  {} \;
+
+
+## FIX
+find . -type f -name "resume.sh"   -exec sed -i "s@/20200717_101551-dtw_no_truncation/@/20200717_101551-dtw_no_truncation_NOA/@" {} \;
+find . -type f -name "RESUME.yaml" -exec sed -i "s@/20200717_101551-dtw_no_truncation/@/20200717_101551-dtw_no_truncation_NOA/@" {} \;
