@@ -169,7 +169,7 @@ def make_dataloaders(config, device="cpu"):
     threads = 5
     default_collate = lambda x: hw_dataset.collate(x, device=device)
     train_dataset = OnlineDataset(config.training_jsons,
-                              config["char_to_idx"],
+                              char_to_idx=config["char_to_idx"],
                               img_height=config["input_height"],
                               num_of_channels=config["num_of_channels"],
                               root=config["training_root"],

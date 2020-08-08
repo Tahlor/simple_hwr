@@ -138,6 +138,7 @@ def fake_gt():
 class OnlineDataset(Dataset):
     def __init__(self,
                  data_paths,
+                 char_to_idx,
                  img_height=61,
                  num_of_channels=3,
                  root= project_root / "data",
@@ -150,7 +151,7 @@ class OnlineDataset(Dataset):
                  **kwargs):
         super().__init__()
         self.max_width = 2000
-
+        self.char_to_idx = char_to_idx
         if not cnn is None and cnn.cnn_type:
             self.cnn_type = cnn.cnn_type
         else:
@@ -188,13 +189,14 @@ class OnlineDataset(Dataset):
 
         ## Load GT text
         self.gt_text_data = self.load_gt_text(self.root / "prepare_online_data/online_augmentation_good.json")
-        if "image_path" in self.data[0].keys():
-            master_string = "".join([self.get_gt_text(d["image_path"], is_id=False) for d in self.data])
-        else:
+        if "gt":
+            master_string = "".join([d["gt"] for d in self.data])
+        elif "image_path" in self.data[0].keys():
             master_string = "".join([self.get_gt_text(d["image_path"], is_id=False) for d in self.data])
 
         self.master_string = master_string
         self.update_alphabet(master_string)
+        self.prep_gt_text_and_labels()
 
     def update_alphabet(self, master_string):
         self.char_to_idx, self.idx_to_char, self.char_freq = character_set._make_char_set(master_string)
@@ -408,6 +410,20 @@ class OnlineDataset(Dataset):
                 i+=1
         print("# of items in dataset:", len(self.data), "items without GT text: ", i)
 
+    def prep_gt_text_and_labels(self):
+        for item in self.data:
+            image_path = os.path.join(self.root, item['image_path'])
+            id = Path(image_path).stem.split("_")[0]
+            if "gt" in item:
+                gt_text = item["gt"]
+            else:
+                gt_text = self.get_gt_text(id)
+            item["gt_text_indices"] = [self.char_to_idx[x] if x in self.char_to_idx else 0 for x in
+                               gt_text]  # chars not in training get index 0
+            item["gt_label"] = string_utils.str2label(gt_text, self.char_to_idx)  # character loss_indices of text
+            item["id"] = id
+            item["gt_text"] = gt_text
+
     def __getitem__(self, idx):
         """ data[idx].keys() = 'full_img_path',
                                 'xml_path',
@@ -451,9 +467,6 @@ class OnlineDataset(Dataset):
         #     # Swap to get current_stroke_order to look like new_stroke_order
 
         image_path = self.root / item['image_path']
-        id = Path(image_path).stem.split("_")[0]
-        gt_text = self.get_gt_text(id)
-        gt_text_indices = [self.char_to_idx[x] if x in self.char_to_idx else 0 for x in gt_text] # chars not in training get index 0
 
         ## DEFAULT GT ARRAY
         # X, Y, FLAG_BEGIN_STROKE, FLAG_END_STROKE, FLAG_EOS - VOCAB x desired_num_of_strokes
@@ -535,7 +548,10 @@ class OnlineDataset(Dataset):
         else:
             start_points = np.array([])
 
-        if self.config and ("nnloss" in [loss["name"] for loss in self.config.loss_fns] or self.config.dataset.kdtree):
+        if self.config and (
+                "loss_fns" in self.config.keys() and "nnloss" in [loss["name"] for loss in self.config.loss_fns]
+                or ("kdtree" in self.config.dataset.keys() and self.config.dataset.kdtree)
+        ):
             kdtree = KDTree(gt[:, 0:2])
         else:
             kdtree = None
@@ -546,8 +562,9 @@ class OnlineDataset(Dataset):
             "line_img": img, # H,W,C
             "gt": gt, # B, W, 3/4
             "gt_reverse_strokes": gt_reverse_strokes,
-            "gt_text": gt_text,
-            "gt_text_indices": gt_text_indices,
+            "gt_text": item["gt_text"],
+            "gt_label": item["gt_label"],
+            "gt_text_indices": item["gt_text_indices"],
             "sos_args": sos_args,
             "path": image_path,
             "x_func": item["x_func"] if "x_func" in item else None,
@@ -1016,11 +1033,30 @@ def some_kind_of_test():
     # assert np.allclose(x,y)
 
 if __name__=="__main__":
+    from easydict import EasyDict as edict
+
     kwargs = {'img_height': 121, 'include_synthetic': False, 'num_of_channels': 1, 'image_prep': 'no_warp_distortion', 'gt_format': ['x', 'y', 'stroke_number'], 'batch_size': 28, 'extra_dataset': []}
-    dataset = OnlineDataset(data_paths=['online_coordinate_data/ICDAR/train_online_coords.json'],
-                                    root="../data",
+    path =  'online_coordinate_data/ICDAR/train_online_coords.json'
+
+    # /media/data/GitHub/simple_hwr/data/online_coordinate_data/MAX_stroke_vNORMAL_TRAINING_TESTFull
+
+    kwargs = {'img_height': 61, 'include_synthetic': False, 'num_of_channels': 1, 'image_prep': 'no_warp_distortion',
+              'gt_format': ['x', 'y', 'stroke_number'], 'batch_size': 28, 'extra_dataset': []}
+    path = r"/media/data/GitHub/simple_hwr/data/prepare_online_data/online_augmentation.json"
+    path = r"/media/data/GitHub/simple_hwr/data/online_coordinate_data/MAX_stroke_vNORMAL_TRAINING_TESTFull/train_online_coords.json"
+    config = edict({"dataset":{"resample":True}})
+    json_files = [path]
+    root = "../data"
+    char_to_idx, out_idx_to_char2, char_freq = character_set.make_char_set(
+        json_files, root=root)
+
+    dataset = OnlineDataset(data_paths=json_files,
+                            char_to_idx=char_to_idx,
+                                    root=root,
                                     max_images_to_load = 10,
                                     cnn=None,
+                                    config=config,
                                     **kwargs)
+
     for i in dataset:
         continue
