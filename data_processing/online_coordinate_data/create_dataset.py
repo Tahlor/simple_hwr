@@ -213,7 +213,8 @@ class CreateDataset:
                 "full_img_path": item["image_path"],
                 "xml_path": xml_path.resolve().relative_to(self.absolute_data_folder).as_posix(),
                 "image_path": new_img_path.relative_to(self.absolute_data_folder).as_posix(),
-                "dataset": dataset
+                "dataset": dataset,
+                "gt": item["gt"]
             }
             new_item.update(sub_stroke_dict) # added to what's already in the substroke dictionary
 

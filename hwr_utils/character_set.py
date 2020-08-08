@@ -79,7 +79,7 @@ def make_char_set_dreprecated(paths, root="./data"):
 
     return out_char_to_idx2, out_idx_to_char2, char_freq
 
-def make_char_set(paths, root="./data"):
+def make_char_set(paths, root="./data", key="gt"):
     all_data_as_string = ""
     for data_file in paths:
         with open(os.path.join(root, data_file)) as f:
@@ -87,7 +87,7 @@ def make_char_set(paths, root="./data"):
         if isinstance(data, dict):
             data = [item for key,item in data.items()]
         for data_item in data:
-            all_data_as_string += data_item["gt"]
+            all_data_as_string += data_item[key]
 
     char_to_idx, idx_to_char, char_freq = _make_char_set(all_data_as_string)
     return char_to_idx, idx_to_char, char_freq
