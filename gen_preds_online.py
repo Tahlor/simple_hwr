@@ -8,6 +8,7 @@ from loss_module.stroke_recovery_loss import StrokeLoss
 from trainers import TrainerStrokeRecovery
 from hwr_utils.stroke_dataset import BasicDataset
 from hwr_utils.stroke_recovery import *
+import hwr_utils.stroke_recovery as stroke_recovery
 from hwr_utils import utils
 from torch.optim import lr_scheduler
 from models.stroke_model import StrokeRecoveryModel
@@ -22,31 +23,8 @@ pid = os.getpid()
 
 #@debugger
 def main(config_path):
-    global epoch, device, trainer, batch_size, output, loss_obj, x_relative_positions, config, LOGGER
+    global epoch, device, trainer, batch_size, output, loss_obj, x_relative_positions, config, LOGGER, load_path_override
     torch.cuda.empty_cache()
-
-    PROJ_ROOT= os.path.dirname(os.path.realpath(__file__))
-    config_path = "/media/data/GitHub/simple_hwr/~RESULTS/20191213_155358-baseline-GOOD_long/TEST.yaml"
-    config_path = "/media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr/RESULTS/ver1/RESUME.yaml"
-    config_path = PROJ_ROOT + "RESULTS/OFFLINE_PREDS/good/normal_preload.yaml"
-    config_path = "/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_v3/normal_preload.yaml"
-    config_path = PROJ_ROOT + "/configs/stroke_configs/ver8/dtw_adaptive.yaml"
-    config_path = "/media/data/GitHub/simple_hwr/results/stroke_config/pretrained/with_EOS/RESUME.yaml"
-    config_path = "/media/data/GitHub/simple_hwr/RESULTS/OFFLINE_PREDS/RESUME_model/dtw_adaptive.yaml"
-
-    load_path_override = "/media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr/results/stroke_config/GOOD/baseline_model.pt"
-    load_path_override = "/media/data/GitHub/simple_hwr/~RESULTS/20191213_155358-baseline-GOOD_long"
-    load_path_override = "/media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr/RESULTS/ver1/20200215_014143-normal/normal_model.pt"
-    load_path_override = "/media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr/RESULTS/ver2/20200217_033031-normal2/normal2_model.pt"
-    load_path_override = "/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_train_2.9/normal_preload_model.pt"
-    load_path_override = "/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_train_v2/v2.pt"
-    load_path_override = PROJ_ROOT + "/RESULTS/pretrained/dtw_adaptive_new_model.pt"
-    load_path_override = PROJ_ROOT + "/RESULTS/pretrained/adapted_v2/"
-    load_path_override = "/home/taylor/shares/brodie/home/taylor/github/simple_hwr/RESULTS/ver8/20200406_131747-dtw_adaptive_new2_restartLR_RESUME/RESUME_model.pt"
-    load_path_override = "/home/taylor/shares/brodie/home/taylor/github/simple_hwr/RESULTS/ver8/20200406_131747-dtw_adaptive_new2_restartLR_RESUME/RESUME_model.pt"
-    load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/pretrained/with_EOS/dtw_adaptive_no_truncation_model.pt"
-    load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/pretrained/with_EOS/RESUME_Bigger_Window_model.pt"
-    load_path_override = "/media/data/GitHub/simple_hwr/RESULTS/OFFLINE_PREDS/RESUME_model/imgs/current/eval/data/RESUME_model.pt"
 
     for load_path_override in [load_path_override
                                ]:
@@ -75,16 +53,17 @@ def main(config_path):
 
         batch_size = config.batch_size
 
-        vocab_size = config.feature_map_dim
+        vocab_size = VOCAB_OVERRIDE if VOCAB_OVERRIDE else config.feature_map_dim
 
         device=torch.device(config.device)
         #device=torch.device("cpu")
 
-        output = utils.increment_path(name="Run", base_path=Path(load_path_override).parent)
+        # OLD OUTPUT MAKER
+        #output = utils.increment_path(name="Run", base_path=Path(load_path_override).parent)
         #output = Path(config.results_dir)
-        output.mkdir(parents=True, exist_ok=True)
-        folder = Path(config.dataset_folder)
+        #output.mkdir(parents=True, exist_ok=True)
 
+        folder = Path(config.dataset_folder)
 
         if True:
             if not ONLINE:
@@ -141,7 +120,7 @@ def main(config_path):
         trainer = TrainerStrokeRecovery(model, optimizer, config=config, loss_criterion=config.loss_obj)
 
         config.model = model
-        config.load_path = load_path_override if ("load_path_override" in locals()) else config.load_path
+        config.load_path = load_path_override if "load_path_override" in {**locals(), **globals()} else config.load_path
 
         config.sigmoid_indices = TrainerStrokeRecovery.get_indices(config.pred_opts, "sigmoid")
 
@@ -151,13 +130,13 @@ def main(config_path):
         print("Number of GTs: {}".format(len(GT_DATA)))
 
         ## LOAD THE WEIGHTS
-        utils.load_model_strokes(config) # should be load_model_strokes??????
+        config = utils.load_model_strokes(config) # should be load_model_strokes??????
         for parameter in model.parameters():
             parameter.requires_grad = False
         model = model.to(device)
         model.eval()
 
-        eval_only(eval_loader, model, output_path=model_output_dir)
+        eval_only(eval_loader, model, output_path=config.output_root)
         globals().update(locals())
 
 def post_process(pred,gt, calculate_distance=True, kd=None):
@@ -176,13 +155,51 @@ def post_process(pred,gt, calculate_distance=True, kd=None):
         return pred.numpy(), distances, kd
 
 
+PROJ_ROOT= os.path.dirname(os.path.realpath(__file__))
+config_path = "/media/data/GitHub/simple_hwr/~RESULTS/20191213_155358-baseline-GOOD_long/TEST.yaml"
+config_path = "/media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr/RESULTS/ver1/RESUME.yaml"
+config_path = PROJ_ROOT + "RESULTS/OFFLINE_PREDS/good/normal_preload.yaml"
+config_path = "/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_v3/normal_preload.yaml"
+config_path = PROJ_ROOT + "/configs/stroke_configs/ver8/dtw_adaptive.yaml"
+config_path = "/media/data/GitHub/simple_hwr/results/stroke_config/pretrained/with_EOS/RESUME.yaml"
+
+load_path_override = "/media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr/results/stroke_config/GOOD/baseline_model.pt"
+load_path_override = "/media/data/GitHub/simple_hwr/~RESULTS/20191213_155358-baseline-GOOD_long"
+load_path_override = "/media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr/RESULTS/ver1/20200215_014143-normal/normal_model.pt"
+load_path_override = "/media/SuperComputerGroups/fslg_hwr/taylor_simple_hwr/RESULTS/ver2/20200217_033031-normal2/normal2_model.pt"
+load_path_override = "/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_train_2.9/normal_preload_model.pt"
+load_path_override = "/media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_train_v2/v2.pt"
+load_path_override = PROJ_ROOT + "/RESULTS/pretrained/dtw_adaptive_new_model.pt"
+load_path_override = PROJ_ROOT + "/RESULTS/pretrained/adapted_v2/"
+load_path_override = "/home/taylor/shares/brodie/home/taylor/github/simple_hwr/RESULTS/ver8/20200406_131747-dtw_adaptive_new2_restartLR_RESUME/RESUME_model.pt"
+load_path_override = "/home/taylor/shares/brodie/home/taylor/github/simple_hwr/RESULTS/ver8/20200406_131747-dtw_adaptive_new2_restartLR_RESUME/RESUME_model.pt"
+load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/pretrained/with_EOS/dtw_adaptive_no_truncation_model.pt"
+load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/pretrained/with_EOS/RESUME_Bigger_Window_model.pt"
+
+# MAIN GOOD ONE
+vers="normal"
+load_path_override = "/media/data/GitHub/simple_hwr/RESULTS/OFFLINE_PREDS/RESUME_model/imgs/current/eval/data/RESUME_model.pt"
+config_path = "/media/data/GitHub/simple_hwr/RESULTS/OFFLINE_PREDS/RESUME_model/dtw_adaptive.yaml"
+TRUNCATE=True
+VOCAB_OVERRIDE = 0
+
+# V4
+vers="v4"
+load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/OFFLINE_PREDS/v4.1/RESUME_modelv4.1.pt"
+config_path =        "/media/data/GitHub/simple_hwr/results/stroke_config/OFFLINE_PREDS/v4.1/RESUME.yaml"
+load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/OFFLINE_PREDS/v4/RESUME_modelv4.pt"
+config_path =        "/media/data/GitHub/simple_hwr/results/stroke_config/OFFLINE_PREDS/v4/RESUME.yaml"
+
+TRUNCATE=False
+VOCAB_OVERRIDE = 5 ## IDK WHY THIS IS 5, should have been 4
+
 # OVERLOAD
-ONLINE = True
-KDTREE_PATH = "/media/data/GitHub/simple_hwr/RESULTS/OFFLINE_PREDS/kd_trees.npy"
+ONLINE = False
+KDTREE_PATH = "/media/data/GitHub/simple_hwr/RESULTS/OFFLINE_PREDS/kd_trees{}.npy".format(vers)
 LOAD_KDTREE = False
 SAVE_KD = False
 NN_DISTANCES = True
-SAVE_IMGS = False
+SAVE_ALL_IMGS = True
 
 def eval_only(dataloader, model, output_path=None):
     distances = []
@@ -212,8 +229,15 @@ def eval_only(dataloader, model, output_path=None):
 
             # MOVE PRED TO MATCH GT
             gt = convert_reference(item["line_imgs"][ii], threshold=0)
-            remove_end = min(50, int(p.shape[0]/2))
-            pred, distance, kd = post_process(p[:-remove_end], gt, calculate_distance=NN_DISTANCES, kd=kd)
+            if TRUNCATE:
+                remove_end = -min(50, int(p.shape[0]/2))
+            elif p.shape[-1]>=4:
+                eos = np.argmax(p[:,3]>.5)
+                remove_end = eos +1 if eos >= 300 else None
+            else:
+                remove_end = None
+
+            pred, distance, kd = post_process(p[:remove_end], gt, calculate_distance=NN_DISTANCES, kd=kd)
 
             # MOVE GT TO MATCH PRED - this will improve as you increase the number of samples, not what we want right now
             if NN_DISTANCES and False: #item_number < 0:
@@ -258,13 +282,14 @@ def eval_only(dataloader, model, output_path=None):
 
 
         # Get GTs, save to file
+        output_path = Path(output_path)
         if not output_path is None:
-            img_folder = output_path.parent / "imgs"
+            img_folder = output_path / "imgs"
             img_folder.mkdir(exist_ok=True, parents=True)
         else:
             img_folder = "auto"
 
-        if (True or i<4) and SAVE_IMGS:
+        if i<4 or SAVE_ALL_IMGS:
             # Save a sample
             save_folder = graph(item, preds=preds_to_graph,
                                 _type="eval",
@@ -324,6 +349,7 @@ def load_all_gts(gt_path, extension="*.json"):
 
 if __name__=="__main__":
     opts = parse_args()
-    main(config_path=opts.config)
+    config_path = config_path if True else opts.config
+    main(config_path=config_path)
     # gt_path = Path("./data/prepare_IAM_Lines/gts/lines/txt")
     # load_all_gts(gt_path)

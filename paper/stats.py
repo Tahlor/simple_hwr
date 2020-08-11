@@ -36,13 +36,14 @@ def plot_data(list_of_data_dict):
 
     ax.set(xlabel='Epochs', ylabel=f'Change in {STAT} loss after pretraining')
     fig.show()
+    fig.savefig("./charts/NN_test_loss_adpated.png")
 
 old_k = np.load("./ablation/progress/k_dict0.npy", allow_pickle=True).item()
 k = edict({})
 N = 20
 
 STAT = "dtw_test"
-#STAT = "nn_test"
+STAT = "nn_test"
 for ada in "with_adaptation", "no_adaptation", "pre_adapted_set":
     for experiment_path in (root / ada).glob("*"):
         print(experiment_path)
@@ -50,6 +51,15 @@ for ada in "with_adaptation", "no_adaptation", "pre_adapted_set":
             if "BAD" in experiment_path.as_posix():
                 print("skipping")
                 continue
+
+            if ada == "pre_adapted_set":
+                if experiment_path.stem not in ["20200717_151205-dtw_no_truncation_NOA",
+                                                "20200717_151414-dtw_no_truncation_NOA",
+                                                "20200716_141808-dtw_no_truncation_NOA",
+                                                "20200716_141757-dtw_no_truncation_NOA"]:
+
+                    print("UGH",experiment_path)
+                    continue
             experiment = experiment_path.stem
             path = experiment_path / "all_stats.json"
             if not path.exists():
@@ -72,7 +82,7 @@ for ada in "with_adaptation", "no_adaptation", "pre_adapted_set":
             if False: # make relative
                 k[experiment][ada].x = k[experiment][ada].x - k[experiment][ada].x[0]
                 #k[experiment][ada].y = k[experiment][ada].y - k[experiment][ada].y[0]
-            elif False:
+            elif True:
                 pass
             elif True:
                 l = len(old_k[experiment][ada].x)
@@ -121,20 +131,24 @@ if False:
 else:
     factor = factor2 = 1
 
+last_bit = 200
+max_epoch = last_bit
 
 #adapt = np.array(adapt)
 am = np.mean(adapt, axis=0)
 std = np.std(adapt, axis=0)/factor2
-ad = {"means":am*factor, "stds":std, "xaxis":range(0,max_epoch), "label":"Adaptive"}
+ad = {"means":(am*factor)[:last_bit], "stds":std[:last_bit], "xaxis":range(0,max_epoch), "label":"Adaptive"}
 
 #no_adapt = np.array(no_adapt)
 nam = np.mean(no_adapt, axis=0)
 nstd = np.std(no_adapt, axis=0)/factor2
-nd = {"means":nam, "stds":nstd, "xaxis":range(0,max_epoch), "label":"No adaptive"}
+nd = {"means":nam[:last_bit], "stds":nstd[:last_bit], "xaxis":range(0,max_epoch), "label":"No adaptive"}
 
+start = 80
 pma = np.nanmean(pre, axis=0)
 pstd = np.nanstd(pre, axis=0)/factor2
-pad = {"means":pma, "stds":pstd, "xaxis":range(0,max_epoch), "label":"Pre Adapted"}
+pad = {"means":pma[start:last_bit+start], "stds":pstd[start:last_bit+start], "xaxis":range(0,max_epoch), "label":"Adapted"}
+STAT = "nearest neighbor distance"
 
-
-plot_data([ad, nd, pad])
+plot_data([nd, pad])
+#plot_data([ad, nd, pad])

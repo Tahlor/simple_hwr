@@ -85,7 +85,7 @@ find . -type f -name "resume.sh" -exec sed -i 's|dtw_no_truncation/2020|dtw_no_t
 # Reset LR
 find . -type f -name "RESUME.yaml" -exec sed -i 's/.*reset_LR.*/reset_LR: true/' {} \;
 find . -type f -name "RESUME.yaml" -exec sed -i 's/.*load_optimizer.*/load_optimizer: false/' {} \;
-find . -type f -name "RESUME.yaml" -exec sed -i 's/.*learning_rate.*/learning_rate: 2e-05/' {} \;
+find . -type f -name "RESUME.yaml" -exec sed -i 's/.*learning_rate.*/learning_rate: 5e-06/' {} \;
 find . -type f -name "RESUME.yaml" -exec sed -i 's/.*scheduler_gamma:.*/scheduler_gamma: 0.96/'  {} \;
 
 # Change DTW Window
