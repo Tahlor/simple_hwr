@@ -286,6 +286,8 @@ def load_config(config_path, hwr=True,
             experiment = Path(config_path).stem
             output_root = os.path.join(config["output_folder"], experiment)
 
+    config.output_root = output_root
+
     # Use config folder to determine output folder
     config["experiment"] = str(experiment)
     log_print(f"Experiment: {experiment}, Results Directory: {output_root}")
@@ -912,22 +914,24 @@ def load_model_strokes(config, load_optimizer=True, device="cuda"):
     # User can specify folder or .pt file; other files are assumed to be in the same folder
     #cwd = os.getcwd()
     if os.path.isfile(config["load_path"]):
-        old_state = torch.load(config["load_path"], map_location=torch.device(device))
+        LOAD_PATH = config["load_path"]
         path, child = os.path.split(config["load_path"])
     else:
         children = [f.name for f in Path(config["load_path"]).glob("*.pt")]
         if "baseline_model.pt" in children:
-            old_state = torch.load(os.path.join(config["load_path"], "baseline_model.pt"), map_location=torch.device(device)) # map_location=torch.device(config.device)
+            LOAD_PATH = os.path.join(config["load_path"], "baseline_model.pt")
         else:
             try:
                 assert len(children) > 0
             except:
                 raise Exception(f"No .pt files found in {config.load_path}")
 
-            old_state = torch.load(os.path.join(config["load_path"], children[0]), map_location=torch.device(device))
+            LOAD_PATH = os.path.join(config["load_path"], children[0])
             if len(children) > 1:
                 warnings.warn(f"Multiple .pt files found, using {children[0]}")
         path = config["load_path"]
+    old_state = torch.load(LOAD_PATH, map_location=torch.device(device))
+
     logger.info(f"Loading MODEL from {path}")
 
     # Load the definition of the loaded model if it was saved
@@ -979,6 +983,7 @@ def load_model_strokes(config, load_optimizer=True, device="cuda"):
     except:
         warnings.warn("Could not load from all_stats.json")
 
+    return config
 
 def mkdir(path):
     if isinstance(path, str):
