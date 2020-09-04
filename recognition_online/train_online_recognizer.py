@@ -1,3 +1,5 @@
+### BASED ON OFFLINE RECOGNIZER TRAIN SCRIPT
+
 from __future__ import print_function
 
 import sys
@@ -18,6 +20,8 @@ from hwr_utils import utils
 from hwr_utils.utils import plot_recognition_images
 import numpy as np
 from hwr_utils.utils import *
+from recognition import crnn
+import models_online
 
 def validate(model, dataloader, idx_to_char, device, config):
     """ Validate a model -- save if best so far"""
@@ -170,8 +174,6 @@ def make_dataloaders(config, device="cpu"):
     default_collate = lambda x: hw_dataset.collate(x, device=device)
     train_dataset = OnlineDataset(config.training_jsons,
                               char_to_idx=config["char_to_idx"],
-                              img_height=config["input_height"],
-                              num_of_channels=config["num_of_channels"],
                               root=config["training_root"],
                               warp=config["training_warp"],
                               blur=config["training_blur"],
@@ -183,7 +185,9 @@ def make_dataloaders(config, device="cpu"):
                               occlusion_size=config["occlusion_size"],
                               occlusion_freq=config["occlusion_freq"],
                               occlusion_level=config["max_intensity"],
-                              logger=config["logger"], **config.dataset)
+                              logger=config["logger"],
+                              config=config,
+                              **config.dataset)
 
     train_dataloader = DataLoader(train_dataset,
                                   batch_size=config["batch_size"],
@@ -207,8 +211,6 @@ def make_dataloaders(config, device="cpu"):
 
     test_dataset = OnlineDataset(config["testing_jsons"],
                              config["char_to_idx"],
-                             img_height=config["input_height"],
-                             num_of_channels=config["num_of_channels"],
                              root=config["testing_root"],
                              warp=False,
                              blur=0,
@@ -217,6 +219,7 @@ def make_dataloaders(config, device="cpu"):
                              distortion_sigma=0,
                              max_images_to_load=config["images_to_load"],
                              logger=config["logger"],
+                             config=config,
                              **config.dataset)
 
     test_dataloader = DataLoader(test_dataset,
@@ -228,8 +231,6 @@ def make_dataloaders(config, device="cpu"):
     if "validation_jsons" in config and config.validation_jsons: # must be present and non-empty
         validation_dataset = OnlineDataset(config["validation_jsons"],
                                        config["char_to_idx"],
-                                       img_height=config["input_height"],
-                                       num_of_channels=config["num_of_channels"],
                                        root=config["testing_root"],
                                        warp=False,
                                        blur=config.get("testing_blur", 1.5),
@@ -238,6 +239,7 @@ def make_dataloaders(config, device="cpu"):
                                        distortion_sigma=config["testing_distortion_sigma"],
                                        max_images_to_load=config["images_to_load"],
                                        logger=config["logger"],
+                                       config=config,
                                        **config.dataset)
 
         validation_dataloader = DataLoader(validation_dataset, batch_size=config["batch_size"], shuffle=config["testing_shuffle"],
@@ -259,8 +261,10 @@ def make_dataloaders(config, device="cpu"):
 
 def load_data(config):
     # Load characters and prep datasets
+    root = Path(os.path.dirname(os.path.realpath(__file__))).parent / config.training_root
+
     out_char_to_idx2, out_idx_to_char2, char_freq = character_set.make_char_set(
-        config.training_jsons, root=config.training_root)
+        config.training_jsons, root=root)
     # Convert to a list to work with easydict
     idx_to_char = dict_to_list(out_idx_to_char2)
 
@@ -269,7 +273,7 @@ def load_data(config):
     train_dataloader, test_dataloader, train_dataset, test_dataset, validation_dataset, validation_dataloader = make_dataloaders(config=config, device="cpu")
 
     config['alphabet_size'] = len(config["idx_to_char"])   # alphabet size to be recognized
-    config['num_of_writers'] = train_dataset.classes_count + 1
+        #config['num_of_writers'] = train_dataset.classes_count + 1
 
     logger.info("Number of training instances:", config['n_train_instances'])
 
@@ -355,7 +359,7 @@ def build_model(config_path):
 
     else:  # basic HWR
         config["embedding_size"] = 0
-        hw = crnn.create_CRNN(config)
+        hw = models_online.OnlineRecognizer(nIn=3, nHidden=64, vocab_size=config['alphabet_size'], ) #crnn.create_CRNN(config)
 
     LOGGER.info(f"Sending model to {device}...")
     hw.to(device)

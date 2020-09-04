@@ -2,6 +2,7 @@ import sys
 import json
 import os
 from collections import defaultdict
+from pathlib import Path
 
 def load_char_set(char_set_path):
     with open(char_set_path) as f:
@@ -79,7 +80,10 @@ def make_char_set_dreprecated(paths, root="./data"):
 
     return out_char_to_idx2, out_idx_to_char2, char_freq
 
-def make_char_set(paths, root="./data", key="gt"):
+def make_char_set(paths, root=None, key="gt"):
+    if root is None:
+        root = Path(os.path.dirname(os.path.realpath(__file__))).parent / "data"
+
     all_data_as_string = ""
     for data_file in paths:
         with open(os.path.join(root, data_file)) as f:

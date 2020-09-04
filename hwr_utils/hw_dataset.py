@@ -63,17 +63,17 @@ def collate_basic(batch, device="cpu"):
     line_imgs = torch.from_numpy(line_imgs).to(device)
     labels = torch.from_numpy(all_labels.astype(np.int32)).to(device)
     label_lengths = torch.from_numpy(label_lengths.astype(np.int32)).to(device)
-    online = torch.from_numpy(np.array([1 if b['online'] else 0 for b in batch])).float().to(device)
+    #online = torch.from_numpy(np.array([1 if b['online'] else 0 for b in batch])).float().to(device)
 
     out = {
         "line_imgs": line_imgs,
         "labels": labels,
         "label_lengths": label_lengths,
         "gt": [b['gt'] for b in batch],
-        "writer_id": torch.FloatTensor([b['writer_id'] for b in batch]),
-        "actual_writer_id": torch.FloatTensor([b['actual_writer_id'] for b in batch]),
+        #"writer_id": torch.FloatTensor([b['writer_id'] for b in batch]),
+        #"actual_writer_id": torch.FloatTensor([b['actual_writer_id'] for b in batch]),
         "paths": [b["path"] for b in batch],
-        "online": online,
+        "online": None,
         "img_widths": img_widths
     }
 

@@ -99,6 +99,25 @@ class TrainerOnlineRecognition(Trainer):
     def eval(self, strokes, model, label_lengths=None, relative_indices=None, device="cuda",
              gt=None, train=False, convolve=None, sigmoid_activations=None, relu_activations=None,
              truncate=0, item=None):
+        """
+
+        Args:
+            strokes:
+            model:
+            label_lengths:
+            relative_indices:
+            device:
+            gt:
+            train:
+            convolve:
+            sigmoid_activations:
+            relu_activations:
+            truncate:
+            item:
+
+        Returns:
+
+        """
         pred_logits = model(strokes)
 
         preds_size = Variable(torch.IntTensor([pred_logits.size(0)] * pred_logits.size(1))) # <- what? isn't this square? why are we tiling the size?

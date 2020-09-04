@@ -141,7 +141,7 @@ class BasicDataset(Dataset):
 
     """
     def __init__(self, root, extension=".png", cnn=None, pickle_file=None, adapted_gt_path=None, rebuild=False,
-                 crop=False,
+                 crop=False, render_image=False,
                  **kwargs):
         # Create dictionary with all the paths and some index
         root = Path(root)
@@ -151,8 +151,12 @@ class BasicDataset(Dataset):
         self.collate = collate_stroke_eval
         self.crop = crop
         self.cnn = cnn
+        self.render_image = render_image
+        self.vertical_pad = True if 'vertical_pad' in kwargs and kwargs['vertical_pad'] else False
 
-        if not cnn is None and cnn.cnn_type:
+        if isinstance(cnn, str):
+            self.cnn_type = cnn
+        elif not cnn is None and cnn.cnn_type:
             self.cnn_type = cnn.cnn_type
         else:
             self.cnn_type = "default64"
@@ -166,10 +170,10 @@ class BasicDataset(Dataset):
 
         else:
             if pickle_file is None and cnn:
-                self.cnn_type = self.cnn.cnn_type
+                self.cnn_type = self.cnn_type
                 output = Path(root / "stroke_cached")
                 output.mkdir(parents=True, exist_ok=True)
-                pickle_file = output / (self.cnn.cnn_type + ".pickle")
+                pickle_file = output / (self.cnn_type + ".pickle")
 
             if Path(pickle_file).exists() and not rebuild:
                 self.data = unpickle_it(pickle_file)
@@ -185,6 +189,9 @@ class BasicDataset(Dataset):
                     add_output_size_to_data(self.data, self.cnn_type, key="label_length", root=self.root)
                     logger.info(f"DUMPING cached version to: {pickle_file}")
                     pickle.dump(self.data, pickle_file.open(mode="wb"))
+
+        for i,item in enumerate(self.data):
+            self.data[i]["id"] = Path(item['image_path']).stem
 
     @staticmethod
     def get_item_from_path(image_path, output_path, crop=False):
@@ -219,7 +226,6 @@ class BasicDataset(Dataset):
             "label_length": label_length,
         }
 
-
     def __len__(self):
         return len(self.data)
 
@@ -227,18 +233,24 @@ class BasicDataset(Dataset):
         item = self.data[idx]
 
         image_path = self.root / item['image_path']
-        img = read_img(image_path, num_of_channels=self.num_of_channels, vertical_pad=True, crop=self.crop)
+        if self.render_image:
+            StrokeRecoveryDataset.prep_image(gt,
+                                             img_height=61,
+                                             add_distortion=False,
+                                             add_blur=False,
+                                             use_stroke_number=None,
+                                             random_padding=False)
+        else:
+            img = read_img(image_path, num_of_channels=self.num_of_channels, vertical_pad=self.vertical_pad, crop=self.crop)
+            img = (distortions.change_contrast((img+1)*127.5, contrast=2)/ 127.5 - 1.0)[:,:,np.newaxis]
+            # plt.imshow(img, cmap="gray")
 
-        # plt.imshow(img[:,:,0], cmap="gray")
-        # plt.show()
-
-        img = (distortions.change_contrast((img+1)*127.5, contrast=2)/ 127.5 - 1.0)[:,:,np.newaxis]
-        # plt.imshow(img, cmap="gray")
         # plt.show()
         # STPO
         label_length = item["label_length"] if self.cnn else None
         return {
             "line_img": img,
+            "id": item["id"],
             "gt": [],
             "path": image_path,
             "x_func": None,
@@ -261,6 +273,7 @@ class StrokeRecoveryDataset(Dataset):
                  cnn_type=None,
                  config=None,
                  image_prep="pil_with_distortions",
+                 deterministic=False,
                  **kwargs):
         super().__init__()
         self.max_width = 2000
@@ -287,6 +300,11 @@ class StrokeRecoveryDataset(Dataset):
         self.img_height = img_height
         self.image_prep = image_prep
         self.test_dataset = False
+        self.DETERMINISTIC = deterministic
+
+        # Ignore the .npy version
+        self.force_recreate = False #if "force_recreate" in kwargs and kwargs["force_recreate"] else False
+
         # This will override defaults above
         self.__dict__.update(kwargs)
 
@@ -301,7 +319,7 @@ class StrokeRecoveryDataset(Dataset):
         logger.info(("Dataloader size", len(self.data)))
 
         ## Load GT text
-        self.gt_text_data = self.load_gt_text(self.root / "prepare_online_data/online_augmentation_good.json")
+        self.gt_text_data = self.load_gt_text(self.root / "prepare_online_data/online_augmentation.json")
         if "image_path" in self.data[0].keys():
             master_string = "".join([self.get_gt_text(d["image_path"], is_id=False) for d in self.data])
         else:
@@ -332,6 +350,12 @@ class StrokeRecoveryDataset(Dataset):
         """
         output = stroke_recovery.prep_stroke_dict(item["raw"])  # returns dict with {x,y,t,start_times,x_to_y (aspect ratio), start_strokes (binary list), raw strokes}
         x_func, y_func = stroke_recovery.create_functions_from_strokes(output, parameter=parameter) # can be d if the function should be a function of distance
+
+
+        # stroke_recovery.plot_it(np.array([output.x, output.y]).transpose(),
+        #                         np.array([x_func(np.linspace(0, 5, 500)), y_func(np.linspace(0, 5, 500))]).transpose(),
+        #                         name="suck3")
+
         if "number_of_samples" not in item:
             item["number_of_samples"] = int(output[parameter+"range"] / self.interval)
             warnings.warn("UNK NUMBER OF SAMPLES!!!")
@@ -349,7 +373,19 @@ class StrokeRecoveryDataset(Dataset):
                                 noise=self.noise,
                                 gt_format=self.gt_format)
 
+
         item["gt"] = gt  # {"x":x, "y":y, "is_start_time":is_start_stroke, "full": gt}
+        # DELETE
+        item["raw_gt"] = create_gts(output.x, output.y, is_start_stroke=output.start_strokes,
+                        gt_format=self.gt_format) #.copy()
+
+        # # THESE ARE THE SAME
+        # stroke_recovery.plot_it(item["raw_gt"],
+        #                         item["gt"],
+        #                         name="suck4")
+        # stop
+
+        # {"x":x, "y":y, "is_start_time":is_start_stroke, "full": gt}
         item["x_func"] = x_func
         item["y_func"] = y_func
         return item
@@ -372,7 +408,11 @@ class StrokeRecoveryDataset(Dataset):
         for data_path in data_paths: # loop through JSONs
             data_path = str(data_path)
             print(os.path.join(root, data_path))
-            new_data = npy_loader(os.path.join(root, data_path), save=True) # load .npy file if it exists
+            datafile_path = os.path.join(root, data_path)
+            if self.force_recreate:
+                new_data = json.load(Path(datafile_path).open("r"))
+            else:
+                new_data = npy_loader(datafile_path, save=True) # load .npy file if it exists
 
             if isinstance(new_data, dict):
                 new_data = [item for key, item in new_data.items()]
@@ -410,21 +450,33 @@ class StrokeRecoveryDataset(Dataset):
         else:
             data = self.prepare_data(data, parallel=True, fn=self.no_resample)
         logger.debug(("Done resampling", len(data)))
+
+        # SAME
+        # print(data[0].keys())
+        # stroke_recovery.plot_it(data[0]["raw_gt"],
+        #                         data[0]["gt"],
+        #                         name="suck4")
+        # stop
+
+
+
         return data
 
     def no_resample(self, item):
         stroke_dict = stroke_recovery.prep_stroke_dict(item["raw"])  # returns dict with {x,y,t,start_times,x_to_y (aspect ratio), start_strokes (binary list), raw strokes}
         gt = create_gts(stroke_dict.x, stroke_dict.y, is_start_stroke=stroke_dict.start_strokes,
                         gt_format=self.gt_format)
-        item["gt"] = gt  # {"x":x, "y":y, "is_start_time":is_start_stroke, "full": gt}
+        item["gt"] = item["raw_gt"] = gt  # {"x":x, "y":y, "is_start_time":is_start_stroke, "full": gt}
         item["x_func"] = None
         item["y_func"] = None
         return item
 
     @staticmethod
-    def shrink_gt(gt, height=61, width=None):
+    def shrink_gt(gt, height=61, width=None, max_x=None, **kwargs):
         if width:
-            max_x = np.ceil(np.max(gt[:, 0]) * height)
+            if max_x is None:
+                max_x = np.ceil(np.max(gt[:, 0]) * height)
+
             if max_x > width:
                 gt[:, 0:2] = gt[:, 0:2] * width/max_x # multiply by ratio to shrink gts
         return gt
@@ -451,13 +503,18 @@ class StrokeRecoveryDataset(Dataset):
 
         """
         # Based on how the GTs were resampled, how big was the original image etc?
-        image_width = gts_to_image_size(len(gt))
+        if "image_width" not in kwargs:
+            image_width = gts_to_image_size(len(gt))
+        else:
+            image_width = kwargs["image_width"]
         # Returns image in upper origin format
         if random_padding:
             padded_gt_img = random_pad(gt, vpad=3, hpad=5) # pad top, left, bottom
         else:
             padded_gt_img = gt
-        padded_gt_img = StrokeRecoveryDataset.shrink_gt(padded_gt_img, width=image_width) # shrink to fit
+
+        padded_gt_img = StrokeRecoveryDataset.shrink_gt(padded_gt_img, width=image_width, **kwargs) # shrink to fit
+
         # padded_gt = StrokeRecoveryDataset.enlarge_gt(padded_gt, width=image_width)  # enlarge to fit - needs to be at least as big as GTs
 
         img = draw_from_gt(padded_gt_img, show=False, save_path=None, min_width=None, height=img_height,
@@ -549,12 +606,16 @@ class StrokeRecoveryDataset(Dataset):
         # Stroke order
         #idx = 27; print("IDX 27")
         #while gt_text is None:
-        DETERMINISTIC = False
+        DETERMINISTIC = self.DETERMINISTIC
         if DETERMINISTIC:
-            idx = 0
+            #if self.warp
+            #idx = 0
             self.config.dataset.linewidth = 1
 
+
         item = self.data[idx]
+
+
         #print(item["gt"].shape)
         #assert item["gt"].shape[0]==52
 
@@ -587,13 +648,18 @@ class StrokeRecoveryDataset(Dataset):
         add_distortion = "distortion" in self.image_prep.lower() and not self.test_dataset and not DETERMINISTIC # don't distort the test data
         add_blur = "blur" in self.image_prep.lower() and not DETERMINISTIC
         if self.image_prep.lower().startswith("pil"):
-            img, gt = self.prep_image(gt, img_height=self.img_height,
-                                      add_distortion=add_distortion,
-                                      add_blur=add_blur,
-                                      random_padding=not DETERMINISTIC,
-                                      use_stroke_number=("stroke_number" in self.gt_format),
-                                      linewidth=None if self.config.dataset.linewidth is None else self.config.dataset.linewidth,
-                                      )
+            opts = {"img_height":self.img_height,
+                                      "image_width" : gts_to_image_size(len(gt)),
+                                      "add_distortion":add_distortion,
+                                      "add_blur":add_blur,
+                                      "random_padding":not DETERMINISTIC,
+                                      "use_stroke_number":("stroke_number" in self.gt_format),
+                                      "linewidth":None if self.config.dataset.linewidth is None else self.config.dataset.linewidth,
+                                      "max_x": np.ceil(np.max(gt[:, 0]) * self.img_height)
+                                      }
+
+            img, gt = self.prep_image(gt, **opts)
+
         else:
             # Check if the image is already loaded
             if "line_img" in item and not add_distortion:
@@ -660,11 +726,13 @@ class StrokeRecoveryDataset(Dataset):
 
         return {
             "line_img": img, # H,W,C
+            'id': id,
             "gt": gt, # B, W, 3/4
             "gt_reverse_strokes": gt_reverse_strokes,
             "gt_label": gt_label, # the indices of the gt text
             "gt_text": gt_text,
             "gt_text_indices": gt_text_indices,
+            "raw_gt": self.prep_image(item["raw_gt"].copy(), **opts)[1],
             "sos_args": sos_args,
             "path": image_path,
             "x_func": item["x_func"] if "x_func" in item else None,
@@ -1041,11 +1109,13 @@ def collate_stroke(batch, device="cpu", ignore_alphabet=False, gt_opts=None, pos
         "start_points": start_points,  # List of numpy arrays
         "gt_format": [batch[0]["gt_format"]]*batch_size,
         "label_lengths": label_lengths,
-        "paths": [b["path"] for b in batch],
+        "paths":  [b["path"] for b in batch],
         "x_func": [b["x_func"] for b in batch],
         "y_func": [b["y_func"] for b in batch],
         "kdtree": [b["kdtree"] for b in batch],
-        "gt_idx": [b["gt_idx"] for b in batch]
+        "gt_idx": [b["gt_idx"] for b in batch],
+        "raw_gt": [b["raw_gt"] for b in batch],
+        'id':     [b["id"] for b in batch]
     }
 
     # Pass everything else through too
@@ -1105,7 +1175,7 @@ def collate_stroke_eval(batch, device="cpu"):
         "y_func": None,
         "start_times": None,
         "img_widths": img_widths,
-
+        "id": [b["id"] for b in batch]
     }
 
 def some_kind_of_test():

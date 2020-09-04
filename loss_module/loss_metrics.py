@@ -101,7 +101,7 @@ def juncture_is_correct(gts, preds):
                     return False
     return True
 
-def calculate_nn_distance(item, preds):
+def calculate_nn_distance(item, preds, key='gt_list'):
     """ Can this be done differentiably?
 
     Args:
@@ -114,7 +114,12 @@ def calculate_nn_distance(item, preds):
     # calculate NN distance
     n_pts = 0
     cum_dist = 0
-    gt = item["gt_list"]
+    if key:
+        gt = item[key]
+    else: # if no key is specified, assume not batched
+        gt = [item]
+        preds = [preds]
+
     batch_size = len(gt)
     for i in range(batch_size):
         # TODO binarize line images and do dist based on that

@@ -11,7 +11,7 @@ from synthesis.synth_models import models as synth_models
 import models.model_utils as model_utils
 
 class StrokeRecoveryModel(nn.Module):
-    def __init__(self, vocab_size=5, device="cuda", cnn_type="default64", first_conv_op=CoordConv, first_conv_opts=None, **kwargs):
+    def __init__(self, vocab_size=4, device="cuda", cnn_type="default64", first_conv_op=CoordConv, first_conv_opts=None, **kwargs):
         super().__init__()
         self.__dict__.update(kwargs)
         self.use_gradient_override = False

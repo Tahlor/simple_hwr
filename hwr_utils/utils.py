@@ -134,7 +134,16 @@ hwr_defaults = {"load_path":False,
             "validation_jsons": [],
             "elastic_transform": False,
             "visdom_port": 9001,
-            "test_freq": 1
+            "test_freq": 1,
+            "dataset": {"img_height": 61,
+            "image_prep": "pil_with_distortion",
+            "num_of_channels": 1,
+            "include_synthetic": True,
+            "adapted_gt_path": None,
+            "linewidth": None,
+            "resample": True,
+            "kdtree": False
+            },
             }
 
 stroke_defaults = {"SMALL_TRAINING": False,
@@ -342,6 +351,10 @@ def load_config(config_path, hwr=True,
         shutil.copy(config_path, config['results_dir'])
     except Exception as e:
         log_print(f"Could not copy config file: {e}")
+
+    for root in ["training_root", "testing_root"]:
+        if root in config and config[root].find("data")==0:
+            config[root] = Path(config.project_path) / config.training_root
 
     if hwr:
         config = make_config_consistent_hwr(config)
@@ -1476,7 +1489,7 @@ def npy_loader(path, save=True):
                 np.save(numpy_path, new_data)
             return new_data
     elif Path(path).suffix == ".npy":
-        return np.load(path)
+        return np.load(path, allow_pickle=True)
     else:
         raise Exception(f"Unexpected file type {Path(path).suffix}")
 

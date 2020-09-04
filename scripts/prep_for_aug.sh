@@ -57,11 +57,6 @@ cp all_stats.json all_stats_backup.json
 
 sed -i 's/    //g' resume.sh
 
-
-
-
-
-
 ### WORKING
 original_path=20200717_101551-dtw_no_truncation
 find . -type f -name "resume.sh"   -exec sed -i "s@/${original_path}/@/${original_path}_NOA/@" {} \;
@@ -85,8 +80,21 @@ find . -type f -name "resume.sh" -exec sed -i 's|dtw_no_truncation/2020|dtw_no_t
 # Reset LR
 find . -type f -name "RESUME.yaml" -exec sed -i 's/.*reset_LR.*/reset_LR: true/' {} \;
 find . -type f -name "RESUME.yaml" -exec sed -i 's/.*load_optimizer.*/load_optimizer: false/' {} \;
-find . -type f -name "RESUME.yaml" -exec sed -i 's/.*learning_rate.*/learning_rate: 5e-06/' {} \;
+find . -type f -name "RESUME.yaml" -exec sed -i 's/.*learning_rate.*/learning_rate: 1e-05/' {} \;
 find . -type f -name "RESUME.yaml" -exec sed -i 's/.*scheduler_gamma:.*/scheduler_gamma: 0.96/'  {} \;
+
+replace pre_adapted_set FOR_REALZ/pre_adapted_set .sh
+replace pre_adapted_set FOR_REALZ/pre_adapted_set .yaml
+
+replace pre_adapted_set FOR_REALZ/no_adaptation .sh
+replace pre_adapted_set FOR_REALZ/no_adaptation .yaml
+
+
+find . -type f -name "RESUME.yaml" -exec sed -i 's@.*adapted_gt_path:.*@    adapted_gt_path: null@'  {} \;
+
+# Preadapted Dataset
+find . -type f -name "RESUME.yaml" -exec sed -i 's@.*adapted_gt_path:.*@    adapted_gt_path: ./results/dtw_no_truncation/FOR_REALZ/training_dataset.npy@'  {} \;
+
 
 # Change DTW Window
 find . -type f -name "RESUME.yaml" -exec sed -i 's/window_size: 80/window_size: 200/'  {} \;

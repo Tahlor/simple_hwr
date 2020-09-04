@@ -6,7 +6,7 @@ from hwr_utils import visualize
 from torch.utils.data import DataLoader
 from loss_module.stroke_recovery_loss import StrokeLoss
 from trainers import TrainerStrokeRecovery
-from hwr_utils.stroke_dataset import BasicDataset
+from hwr_utils.stroke_dataset import BasicDataset, StrokeRecoveryDataset
 from hwr_utils.stroke_recovery import *
 import hwr_utils.stroke_recovery as stroke_recovery
 from hwr_utils import utils
@@ -18,8 +18,51 @@ from pathlib import Path
 import os
 from tqdm import tqdm
 from subprocess import Popen
+import h5py
+import math
 
 pid = os.getpid()
+
+def load_online_dataloader(batch_size=1, shuffle=True, resample=True):
+    train_data_path = "/media/data/GitHub/simple_hwr/data/online_coordinate_data/MAX_stroke_vlargeTrnSetFull/test_online_coords.json"
+    extension = ".tif"
+    folder = PROJ_ROOT / Path("data/prepare_online_data/")
+
+    config1 = edict({"dataset":
+                         {"resample": resample,
+                          "linewidth": 1,
+                          "kdtree": False,
+                          "image_prep": "pil",
+                          },
+                     "loss_fns": [{"name": ""}],
+                     "warp": False,
+
+                     })
+
+    eval_dataset = StrokeRecoveryDataset([train_data_path],
+                                         root=Path(PROJ_ROOT) / "data",
+                                         max_images_to_load=None,
+                                         cnn_type="default64",
+                                         test_dataset=True,
+                                         config=config1,
+                                         deterministic=True,
+                                         force_recreate=False,
+                                         )
+
+    cs = lambda x: eval_dataset.collate(x, alphabet_size=eval_dataset.alphabet_size)
+    eval_loader = DataLoader(eval_dataset,
+                             batch_size=batch_size,
+                             shuffle=shuffle,
+                             num_workers=5,
+                             collate_fn=cs,
+                             pin_memory=False)
+
+    # print(SHUFFLE, "shuffle")
+    # x = next(iter(eval_loader))
+    # print(x["id"][0])
+    # print(x["gt_list"][0])
+    # stop
+    return eval_loader, eval_dataset
 
 #@debugger
 def main(config_path):
@@ -51,7 +94,7 @@ def main(config_path):
         if config.device == "cuda":
             utils.kill_gpu_hogs()
 
-        batch_size = config.batch_size
+        batch_size = 28 #config.batch_size
 
         vocab_size = VOCAB_OVERRIDE if VOCAB_OVERRIDE else config.feature_map_dim
 
@@ -81,29 +124,43 @@ def main(config_path):
             folder = Path("/media/data/GitHub/simple_hwr/data/prepare_IAM_Lines/words")
             gt_path = PROJ_ROOT / Path("data/prepare_IAM_Lines/gts/words")
 
-        model = StrokeRecoveryModel(vocab_size=vocab_size, device=device, cnn_type=config.cnn_type, first_conv_op=config.coordconv, first_conv_opts=config.coordconv_opts).to(device)
+        model = StrokeRecoveryModel(vocab_size=vocab_size,
+                                    first_conv_op=config.coordconv,
+                                    first_conv_opts=config.coordconv_opts,
+                                    **config.model_definition).to(device)
 
         ## Loader
         logger.info(("Current dataset: ", folder))
-        # Dataset - just expecting a folder
-        eval_dataset=BasicDataset(root=folder, cnn=model.cnn, rebuild=False, extension=extension, crop=True)
 
-        if ONLINE:
+        # Dataset - just expecting a folder
+        if not ONLINE:
+            eval_dataset=BasicDataset(root=folder, cnn=model.cnn, rebuild=False, extension=extension, crop=True, vertical_pad=False if ONLINE else True)
+
+            if MASTER_LIST:
+                for i in range(len(eval_dataset.data),0,-1):
+                    if eval_dataset.data[i-1]["id"] not in MASTER_LIST:
+                         eval_dataset.data.pop(i-1)
+
+            eval_loader=DataLoader(eval_dataset,
+                                      batch_size=batch_size,
+                                      shuffle=SHUFFLE,
+                                      num_workers=6,
+                                      collate_fn=eval_dataset.collate, # this should be set to collate_stroke_eval
+                                      pin_memory=False)
+        else:
+            eval_loader, eval_dataset = load_online_dataloader(batch_size=batch_size, shuffle=SHUFFLE)
+
             # Remove items from BasicDataset not in Test set
             fpath = "/media/data/GitHub/simple_hwr/data/online_coordinate_data/MAX_stroke_vlargeTrnSetFull/test_online_coords.npy"
             test_data = np.load(fpath, allow_pickle=True)
             test_set = {Path(item['xml_path']).stem: 0 for item in test_data}
             for i in range(len(eval_dataset.data)-1,-1,-1):
-                if Path(eval_dataset.data[i]["image_path"]).stem not in test_set:
+                if Path(eval_dataset.data[i]["image_path"]).stem.split("_")[0] not in test_set:
                     eval_dataset.data.pop(i)
+                #eval_dataset.data["label_length"] =
 
         #next(iter(eval_dataset))
-        eval_loader=DataLoader(eval_dataset,
-                                      batch_size=batch_size,
-                                      shuffle=True,
-                                      num_workers=6,
-                                      collate_fn=eval_dataset.collate, # this should be set to collate_stroke_eval
-                                      pin_memory=False)
+
         config.n_train_instances = None
         config.n_test_instances = len(eval_loader.dataset)
         config.n_test_points = None
@@ -136,7 +193,14 @@ def main(config_path):
         model = model.to(device)
         model.eval()
 
-        eval_only(eval_loader, model, output_path=config.output_root)
+        # OUTPUT PATH
+        if ONLINE:
+            config.output_root = config.output_root.replace("OFFLINE", "ONLINE")
+            Path(config.output_root).mkdir(exist_ok=True, parents=True)
+
+        _output = utils.incrementer(Path(config.output_root), "new_experiment")
+
+        eval_only(eval_loader, model, output_path=_output)
         globals().update(locals())
 
 def post_process(pred,gt, calculate_distance=True, kd=None):
@@ -180,26 +244,57 @@ load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/pretra
 vers="normal"
 load_path_override = "/media/data/GitHub/simple_hwr/RESULTS/OFFLINE_PREDS/RESUME_model/imgs/current/eval/data/RESUME_model.pt"
 config_path = "/media/data/GitHub/simple_hwr/RESULTS/OFFLINE_PREDS/RESUME_model/dtw_adaptive.yaml"
-TRUNCATE=True
 VOCAB_OVERRIDE = 0
 
-# V4
-vers="v4"
-load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/OFFLINE_PREDS/v4.1/RESUME_modelv4.1.pt"
-config_path =        "/media/data/GitHub/simple_hwr/results/stroke_config/OFFLINE_PREDS/v4.1/RESUME.yaml"
-load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/OFFLINE_PREDS/v4/RESUME_modelv4.pt"
-config_path =        "/media/data/GitHub/simple_hwr/results/stroke_config/OFFLINE_PREDS/v4/RESUME.yaml"
+if False:
+    # BIG ONE
+    vers = "v5BIG"
+    load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/OFFLINE_PREDS/v5BIG/RESUME_modelv5BIG.pt"
+    config_path = "/media/data/GitHub/simple_hwr/results/stroke_config/OFFLINE_PREDS/v5BIG/RESUME.yaml"
+    VOCAB_OVERRIDE = 5
 
-TRUNCATE=False
-VOCAB_OVERRIDE = 5 ## IDK WHY THIS IS 5, should have been 4
+if True:
+    # BIG ONE - live
+    vers = "v6BIG"
+    load_path_override = f"/media/data/GitHub/simple_hwr/results/stroke_config/OFFLINE_PREDS/{vers}/RESUME_model{vers}.pt"
+    config_path = f"/media/data/GitHub/simple_hwr/results/stroke_config/OFFLINE_PREDS/{vers}/RESUME{vers}.yaml"
+    VOCAB_OVERRIDE = 5
+
+if False:
+    # V4
+    vers="v4.1"
+    load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/OFFLINE_PREDS/v4.1/RESUME_modelv4.1.pt"
+    config_path =        "/media/data/GitHub/simple_hwr/results/stroke_config/OFFLINE_PREDS/v4.1/RESUME.yaml"
+
+    if False:
+        vers="v4"
+        load_path_override = "/media/data/GitHub/simple_hwr/results/stroke_config/OFFLINE_PREDS/v4/RESUME_modelv4.pt"
+        config_path =        "/media/data/GitHub/simple_hwr/results/stroke_config/OFFLINE_PREDS/v4/RESUME.yaml"
+
+    TRUNCATE=False
+    VOCAB_OVERRIDE = 5 ## IDK WHY THIS IS 5, should have been 4
 
 # OVERLOAD
+
 ONLINE = False
-KDTREE_PATH = "/media/data/GitHub/simple_hwr/RESULTS/OFFLINE_PREDS/kd_trees{}.npy".format(vers)
+TESTING = False # TESTING
+TRUNCATE = False # use EOS token if available
+TRUNCATE_DISTANCES = True # cut off last 20 if EOS token not available
+
+if not ONLINE:
+    TRUNCATE=True
+
+
+ONLINE_OR_OFFLINE = "ONLINE" if ONLINE else "OFFLINE"
+KDTREE_PATH = "/media/data/GitHub/simple_hwr/RESULTS/{}_PREDS/kd_trees{}.npy".format(ONLINE_OR_OFFLINE, vers)
 LOAD_KDTREE = False
 SAVE_KD = False
-NN_DISTANCES = True
-SAVE_ALL_IMGS = True
+NN_DISTANCES = False
+SAVE_ALL_IMGS = False # but it always saves a sample
+SHUFFLE = True if not SAVE_ALL_IMGS else False
+
+MASTER_LIST = ["b04-162-05","m01-090-04","g04-017-01","g06-026r-04","g06-037e-02","e04-091-01","a04-103-08","a02-124-03","e04-103-01","a01-132-07"]
+#MASTER_LIST = []
 
 def eval_only(dataloader, model, output_path=None):
     distances = []
@@ -211,7 +306,7 @@ def eval_only(dataloader, model, output_path=None):
     for i, item in enumerate(tqdm(dataloader)):
         preds = TrainerStrokeRecovery.eval(item["line_imgs"],
                                            model,
-                                           label_lengths=item["label_lengths"],
+                                           label_lengths=item["label_lengths"], #if not ONLINE else item['img_widths'],
                                            relative_indices=config.pred_relativefy,
                                            sigmoid_activations=config.sigmoid_indices)
 
@@ -222,17 +317,15 @@ def eval_only(dataloader, model, output_path=None):
         preds_to_graph = []
         for ii, p in enumerate(preds): # Loop within batch
             item_number = i*config.batch_size+ii
-            print("image number:", item_number)
-
             name = names[ii]
             kd = kd_trees[name] if name in kd_trees else None
 
             # MOVE PRED TO MATCH GT
             gt = convert_reference(item["line_imgs"][ii], threshold=0)
             if TRUNCATE:
-                remove_end = -min(50, int(p.shape[0]/2))
+                remove_end = -min(40 if not ONLINE else 1, int(p.shape[0]/2))
             elif p.shape[-1]>=4:
-                eos = np.argmax(p[:,3]>.5)
+                eos = np.argmax(p[:,3]>.7)
                 remove_end = eos +1 if eos >= 300 else None
             else:
                 remove_end = None
@@ -255,7 +348,12 @@ def eval_only(dataloader, model, output_path=None):
 
             preds_to_graph.append(pred.transpose([1, 0])) # Convert to VOCAB X WIDTH
             path = item['paths'][ii]
-            avg_distance = np.average(distance) #- (2*.5**2)**.5 / 61
+
+            if TRUNCATE_DISTANCES and not TRUNCATE:
+                avg_distance = np.average(distance[:-20])
+            else:
+                avg_distance = np.average(distance) #- (2*.5**2)**.5 / 61
+
             new_stem = path.stem + f"_{str(avg_distance)[:8].replace('.',',')}"
             #print(distance, new_stem)
             item["paths"][ii] = (path.parent / new_stem).with_suffix(path.suffix)
@@ -269,17 +367,27 @@ def eval_only(dataloader, model, output_path=None):
                 p = stroke_recovery.resample(pred)
 
                 # _, distance = stroke_recovery.get_nearest_point(item["line_imgs"][ii], p, reference_is_image=True)
-                output.append({"stroke": p,
+                output_entry = {"stroke": p,
+                               "raw_pred": preds[ii],
                                "text": GT_DATA[name],
                                "id": name,
                                "distance": avg_distance,
                                "pts": p.shape,
                                "distance2": avg_distance2,
                                "pts2": gt.shape,
-                               })
+                               "img": item["line_imgs"][ii],
+                               }
+
+                if ONLINE:
+                    output_entry.update({"gt_list": item['gt_list'][ii],
+                                          "raw_gt": item['raw_gt'][ii]})
+
+                output.append(output_entry)
+
             else:
                 print(f"{name} not found")
 
+        print("image number:", item_number)
 
         # Get GTs, save to file
         output_path = Path(output_path)
@@ -307,8 +415,24 @@ def eval_only(dataloader, model, output_path=None):
 
         distances += [x["distance"] for x in output]
         #print(np.sum(distances < .1) / len(distance))
+
+        # IF TESTING
+        if TESTING:
+            break
     #utils.pickle_it(final_out, output_path / f"all_data.pickle")
-    np.save(output_path / f"all_data.npy", final_out)
+
+    if True:
+        l = len(final_out)
+        m = math.ceil(l/1000)
+        for i in range(m):
+            np.save(output_path / f"all_data_{i}.npy", final_out[i*1000:(i+1)*1000])
+
+    # else:
+    #     out = output_path / f"all_data.hdf5"
+    #     print(out)
+    #     h = h5py.File(out)
+    #     for k in final_out:
+    #         h.create_dataset(k["id"], data=k)
 
     # Compute stats
     #distances = np.asarray([x["distance"] for x in final_out])
@@ -327,8 +451,9 @@ def eval_only(dataloader, model, output_path=None):
     plt.savefig(output_path / f"stats.png")
     plt.close()
 
-    if kd_trees[next(iter(kd_trees))]: # make sure it's not None
+    if kd_trees and kd_trees[next(iter(kd_trees))]: # make sure it's not None
         np.save(KDTREE_PATH, kd_trees)
+    print("Files saved to: ", output_path)
     logger.info(f"Output size: {len(final_out)}")
     logger.info("ALL DONE")
 
@@ -344,7 +469,7 @@ def load_all_gts(gt_path, extension="*.json"):
         assert not key in GT_DATA
         GT_DATA[key] = i["gt"]
     #print(f"GT's found: {GT_DATA.keys()}")
-    np.save(r"./RESULTS/OFFLINE_PREDS/TEXT.npy", GT_DATA)
+    np.save(rf"./RESULTS/{ONLINE_OR_OFFLINE}_PREDS/TEXT.npy", GT_DATA)
     return GT_DATA
 
 if __name__=="__main__":

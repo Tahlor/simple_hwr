@@ -141,7 +141,7 @@ class OnlineDataset(Dataset):
                  char_to_idx,
                  img_height=61,
                  num_of_channels=3,
-                 root= project_root / "data",
+                 root=project_root / "data",
                  max_images_to_load=None,
                  gt_format=None,
                  cnn=None,
@@ -189,8 +189,9 @@ class OnlineDataset(Dataset):
 
         ## Load GT text
         self.gt_text_data = self.load_gt_text(self.root / "prepare_online_data/online_augmentation_good.json")
-        if "gt":
-            master_string = "".join([d["gt"] for d in self.data])
+        if True: #"gt":
+            #master_string = "".join([d["gt"] for d in self.data])
+            master_string = "".join([x for k,x in self.gt_text_data.items()])
         elif "image_path" in self.data[0].keys():
             master_string = "".join([self.get_gt_text(d["image_path"], is_id=False) for d in self.data])
 
@@ -345,7 +346,7 @@ class OnlineDataset(Dataset):
             padded_gt_img = random_pad(gt, vpad=3, hpad=5) # pad top, left, bottom
         else:
             padded_gt_img = gt
-        padded_gt_img = StrokeRecoveryDataset.shrink_gt(padded_gt_img, width=image_width) # shrink to fit
+        padded_gt_img = OnlineDataset.shrink_gt(padded_gt_img, width=image_width) # shrink to fit
         # padded_gt = StrokeRecoveryDataset.enlarge_gt(padded_gt, width=image_width)  # enlarge to fit - needs to be at least as big as GTs
 
         img = draw_from_gt(padded_gt_img, show=False, save_path=None, min_width=None, height=img_height,
@@ -414,7 +415,7 @@ class OnlineDataset(Dataset):
         for item in self.data:
             image_path = os.path.join(self.root, item['image_path'])
             id = Path(image_path).stem.split("_")[0]
-            if "gt" in item:
+            if "gt" in item and not isinstance(item["gt"], np.ndarray):
                 gt_text = item["gt"]
             else:
                 gt_text = self.get_gt_text(id)

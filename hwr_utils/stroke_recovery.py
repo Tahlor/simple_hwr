@@ -608,6 +608,17 @@ def sample_OLD(function_x, function_y, starts, number_of_samples=64, noise=None,
     #print(time)
     return function_x(time), function_y(time), is_start_stroke
 
+def plot_it(preds, targs, targs2=None, name="suck"):
+    # plt.axis('off')
+    # plt.axis('square')
+    plt.figure(figsize=[4, 1], dpi=180)
+    plt.plot(preds[:, 0], preds[:, 1])
+    plt.plot(targs[:, 0], targs[:, 1])
+    if not targs2 is None:
+        plt.plot(targs2[:, 0], targs2[:, 1])
+    plt.savefig(f"/media/data/GitHub/simple_hwr/RESULTS/ONLINE_PREDS/RESUME_model/{name}.png")
+    plt.show()
+
 def sample(function_x, function_y, start_times, number_of_samples=64, noise=None, plot=False, last_time=None):
     """ Given some ipolate functions, return
 
@@ -673,6 +684,9 @@ def sample(function_x, function_y, start_times, number_of_samples=64, noise=None
     # y = np.array(function_y(time).tolist())
     x = function_x(time)
     y = function_y(time)
+
+    # plot_it(np.array([x,y]).transpose(), np.array([x,y]).transpose(), name="suck2)
+    # stop
     return x, y, is_start_stroke
 
 
@@ -850,13 +864,24 @@ def remove_bad_points(gt, max_dist=.2):
     gt[idx, 2] = 1
     return gt
 
-def convert_reference(reference, threshold=150 / 127.5 - 1):
+def convert_reference(reference, threshold=150 / 127.5 - 1, rescale=True):
+    """ Input an image where origin is top left, shape is HxW
+        Output an image where origin is bottom left, shape is WxH, bottom left corner of pixel coordinate
+    Args:
+        reference:
+        threshold:
+        rescale:
+
+    Returns:
+
+    """
     if len(reference.shape) == 3:
         reference = np.squeeze(reference)
     height = reference.shape[0]
+    rescale = height if rescale else 1
     y_coords, x_coords = np.where(reference < threshold)
-    reference = np.c_[x_coords, height - y_coords].astype(np.float64) / height  # rescale to be 0-1 based on height!
-    return reference
+    black_pixels = np.c_[x_coords, height - y_coords - 1].astype(np.float64) / rescale  # rescale to be 0-1 based on height!, -1 since pixels are 0 indexed
+    return black_pixels
 
 def get_nearest_point(reference, moving_component, reference_is_image=False, **kwargs):
     """ For calculating error, reference should be preds (how far do we need to move the GTs)
@@ -881,6 +906,61 @@ def get_nearest_point(reference, moving_component, reference_is_image=False, **k
     distances, neighbor_indices = kd.query(moving_component[:, :2])  # How far do we have to move the pred to nearest GT? Based on 0-1 height scale
     nearest_points = reference[neighbor_indices]
     return nearest_points, distances, kd
+
+def calculate_distance(reference, moving_component, reference_is_image=False, **kwargs):
+    """ For calculating error, reference should be preds (how far do we need to move the GTs)
+        For post-process, reference should be GT image/pts (where should we move this pred to?)
+
+    Args:
+        reference:
+        moving_component:
+        reference_is_image:
+
+    Returns:
+
+    """
+    if reference_is_image:
+        reference = convert_reference(reference, threshold=0, rescale=False) # lower left origin, 0 index, X,Y
+
+    if "kd" in kwargs and kwargs["kd"] is not None:
+        kd = kwargs["kd"]
+    else:
+        warnings.warn("Generating KD tree")
+        # Add the corners in
+        # r2 = reference[:, :2]+np.array([-1,1])
+        # reference = np.unique(np.r_[reference, r2], axis=0)
+
+        # Convert reference to pixel centers
+        reference = reference[:, :2] + np.array([.5, .5])
+        kd = KDTree(reference[:, :2])
+
+    moving_component = moving_component[:,:2]*61
+    distances, neighbor_indices = kd.query(moving_component[:, :2])  # How far do we have to move the pred to nearest GT? Based on 0-1 height scale
+    reference_nearest_points = reference[neighbor_indices]
+    corner_reference = np.concatenate([np.floor(reference_nearest_points[:,:1]), np.floor(reference_nearest_points[:,1:])], axis=1)
+    corner_pred =      np.concatenate([np.floor(moving_component[:,:1]), np.floor(moving_component[:,1:])], axis=1)
+    same_pixel = np.all(corner_pred == corner_reference, axis=1) # if nn rounds to the same pixel, distance is 0
+    distances[same_pixel] = 0
+
+    #d = np.linalg.norm
+    def d(idx=0):
+        x = moving_component[i, idx]
+        xr = reference_nearest_points[i, idx] # reference x
+        if np.floor(xr) <= x <= np.floor(xr) + 1: # if predicted x is in the same pixel row of the reference
+            x_dif = 0
+        else:
+            x_dif = np.min([abs(np.floor(xr) - x), abs(np.floor(xr) + 1 - x)])
+        return x_dif
+
+    for i in np.argwhere(distances>0).flatten().tolist():
+        distances[i] = np.linalg.norm([d(0),d(1)])
+
+    # Minimum distance:
+    # Distance to edge of current pixel - either going to be a corner OR have the same X/Y value as the pixel in question
+    # Only look at those pixels where: distance is > 0 and has matching floor(X/Y) coordinate
+
+    return reference_nearest_points, distances/61, kd, reference
+
 
 def move_bad_points_deprecated(reference, moving_component, reference_is_image=False, max_distance=6, **kwargs):
     nearest_points, distances, kd = get_nearest_point(reference, moving_component, reference_is_image, **kwargs)
