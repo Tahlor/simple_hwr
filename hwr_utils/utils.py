@@ -1180,15 +1180,16 @@ def create_resume_training(config):
             export_config["n_warp_iterations"] = 21
         yaml.dump(export_config, outfile, default_flow_style=False, sort_keys=False)
 
-def plt_loss(config):
+def plt_loss(config, plt_validation=True):
     ## Plot with matplotlib
     try:
         x_axis = [(i + 1) * config["n_train_instances"] for i in range(len(config["train_cer"]))]
         plt.figure()
         plt.plot(x_axis, config["train_cer"], label='train')
-        plt.plot(x_axis, config["validation_cer"], label='validation')
-        if config["test_cer"]:
-            plt.plot(config["test_epochs"], config["test_cer"], label='validation')
+        if plt_validation:
+            plt.plot(x_axis, config["validation_cer"], label='validation')
+            if config["test_cer"]:
+                plt.plot(config["test_epochs"], config["test_cer"], label='validation')
         plt.legend()
         plt.ylim(top=.2)
         plt.ylabel("CER")
@@ -1197,7 +1198,7 @@ def plt_loss(config):
         plt.savefig(os.path.join(config["results_dir"], config['name'] + ".png"))
         plt.close()
     except Exception as e:
-        log_print("Problem graphing: {}".format(e))
+        log_print("Problem graphing loss: {}".format(e))
 
 
 class Decoder:
@@ -1270,7 +1271,7 @@ def reset_all_stats(config, keyword="", freq=None):
     try:
         visualize.plot_all(config)
     except:
-        print("Problem graphing")
+        print("Problem graphing something")
 
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
@@ -1527,7 +1528,7 @@ def plot_loss(config, loss):
         plt.clf()
         plt.close('all')
     except Exception as e:
-        logger.info(f"Problem graphing: {e}")
+        logger.info(f"Problem graphing recent loss: {e}")
         pass
 
 def make_resume_sh( sh_path, config_path, python_script="train_stroke_recovery.py"):
@@ -1620,6 +1621,13 @@ def backup_alphabet(source_dict, destination_dict):
     destination_dict.char_to_idx = source_dict.char_to_idx
 
 
+if __name__=="__main__":
+    from hwr_utils.visualize import Plot
+    viz = Plot(port=9001)
+    viz.viz.close()
+    viz.load_all_env("./results")
+
+
 def plot_recognition_images(line_imgs, name, text_str, dir=None, plot_count=None, live=False):
     if dir is None:
         dir = config["image_dir"]
@@ -1663,11 +1671,4 @@ def plot_recognition_images(line_imgs, name, text_str, dir=None, plot_count=None
         path = os.path.join(dir, '{}.png'.format(name))
         plt.savefig(path, dpi=400)
         plt.close('all')
-
-
-if __name__=="__main__":
-    from hwr_utils.visualize import Plot
-    viz = Plot(port=9001)
-    viz.viz.close()
-    viz.load_all_env("./results")
 

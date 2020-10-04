@@ -162,7 +162,9 @@ class OnlineDataset(Dataset):
         if isinstance(data_paths, str) or isinstance(data_paths, Path):
             data_paths = [data_paths]
 
-        self.gt_format = ["x","y","stroke_number","eos"] if gt_format is None else gt_format
+        # Relativefy in collate function later
+        #self.gt_format = ["x_rel","y_rel","sos","eos"] if gt_format is None else gt_format
+        self.gt_format = ["x", "y", "stroke_number", "eos"] if gt_format is None else gt_format
         self.collate = collate_stroke
         self.root = Path(root)
         self.num_of_channels = num_of_channels
@@ -561,22 +563,20 @@ class OnlineDataset(Dataset):
 
         return {
             "line_img": img, # H,W,C
-            "gt": gt, # B, W, 3/4
+            "gt": gt, # B, W, 3/4, the online representation of the image
             "gt_reverse_strokes": gt_reverse_strokes,
-            "gt_text": item["gt_text"],
-            "gt_label": item["gt_label"],
-            "gt_text_indices": item["gt_text_indices"],
-            "sos_args": sos_args,
-            "path": image_path,
+            "gt_text": item["gt_text"],                # GT text/string, "move from Mr. Gaitskill"
+            "gt_label": item["gt_label"],              # List of np arrays with alphabet indicies, [59,55,1...]
+            "gt_text_indices": item["gt_text_indices"],# Same as above as a list
+            "sos_args": sos_args,                      # start of stroke indices
+            "path": image_path,                        #
             "x_func": item["x_func"] if "x_func" in item else None,
             "y_func": item["y_func"]  if "y_func" in item else None,
             "gt_format": self.gt_format,
             "start_points": start_points,
             "kdtree": kdtree, # Will force preds to get nearer to nearest GTs; really want GTs forced to nearest pred; this will finish strokes better
             "gt_idx": idx,
-            "predicted_strokes_gt": None,
-            "feature_map_width": img_width_to_pred_mapping(img.shape[1], self.cnn_type),
-            "feature_map_width_default": img_width_to_pred_mapping(img.shape[1], 'default')# featuer maps not always same width as GT if using attention, window thing
+            "predicted_strokes_gt": None
         }
 
     def char_stuff(self, master_string):
@@ -853,7 +853,6 @@ def collate_stroke(batch, device="cpu", ignore_alphabet=False, gt_opts=None, pos
     dim1 = max([b['line_img'].shape[1] for b in batch]) # width
     dim2 = batch[0]['line_img'].shape[2] # channel
 
-    max_feature_map_size = max([b['feature_map_width'] for b in batch])
     all_labels_numpy = []
     label_lengths = []
     start_points = []
@@ -865,18 +864,18 @@ def collate_stroke(batch, device="cpu", ignore_alphabet=False, gt_opts=None, pos
     stroke_points_gt = np.full((batch_size, max_label, vocab_size), PADDING_CONSTANT).astype(TYPE)
     stroke_points_rel = np.full((batch_size, max_label+1, vocab_size), 0).astype(TYPE)
     mask = np.full((batch_size, max_label, 1), 0).astype(TYPE)
-    feature_map_mask = np.full((batch_size, max_feature_map_size), 0).astype(TYPE)
 
     # Loop through instances in batch
     for i in range(len(batch)):
         b_img = batch[i]['line_img']
         imgs_gt[i,:,: b_img.shape[1],:] = b_img
 
-        l = batch[i]['gt']
+        l = batch[i]['gt'] # padded numy array
         #all_labels.append(l)
-        label_lengths.append(len(l))
+        label_lengths.append(len(batch[i]['gt_text']))
         ## ALL LABELS - list of desired_num_of_strokes batch size; arrays LENGTH, VOCAB SIZE
         stroke_points_gt[i, :len(l), :] = l
+
         stroke_points_gt[i, len(l):, :] = l[-1] # just repeat the last element; this works when using ABS coords for GTs (default) and EOS
 
         # Relative version - this is 1 indx longer - first one is 0's
@@ -887,8 +886,6 @@ def collate_stroke(batch, device="cpu", ignore_alphabet=False, gt_opts=None, pos
         # No EOS specified for x_rel
 
         mask[i, :len(l), 0] = 1
-        feature_map_mask[i, :batch[i]['feature_map_width']+post_length_buffer] = 1 # keep predicting after
-
         all_labels_numpy.append(l)
         start_points.append(torch.from_numpy(batch[i]['start_points'].astype(TYPE)).to(device))
 
@@ -905,7 +902,6 @@ def collate_stroke(batch, device="cpu", ignore_alphabet=False, gt_opts=None, pos
     stroke_points_gt_rel = torch.from_numpy(stroke_points_rel.astype(TYPE)).to(device)
 
     mask = torch.from_numpy(mask.astype(TYPE)).to(device)
-    feature_map_mask = torch.from_numpy(feature_map_mask.astype(TYPE)).to(device)
 
     # TEXT STUFF - THIS IS GOOD STUFF
     ## get sequence lengths
@@ -925,23 +921,26 @@ def collate_stroke(batch, device="cpu", ignore_alphabet=False, gt_opts=None, pos
         ## compute mask
         text_mask = (torch.max(padded_one_hot, axis=-1).values != 0)
 
+    labels_list = [b["gt_text_indices"] for b in batch]
+
+    # RETURN
     return_d = {
-        "feature_map_mask": feature_map_mask,
         "mask": mask,
-        "gt_text": [b["gt_text"] for b in batch], # encode this
-        "gt_text_indices": [b["gt_text_indices"] for b in batch],
+        "gt_text": [b["gt_text"] for b in batch], # the actual text
+        "gt_text_indices": labels_list, # indices of the text
+        "concatenated_gt_text_indices": np.concatenate(labels_list),
+        "label_lengths": label_lengths,
         "gt_text_mask": text_mask,
         "gt_text_one_hot": padded_one_hot.to(torch.float32),
         "gt_text_lengths": text_lengths,
         "line_imgs": line_imgs,
-        "gt": stroke_points_gt, # Numpy Array, with padding
+        "strokes": stroke_points_gt, # Numpy Array, with padding
         "rel_gt": stroke_points_gt_rel,
         "gt_list": [torch.from_numpy(l.astype(TYPE)).to(device) for l in all_labels_numpy], # List of numpy arrays
         #"gt_reverse_strokes": [torch.from_numpy(b["gt_reverse_strokes"].astype(TYPE)).to(device) for b in batch],
         "gt_numpy": all_labels_numpy,
         "start_points": start_points,  # List of numpy arrays
         "gt_format": [batch[0]["gt_format"]]*batch_size,
-        "label_lengths": label_lengths,
         "paths": [b["path"] for b in batch],
         "x_func": [b["x_func"] for b in batch],
         "y_func": [b["y_func"] for b in batch],

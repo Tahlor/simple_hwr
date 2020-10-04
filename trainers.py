@@ -72,6 +72,18 @@ class Trainer:
     def get_indices(pred_opts, keyword):
         return [i for i,x in enumerate(pred_opts) if x and keyword.lower() in x.lower()]
 
+    def update_test_cer(self, validation, err, weight, prefix=""):
+        if validation:
+            self.config.logger.debug("Updating validation!")
+            stat = self.config["designated_validation_cer"]
+            self.config["stats"][f"{prefix}{stat}"].accumulate(err, weight)
+        else:
+            self.config.logger.debug("Updating test!")
+            stat = self.config["designated_test_cer"]
+            self.config["stats"][f"{prefix}{stat}"].accumulate(err, weight)
+            #print(self.config["designated_test_cer"], self.config["stats"][f"{prefix}{stat}"])
+
+
 class TrainerStrokeRecovery(Trainer):
     def __init__(self, model, optimizer, config, loss_criterion=None):
         super().__init__(model, optimizer, config, loss_criterion)

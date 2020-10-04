@@ -227,8 +227,8 @@ def make_dataloaders(config, device="cpu"):
     default_collate = lambda x: hw_dataset.collate(x, device=device)
     train_dataset = HwDataset(config.training_jsons,
                               config["char_to_idx"],
-                              img_height=config["input_height"],
-                              num_of_channels=config["num_of_channels"],
+                              #img_height=config["input_height"],
+                              #num_of_channels=config["num_of_channels"],
                               root=config["training_root"],
                               warp=config["training_warp"],
                               blur=config["training_blur"],
@@ -264,8 +264,8 @@ def make_dataloaders(config, device="cpu"):
 
     test_dataset = HwDataset(config["testing_jsons"],
                              config["char_to_idx"],
-                             img_height=config["input_height"],
-                             num_of_channels=config["num_of_channels"],
+                             #img_height=config["input_height"],
+                             #num_of_channels=config["num_of_channels"],
                              root=config["testing_root"],
                              warp=False,
                              blur=0,
@@ -285,8 +285,8 @@ def make_dataloaders(config, device="cpu"):
     if "validation_jsons" in config and config.validation_jsons: # must be present and non-empty
         validation_dataset = HwDataset(config["validation_jsons"],
                                        config["char_to_idx"],
-                                       img_height=config["input_height"],
-                                       num_of_channels=config["num_of_channels"],
+                                       #img_height=config["input_height"],
+                                       #num_of_channels=config["num_of_channels"],
                                        root=config["testing_root"],
                                        warp=False,
                                        blur=config.get("testing_blur", 1.5),

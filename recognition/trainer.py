@@ -44,6 +44,12 @@ class TrainerBaseline(json.JSONEncoder):
 
         # Get losses
         logger.debug("Calculating CTC Loss: {}".format(step))
+
+        # pred_logits: max_width x B x alphabet
+        # labels: all indices concatenated
+        # preds size: B x longest W
+        # label_lengths: B x [# of chars]
+
         loss_recognizer = self.loss_criterion(pred_logits, labels, preds_size, label_lengths)
 
         # Backprop

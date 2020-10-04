@@ -2,7 +2,9 @@
 TESTING: false # Load as little as possible for fast prototyping
 SMALL_TRAINING: false
 plot_freq: 50
-images_to_load: 20
+TEST_FREQ: 1000 # how many epochs before testing
+
+#images_to_load: 20
 ## Things that shouldn't matter much:
 # Random shuffling
 # Number of channels (3 vs 1)
@@ -26,7 +28,9 @@ debug: off
 # log_dir:
 
 # Training data
-training_jsons: [online_coordinate_data/MAX_stroke_vNORMAL_TRAINING_TESTFull/train_online_coords.json]
+# MAX_stroke_vNORMAL_TRAINING_TEST2Full
+# MAX_stroke_vNORMAL_TRAINING_TESTSmall_1000
+training_jsons: [online_coordinate_data/MAX_stroke_vNORMAL_TRAINING_TESTSmall_1000/train_online_coords.json]
 training_root: data # RELATIVE TO PROJECT ROOT
 training_shuffle: true
 training_warp: false
@@ -36,16 +40,22 @@ online_augmentation: true
 writer_id_pickles: [prepare_IAM_Lines/writer_IDs.pickle, prepare_online_data/writer_IDs.pickle]
 
 # Validation
-validation_jsons: []
+validation_jsons: [online_coordinate_data/MAX_stroke_vNORMAL_TRAINING_TESTSmall_1000/val_online_coords.json]
 
 # Testing data
-testing_jsons: [online_coordinate_data/MAX_stroke_vNORMAL_TRAINING_TESTFull/test_online_coords.json]
+testing_jsons: [online_coordinate_data/MAX_stroke_vNORMAL_TRAINING_TESTSmall_1000/test_online_coords.json]
 testing_root: data
 testing_shuffle: false
 testing_warp: false
 testing_blur: false
 testing_random_distortions: false
 output_predictions: false                    # Output incorrect test predictions
+
+# FULL
+training_jsons: [online_coordinate_data/MAX_stroke_vNORMAL_TRAINING_TEST2Full/train_online_coords.json]
+validation_jsons: [online_coordinate_data/MAX_stroke_vNORMAL_TRAINING_TEST2Full/val_online_coords.json]
+testing_jsons: [online_coordinate_data/MAX_stroke_vNORMAL_TRAINING_TEST2Full/test_online_coords.json]
+
 
 #Network
 style_encoder: false                         # "False", "basic_encoder", "fake_encoder" - RNN + MLP (author classifier) -> embedding

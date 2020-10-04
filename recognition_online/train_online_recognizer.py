@@ -11,11 +11,13 @@ import traceback
 from builtins import range
 import faulthandler
 from hwr_utils import hw_dataset, character_set
+import online_dataset
 from online_dataset import OnlineDataset
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
 from torch import tensor
 import types
+import trainer_online
 from hwr_utils import utils
 from hwr_utils.utils import plot_recognition_images
 import numpy as np
@@ -63,22 +65,13 @@ def test(model, dataloader, idx_to_char, device, config, with_analysis=False, pl
     i = -1
     stat = "validation" if validation else "test"
 
-    for i,x in enumerate(dataloader):
-        line_imgs = x['line_imgs'].to(device)
-        gt = x['gt']  # actual string ground truth
-
-        if "strokes" in x and x["strokes"] is not None:
-            online = x["strokes"].to(device)
-        else:
-            online = Variable(x['online'].to(device), requires_grad=False).view(1, -1, 1) if config[
-                "online_augmentation"] and config["online_flag"] else None
-
-
-        loss, initial_err, pred_str = config["trainer"].test(line_imgs, online, gt, validation=validation, with_iterations=with_iterations)
+    for i, item in enumerate(dataloader):
+        LOGGER.debug(f"Test Iteration: {i}")
+        loss, initial_err, first_pred_str = config["trainer"].test(item, train=True)
 
         if plot_all:
-            imgs = x["line_imgs"][:, 0, :, :, :] if config["n_warp_iterations"] else x['line_imgs']
-            plot_recognition_images(imgs, f"{config['current_epoch']}_{i}_testing", pred_str, config["image_test_dir"], plot_count=4)
+            imgs = item["line_imgs"][:, 0, :, :, :] if config["n_warp_iterations"] else item['line_imgs']
+            plot_recognition_images(imgs, f"{config['current_epoch']}_{i}_testing", first_pred_str, config["image_test_dir"], plot_count=4)
 
         # Only do one test
         if config["TESTING"]:
@@ -89,8 +82,8 @@ def test(model, dataloader, idx_to_char, device, config, with_analysis=False, pl
         cer = config["stats"][config[f"designated_{stat}_cer"]].y[-1]  # most recent test CER
 
         if not plot_all:
-            imgs = x["line_imgs"][:, 0, :, :, :] if with_iterations else x['line_imgs']
-            plot_recognition_images(imgs, f"{config['current_epoch']}_testing", pred_str, config["image_test_dir"], plot_count=4)
+            imgs = item["line_imgs"][:, 0, :, :, :] if with_iterations else item['line_imgs']
+            plot_recognition_images(imgs, f"{config['current_epoch']}_testing", first_pred_str, config["image_test_dir"], plot_count=4)
 
         LOGGER.debug(config["stats"])
         return cer
@@ -107,27 +100,17 @@ def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
     test_freq = 6000 # in terms of instances
     next_update = test_freq
 
-    for i, x in enumerate(dataloader):
+    for i, item in enumerate(dataloader):
         LOGGER.debug(f"Training Iteration: {i}")
         config.counter.update(epochs=1)
-        try:
-            line_imgs = Variable(x['line_imgs'].type(dtype), requires_grad=False)
-            labels = Variable(x['labels'], requires_grad=False)  # numeric loss_indices version of ground truth
-            label_lengths = Variable(x['label_lengths'], requires_grad=False)
-            gt = x['gt']  # actual string ground truth
-            config["global_step"] += 1
-            config["global_instances_counter"] += line_imgs.shape[0]
-            local_instance_counter += line_imgs.shape[0]
-        except:
-            logger.info("Problem with epoch")
-            traceback.print_exc()
-
-        loss, initial_err, first_pred_str = config["trainer"].train(line_imgs, online, labels, label_lengths, gt, step=config["global_step"])
+        config["global_step"] += 1
+        config["global_instances_counter"] += item["line_imgs"].shape[0]
+        loss, initial_err, first_pred_str = config["trainer"].train(item, train=True)
 
         LOGGER.debug("Finished with batch")
 
         if i == 0:
-            plot_recognition_images(x['line_imgs'], f"{config['current_epoch']}_{local_instance_counter}_training", first_pred_str,
+            plot_recognition_images(item['line_imgs'], f"{config['current_epoch']}_{local_instance_counter}_training", first_pred_str,
                         dir=config["image_train_dir"], plot_count=4)
 
 
@@ -136,11 +119,10 @@ def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
         #     logger.info("Validating - mid epoch!")
         #     validate(config["model"], config.validation_dataloader, config["idx_to_char"], config["device"], config)
         #     next_update += test_freq
-        # 
+        #
         #     # Save out example images on the first go
-        #     plot_recognition_images(x['line_imgs'], f"{config['current_epoch']}_{local_instance_counter}_training", first_pred_str,
+        #     plot_recognition_images(item['line_imgs'], f"{config['current_epoch']}_{local_instance_counter}_training", first_pred_str,
         #                 dir=config["image_train_dir"], plot_count=4)
-
 
         # Update stats every 50 instances
         if (config["global_step"] % plot_freq == 0 and config["global_step"] > 0) or config["TESTING"] or config["SMALL_TRAINING"]:
@@ -161,7 +143,7 @@ def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
         training_cer = training_cer_list[-1]  # most recent training CER
 
         # Save out example images on the first go
-        plot_recognition_images(x['line_imgs'], f"{config['current_epoch']}_training", first_pred_str,
+        plot_recognition_images(item['line_imgs'], f"{config['current_epoch']}_training", first_pred_str,
                     dir=config["image_train_dir"], plot_count=4)
 
         return training_cer
@@ -171,7 +153,6 @@ def run_epoch(model, dataloader, ctc_criterion, optimizer, dtype, config):
 
 def make_dataloaders(config, device="cpu"):
     threads = 5
-    default_collate = lambda x: hw_dataset.collate(x, device=device)
     train_dataset = OnlineDataset(config.training_jsons,
                               char_to_idx=config["char_to_idx"],
                               root=config["training_root"],
@@ -188,6 +169,8 @@ def make_dataloaders(config, device="cpu"):
                               logger=config["logger"],
                               config=config,
                               **config.dataset)
+
+    default_collate = lambda x: online_dataset.collate_stroke(x, device=device, alphabet_size=train_dataset.alphabet_size)
 
     train_dataloader = DataLoader(train_dataset,
                                   batch_size=config["batch_size"],
@@ -256,6 +239,11 @@ def make_dataloaders(config, device="cpu"):
     config.n_test_points = int(n_test_points)
     config.n_validation_instances = len(validation_dataloader.dataset)
 
+    config.training_dataset = test_dataset
+    config.test_dataset = train_dataset
+    alphabet_size = config.alphabet_size if "alphabet_size" in config.keys() else max(
+        config.training_dataset.alphabet_size, config.test_dataset.alphabet_size)
+
     return train_dataloader, test_dataloader, train_dataset, test_dataset, validation_dataset, validation_dataloader
 
 
@@ -282,7 +270,7 @@ def load_data(config):
 
     assert config['n_train_instances'] > 0
 
-    logger.info("Number of test instances:", config.n_test_instances, '\n')
+    logger.info(f"Number of test instances: {config.n_test_instances}\n")
     return train_dataloader, test_dataloader, train_dataset, test_dataset, validation_dataset, validation_dataloader
 
 def check_gpu(config):
@@ -332,13 +320,9 @@ def build_model(config_path):
     config["decoder"] = Decoder(idx_to_char=config["idx_to_char"], beam=use_beam)
 
     # Prep optimizer
-    if True:
-        ctc = torch.nn.CTCLoss()
-        log_softmax = torch.nn.LogSoftmax(dim=2).to(device)
-        criterion = lambda x, y, z, t: ctc(log_softmax(x), y, z, t)
-    else:
-        from warpctc_pytorch import CTCLoss
-        criterion = CTCLoss()
+    ctc = torch.nn.CTCLoss()
+    log_softmax = torch.nn.LogSoftmax(dim=2).to(device)
+    criterion = lambda x, y, z, t: ctc(log_softmax(x), y, z, t)
 
     LOGGER.info("Building model...")
     # Create classifier
@@ -411,20 +395,10 @@ def build_model(config_path):
 
     LOGGER.info("Creating trainer...")
     # Create trainer
-    if config["style_encoder"] == "2StageNudger":
-        train_baseline = False if config["load_path"] else True
-        config["trainer"] = crnn.TrainerNudger(hw, config["nudger_optimizer"], config, criterion,
-                                               train_baseline=train_baseline)
-    elif config["style_encoder"] == "stroke":
-        config["trainer"] = trainer.TrainerStrokes(hw, optimizer, config, criterion)
-    else:
-        config["trainer"] = trainer.TrainerBaseline(hw, optimizer, config, criterion)
+    config["trainer"] = trainer_online.TrainerOnlineRecognition(hw, optimizer, config, criterion)
 
     # Alternative Models
-    if config["style_encoder"] == "basic_encoder":
-        config["secondary_criterion"] = CrossEntropyLoss()
-    else:  # config["style_encoder"] = False
-        config["secondary_criterion"] = None
+    config["secondary_criterion"] = None
     return config, train_dataloader, test_dataloader, train_dataset, test_dataset, validation_dataset, validation_dataloader
 
 def main(opts):
@@ -462,26 +436,28 @@ def main(opts):
                     logger.info("Saving most recent model")
                     save_model(config, bsf=False)
 
-                plt_loss(config)
+                plt_loss(config, plt_validation=False)
 
         # Final test after everything (test with extra warps/transforms/beam search etc.)
         final_test(config, test_dataloader)
 
 def final_test(config, test_dataloader):
-    its = max(config['n_warp_iterations'], 11)
-    collate_fn2 = lambda x: hw_dataset.collate(x, device=config.device,
-                                               n_warp_iterations=its,
-                                               warp=config["testing_warp"],
-                                               occlusion_freq=0,
-                                               occlusion_size=0,
-                                               occlusion_level=0)
-    test_dataloader.collate_fn = collate_fn2
+    # its = max(config['n_warp_iterations'], 11)
+    # collate_fn2 = lambda x: hw_dataset.collate(x, device=config.device,
+    #                                            n_warp_iterations=its,
+    #                                            warp=config["testing_warp"],
+    #                                            occlusion_freq=0,
+    #                                            occlusion_size=0,
+    #                                            occlusion_level=0)
+    # test_dataloader.collate_fn = collate_fn2
 
 
     ## Do a final test WITH warping and plot all test images
-    config["testing_warp"] = True
-    test(config["model"], test_dataloader, config["idx_to_char"], config["device"], config, plot_all=True, validation=False, with_iterations=True)
-    config["stats"][config["designated_test_cer"]].y[-1] *= -1 # shorthand
+    # config["testing_warp"] = True
+    # test(config["model"], test_dataloader, config["idx_to_char"], config["device"], config, plot_all=True, validation=False, with_iterations=True)
+    # config["stats"][config["designated_test_cer"]].y[-1] *= -1 # shorthand
+    # FIX THIS
+    validation_cer = test(config.model, test_dataloader, config.idx_to_char, config.device, config, with_analysis=False, plot_all=False, validation=True, with_iterations=False)
 
 def recreate():
     """ Simple function to load model and re-save it with some updates (e.g. model definition etc.)

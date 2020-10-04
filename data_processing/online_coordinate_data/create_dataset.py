@@ -111,7 +111,7 @@ class CreateDataset:
         else:
             raise Exception("JSON load problem")
 
-        self.output_dict = {"train": [], "test": []}
+        self.output_dict = {"train": [], "test": [], "val": []}
         self.max_strokes=max_strokes
         self.square=square
         self.render_images=render_images
@@ -195,6 +195,8 @@ class CreateDataset:
 
         if item["dataset"] in ["test"]:
             dataset = "test"
+        elif "val" in item["dataset"]:
+            dataset = "val"
         else: # "train", "val1", "val2"
             dataset = "train"
 
@@ -466,11 +468,20 @@ class CreateDataset:
         return all_results
 
     def final_process(self, all_results):
+        """ Only training and test set
+
+        Args:
+            all_results:
+
+        Returns:
+
+        """
+        max_length = None
         for item in all_results:
             if item is None:
                 continue
             # If test set is specified to be smaller, add to training set after a certain size
-            if item["dataset"] in ["train", "val1", "val2"] or (self.test_set_size and len(self.output_dict["test"]) > self.test_set_size):
+            if item["dataset"] in ["train", "val1", "val2", "val"] or (self.test_set_size and len(self.output_dict["test"]) > self.test_set_size):
                 self.output_dict["train"].append(item)
             elif item["dataset"] == "test":
                 self.output_dict["test"].append(item)
@@ -480,18 +491,57 @@ class CreateDataset:
                 break
 
         # PICKLE IT
-        pickle.dump(self.output_dict["train"], (self.output_folder / "train_online_coords.pickle").open("wb"))
-        pickle.dump(self.output_dict["test"], (self.output_folder / "test_online_coords.pickle").open("wb"))
+        pickle.dump(self.output_dict["train"][:max_length], (self.output_folder / "train_online_coords.pickle").open("wb"))
+        pickle.dump(self.output_dict["test"][:max_length], (self.output_folder / "test_online_coords.pickle").open("wb"))
 
         # ALSO JSON
         self.prep_for_json(self.output_dict["train"])
         self.prep_for_json(self.output_dict["test"])
 
         print("Creating train_online_coords.json and test_online_coords.json...")
-        json.dump(self.output_dict["train"], (self.output_folder / "train_online_coords.json").open("w"))
-        json.dump(self.output_dict["test"], (self.output_folder / "test_online_coords.json").open("w"))
+        json.dump(self.output_dict["train"][:max_length], (self.output_folder / "train_online_coords.json").open("w"))
+        json.dump(self.output_dict["test"][:max_length], (self.output_folder / "test_online_coords.json").open("w"))
 
         return self.output_dict
+
+    def final_process(self, all_results):
+        """ Adds a validation set
+
+        Args:
+            all_results:
+
+        Returns:
+
+        """
+        max_length = 50
+        for item in all_results:
+            if item is None:
+                continue
+            # If test set is specified to be smaller, add to training set after a certain size
+            if item["dataset"] in ["train"]:
+                self.output_dict["train"].append(item)
+            elif item["dataset"] == "test":
+                self.output_dict["test"].append(item)
+            elif item["dataset"] in ["val", "val1", "val2"]:
+                self.output_dict["val"].append(item)
+
+            ## This could mix training/test sets for partial stroke things -- nbd
+            # If they're both big enough, exit
+            if self.train_set_size and self.test_set_size and len(self.output_dict["test"]) > self.test_set_size and len(self.output_dict["train"]) > self.train_set_size:
+                break
+
+        # PICKLE IT
+        for vers in "test", "val", "train":
+            pickle.dump(self.output_dict[vers][:max_length], (self.output_folder / f"{vers}_online_coords.pickle").open("wb"))
+
+            # ALSO JSON
+            self.prep_for_json(self.output_dict[vers])
+
+            print("Creating train_online_coords.json and test_online_coords.json...")
+            json.dump(self.output_dict[vers][:max_length], (self.output_folder / f"{vers}_online_coords.json").open("w"))
+
+        return self.output_dict
+
 
     @staticmethod
     def worker_wrapper(arg):
@@ -623,11 +673,11 @@ def old():
 def true_test_data():
     strokes = None      # None=MAX stroke
     square = False      # Don't require square images
-    instances = None    # None=Use all available instances
+    instances = 1000    # None=Use all available instances
     test_set_size = None # use leftover test images in Training
     train_set_size = None
     combine_images = False # combine images to make them longer
-    RENDER = False
+    RENDER = False       # does the image need to be rendered?
     variant="NORMAL_TRAINING_TEST"
     if square:
         variant += "Square"
@@ -753,7 +803,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     PARALLEL = not args.testing
     print("parallel", PARALLEL)
-    new()
+    #new()
+    true_test_data()
     # synthetic("random")
     # synthetic("normal")
     #indic()

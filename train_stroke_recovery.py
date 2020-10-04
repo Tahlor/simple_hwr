@@ -354,6 +354,7 @@ def main(config_path, testing=False, eval_only=False, eval_dataset=None, load_pa
         train_dataloader, test_dataloader = build_data_loaders(folder, config.cnn_type, train_size, test_size, **config.dataset,
                                                 config=config)
 
+    # This is not exactly correct, but will work if alphabet of training or test is a subset of the other
     alphabet_size = config.alphabet_size if "alphabet_size" in config.keys() else max(config.training_dataset.alphabet_size, config.test_dataset.alphabet_size)
     model_kwargs = {"feature_map_dim": 1024,
                     "device":device,
