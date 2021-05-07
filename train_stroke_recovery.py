@@ -352,7 +352,7 @@ def main(config_path, testing=False, eval_only=False, eval_dataset=None, load_pa
 
     logger.info(("Current dataset: ", folder))
 
-    if not eval_only:
+    if not eval_only or eval_once:
         train_dataloader, test_dataloader = build_data_loaders(folder, config.cnn_type, train_size, test_size, **config.dataset,
                                                 config=config)
 
