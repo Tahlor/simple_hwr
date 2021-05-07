@@ -1,0 +1,10 @@
+Having the % of lines/words/characters/strokes/sub-strokes/GT pts where the predicted point is within some small threshold (e.g. 1-pixel at 60 line-height) is interpretable.
+% pixel agreement if you render the GT path and the predicted path as images is interpretable.
+
+# Just use image reconstruction
+    # Compare with L1 loss
+
+1. Generate DTW stats without L1
+2. Generate offline images
+3.
+

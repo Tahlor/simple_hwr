@@ -109,7 +109,6 @@ class TrainerOnlineRecognition(Trainer):
         # This comes out BATCH,WIDTH,VOCAB
         pred_logits = output_batch = model(strokes)
 
-
         preds_size = Variable(torch.IntTensor([pred_logits.size(1)] * pred_logits.size(0))) # <- what? isn't this square? why are we tiling the size?
 
         #output_batch = pred_logits.permute(1, 0, 2) # Width,Batch,Vocab -> Batch, Width, Vocab

@@ -36,11 +36,11 @@ def plot_stroke_points(x,y, start_points, square=False):
 
 pad_dpi = {"padding":.05, "dpi":71}
 
-def render_points_on_image(gts, img, save_path=None, img_shape=None, origin='lower', invert_y_image=False, show=False):
-    return render_points_on_image_pil(gts, img, save_path, img_shape, origin, invert_y_image, show=show)
+def render_points_on_image(gts, img, save_path=None, img_shape=None, origin='lower', invert_y_image=False, show=False, freq=1):
+    return render_points_on_image_pil(gts, img, save_path, img_shape, origin, invert_y_image, show=show, freq=freq)
 
 def render_points_on_image_matplotlib(gts, img_path, save_path=None, img_shape=None, origin='lower',
-                                      invert_y_image=False, show=False):
+                                      invert_y_image=False, show=False, freq=1):
     """ This is for when loading the images created by matplotlib
     Args:
         gts: SHOULD BE (VOCAB SIZE X WIDTH)
@@ -52,7 +52,7 @@ def render_points_on_image_matplotlib(gts, img_path, save_path=None, img_shape=N
 
     """
 
-    gts = np.array(gts)
+    gts = np.array(gts)[:, ::freq]
     x = gts[0]
     y = gts[1]
     start_points = gts[2]
@@ -91,7 +91,8 @@ def render_points_on_image_matplotlib(gts, img_path, save_path=None, img_shape=N
     if show:
         plt.show()
 
-def render_points_on_image_pil(gts, img, save_path=None, img_shape=None, origin='lower', invert_y_image=False, show=False):
+def render_points_on_image_pil(gts, img, save_path=None, img_shape=None, origin='lower',
+                               invert_y_image=False, show=False, freq=1):
     """ This is for when drawing on the images created by PIL, which doesn't have padding
         Origin needs to be lower for the GT points to plot right
 
@@ -106,7 +107,7 @@ def render_points_on_image_pil(gts, img, save_path=None, img_shape=None, origin=
     img = np.asarray(img)
     if invert_y_image:
         img = img[::-1]
-    gts = np.array(gts)
+    gts = np.array(gts)[:,::freq]
     height = img.shape[0]
     x = gts[0] * height
     y = gts[1] * height

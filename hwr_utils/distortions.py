@@ -298,7 +298,8 @@ def gaussian_noise(img, max_intensity=.1, logger=None):
     noise_mask = random_state.randn(*img.shape, ) * sd  # * 2 - max_intensity # min -occlusion, max occlusion
     noise_mask = np.clip(noise_mask, -1, 1) * 255/2
     noisy_img = np.clip(img + noise_mask, 0, 255)
-    return noisy_img
+    return noisy_img.astype(int)
+
 
     # elif noise_typ == "s&p":
     #     row, col, ch = image.shape

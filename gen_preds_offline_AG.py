@@ -1,3 +1,7 @@
+"""
+Alex Graves generation model
+"""
+
 import shutil
 from models.basic import CNN, BidirectionalRNN
 from torch import nn

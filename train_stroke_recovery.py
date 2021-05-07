@@ -220,10 +220,12 @@ def graph(batch,
         if plot_points:
             save_path = save_folder / f"{i}_{name}{suffix}.png" if save_folder else None
             if config.dataset.image_prep.lower().startswith('pil'):
-                render_points_on_image(gts=coords, img=gt_img.numpy() , save_path=save_path, origin='lower', invert_y_image=True, show=show)
+                render_points_on_image(gts=coords, img=gt_img.numpy() , save_path=save_path, origin='lower',
+                                       invert_y_image=True, show=show, freq=3)
             else:
                 render_points_on_image_matplotlib(gts=coords, img_path=img_path, save_path=save_path,
-                                       origin='lower', show=show)
+                                       origin='lower', show=show, freq=3
+                                                  )
 
     # Loop through each item in batch
     for i, el in enumerate(batch["paths"]):
@@ -310,7 +312,7 @@ def build_data_loaders(folder, cnn_type, train_size, test_size, **kwargs):
     config.test_dataset = test_dataset
     return train_dataloader, test_dataloader
 
-def main(config_path, testing=False, eval_only=False, eval_dataset=None, load_path_override=None):
+def main(config_path, testing=False, eval_only=False, eval_dataset=None, load_path_override=None, eval_once=False):
     global epoch, device, trainer, batch_size, output, loss_obj, config, LOGGER
     torch.cuda.empty_cache()
     os.chdir(ROOT_DIR)
@@ -460,10 +462,18 @@ def main(config_path, testing=False, eval_only=False, eval_dataset=None, load_pa
                 utils.save_stats_stroke(config, bsf=False)
             if config.test_only:
                 break
+
+    def eval_once():
+        check_epoch_build_loss(config, loss_exists=False)
+        test(test_dataloader)
+
     if not eval_only:
         main_loop()
     else:
-        return config
+        if eval_once:
+            eval_once()
+        else:
+            return config
 
     ## Bezier curve
     # Have network predict whether it has reached the end of a stroke or not

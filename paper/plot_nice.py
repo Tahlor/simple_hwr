@@ -1,3 +1,7 @@
+""" Plots seaborn graph over time
+
+"""
+
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
