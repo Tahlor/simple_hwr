@@ -18,7 +18,6 @@ from pathlib import Path
 import os
 from tqdm import tqdm
 from subprocess import Popen
-import h5py
 import math
 
 pid = os.getpid()

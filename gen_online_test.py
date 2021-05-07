@@ -31,12 +31,12 @@ def test(dataloader):
         loss, preds, y_hat, *_ = trainer.test(item, return_preds= i == 0) #
         graph_procedure(preds, item, epoch=None, _type="test",other=y_hat)
 
-train_stroke_recovery.test = test
-train_stroke_recovery.graph_procedure = graph_procedure
+# train_stroke_recovery.test = test
+# train_stroke_recovery.graph_procedure = graph_procedure
 
 if __name__=="__main__":
     opts = parse_args()
-    train_stroke_recovery.main(config_path=opts.config, testing=opts.testing, eval_once=True, eval_only=True)
+    main(config_path=opts.config, testing=opts.testing, eval_once=True, eval_only=True)
     
     # TO DO:
         # logging
