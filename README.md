@@ -17,8 +17,9 @@ bash Anaconda3-5.2.0-Linux-x86_64.sh
 
 ## Environment
 
-Install this from the repo:
-https://github.com/SeanNaren/warp-ctc
+~~Install this from the repo:
+https://github.com/SeanNaren/warp-ctc~~
+Use PyTorch CTC
 
 ### Configuration
 
