@@ -17,8 +17,9 @@ bash Anaconda3-5.2.0-Linux-x86_64.sh
 
 ## Environment
 
-Install this from the repo:
-https://github.com/SeanNaren/warp-ctc
+~~Install this from the repo:
+https://github.com/SeanNaren/warp-ctc~~
+Use PyTorch CTC
 
 ### Configuration
 
@@ -49,8 +50,27 @@ cd data
 ./generate-all-datasets.sh
 ```
 
-For the first IAM prompt, use your username and password for IAM Handwriting DB, then for the second IAM prompt, use your username and password for IAM On-Line Handwriting DB.
+For the first IAM prompt, use your username and password for IAM Handwriting DB, then for the second IAM prompt, use your username and password for IAM On-Line Handwriting DB. This script should download/extract/setup the IAM data.
 
+## Trajectory Recovery
+
+### Training
+Once the data is downloaded and the environment setup, setup a config file. You should then be able to train the model:
+
+```
+python train_stroke_recovery.py --config PATH_TO_CONFIG
+```
+
+### Evaluation
+An example config with a model and weights can be run for offline data (though you'll need to configure your offline data within the config).
+
+```
+python stroke_recovery_offline.py
+```
+
+Also see `python stroke_recovery_online.py`, which is similar but for online data.
+
+## Handwriting Recognition
 ### Train
 
 To train, run `train.py` with one of the configurations found in the `configs` folder.  For example:
