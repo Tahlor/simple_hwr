@@ -2,6 +2,7 @@
 test/swaps/
 # Data
 *.pt
+!example_weights/*.pt
 *.lnk*
 *.slurm
 ~archive/
