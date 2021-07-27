@@ -1,0 +1,170 @@
+load_path: ./example_weights/example_weights.pt
+TESTING: false
+load_optimizer: true
+reset_LR: false
+results_dir_override: null
+test_only: false
+offline_pred: false
+logging: info
+gpu_if_available: true
+output_folder: ./results
+epochs_to_run: 1000
+update_freq: 100
+save_freq: 1
+use_visdom: false
+debug: false
+truncate: false
+dataset: !!python/object/new:easydict.EasyDict
+  state:
+    img_height: 61
+    include_synthetic: true
+    num_of_channels: 1
+    image_prep: pil_with_distortion
+    adapted_gt_path: null
+    linewidth: null
+    gt_format: &id001
+    - x
+    - y
+    - stroke_number
+    - eos
+    batch_size: 28
+    extra_dataset: &id002
+    - online_coordinate_data/MAX_stroke_vFullSynthetic100kFull/train_online_coords.json
+    - online_coordinate_data/MAX_stroke_vBoosted2_normal/train_online_coords.json
+    - online_coordinate_data/MAX_stroke_vBoosted2_random/train_online_coords.json
+  dictitems:
+    img_height: 61
+    include_synthetic: true
+    num_of_channels: 1
+    image_prep: pil_with_distortion
+    adapted_gt_path: null
+    linewidth: null
+    gt_format: *id001
+    batch_size: 28
+    extra_dataset: *id002
+data_root_fsl: ../hw_data/strokes
+data_root_local: data
+dataset_folder: online_coordinate_data/MAX_stroke_vlargeTrnSetFull
+warp: true
+learning_rate: 1.1083333333333335e-05
+scheduler_step: null
+scheduler_gamma: 0.95
+test_size: null
+train_size: null
+batch_size: 28
+gt_format:
+- x
+- y
+- stroke_number
+- eos
+gt_opts:
+- null
+- null
+- null
+- cumsum
+pred_opts:
+- cumsum
+- null
+- sigmoid
+- null
+convolve_func: cumsum
+cumsum_window_size: 21
+first_loss_epochs: 1
+training_nn_loss: false
+cnn_type: default64
+coordconv: true
+coordconv_method: y_abs
+coordconv_0_center: false
+visdom_port: 9001
+name: dtw_adaptive_no_truncation
+SMALL_TRAINING: false
+save_count: 0
+coord_conv: false
+test_nn_loss: true
+test_nn_loss_freq: 1
+start_of_stroke_method: normal
+interpolated_sos: normal
+model_name: normal
+stroke_model_pt_override: null
+stroke_model_config: null
+test_freq: 1
+experiment: dtw_adaptive_no_truncation
+full_specs: 20200508_190735-dtw_adaptive_no_truncation
+results_dir: ./results/dtw_adaptive_no_truncation/20200508_190735-dtw_adaptive_no_truncation
+output_predictions: false
+log_dir: ./results/dtw_adaptive_no_truncation/20200508_190735-dtw_adaptive_no_truncation
+coordconv_opts: !!python/object/new:easydict.EasyDict
+  state:
+    zero_center: false
+    method: y_abs
+  dictitems:
+    zero_center: false
+    method: y_abs
+data_root: ../hw_data/strokes
+pred_format:
+- x
+- y
+- stroke_number
+- eos
+vocab_size: 4
+loss_fns:
+- !!python/object/new:easydict.EasyDict
+  state:
+    name: dtw_adaptive
+    coef: 1
+    gts: &id003
+    - x
+    - y
+    dtw_mapping_basis: &id004
+    - 0
+    - 1
+    cross_entropy_indices: &id005
+    - 2
+    relativefy_cross_entropy_gt: true
+    window_size: 40
+    barron: false
+    loss_indices: &id006
+    - 0
+    - 1
+    monitor_only: false
+  dictitems:
+    name: dtw_adaptive
+    coef: 1
+    gts: *id003
+    dtw_mapping_basis: *id004
+    cross_entropy_indices: *id005
+    relativefy_cross_entropy_gt: true
+    window_size: 40
+    barron: false
+    loss_indices: *id006
+    monitor_only: false
+- !!python/object/new:easydict.EasyDict
+  state:
+    name: cross_entropy
+    gts: &id007
+    - eos
+    activation: sigmoid
+    targ_key_override: gt
+    loss_indices: &id008
+    - 3
+    coef: 1
+    monitor_only: false
+  dictitems:
+    name: cross_entropy
+    gts: *id007
+    activation: sigmoid
+    targ_key_override: gt
+    loss_indices: *id008
+    coef: 1
+    monitor_only: false
+loss_fns2: null
+pred_relativefy:
+- 0
+device: cuda
+n_train_instances: 252293
+n_test_instances: 501
+n_test_points: 256450
+global_counter: 531030
+starting_epoch: 135
+current_epoch: 135
+main_model_path: ./results/dtw_adaptive_no_truncation/20200508_190735-dtw_adaptive_no_truncation/dtw_adaptive_no_truncation_model.pt

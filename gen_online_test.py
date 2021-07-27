@@ -21,18 +21,22 @@ from train_stroke_recovery import *
 
 def graph_procedure(preds, item, epoch=None, _type="train", other=None):
     # GRAPH
+    config = train_stroke_recovery.config
     if epoch is None:
         epoch = config.counter.epochs
     preds_to_graph = [p.permute([1, 0]) for p in preds]
     save_folder = graph(item, config=config, preds=preds_to_graph, _type=_type, epoch=epoch, max_plots=np.inf)
 
 def test(dataloader):
+    trainer = train_stroke_recovery.trainer
+    print("TESTING OVERLOAD")
     for i, item in enumerate(dataloader):
+        print(i)
         loss, preds, y_hat, *_ = trainer.test(item, return_preds= i == 0) #
         graph_procedure(preds, item, epoch=None, _type="test",other=y_hat)
 
-# train_stroke_recovery.test = test
-# train_stroke_recovery.graph_procedure = graph_procedure
+train_stroke_recovery.test = test
+train_stroke_recovery.graph_procedure = graph_procedure
 
 if __name__=="__main__":
     opts = parse_args()

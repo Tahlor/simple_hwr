@@ -206,17 +206,30 @@ def graph(batch,
         # gt_img = torch.flip(gt_img, (0,))
 
         # Red images
-        bg = overlay_images(background_img=gt_img.numpy(), foreground_gt=coords.transpose())
-        if save_folder:
-            bg.save(save_folder / f"overlay{suffix}_{i}_{name}.png")
+        gt_np = gt_img.numpy()
+        bg = overlay_images(background_img=gt_np, foreground_gt=coords.transpose())
 
         if show:
             plt.figure(dpi=300)
             plt.imshow(bg)
             plt.show()
 
+        # Pure reconstruction
+        reconstruction = overlay_images(background_img=np.ones(gt_np.shape),
+                                        foreground_gt=coords.transpose(), color=[0,0,0],
+                                        linewidth=2)
+        original = overlay_images(background_img=gt_np, foreground_gt=None)
+
+        if save_folder:
+            bg.save(save_folder / f"overlay{suffix}_{i}_{name}.png")
+            reconstruction.save(save_folder / f"reconstruction_{name}.png")
+            original.save(save_folder / f"original_{name}.png")
+
         ## Undo relative positions for X for graphing
         ## In normal mode, the cumulative sum has already been taken
+
+        #coords[2:] = 0
+
         if plot_points:
             save_path = save_folder / f"{i}_{name}{suffix}.png" if save_folder else None
             if config.dataset.image_prep.lower().startswith('pil'):
