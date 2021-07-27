@@ -7,7 +7,7 @@ test_only: false
 offline_pred: false
 logging: info
 gpu_if_available: true
-output_folder: ./results
+output_folder: ./example_weights/results
 epochs_to_run: 1000
 update_freq: 100
 save_freq: 1
@@ -90,9 +90,9 @@ stroke_model_config: null
 test_freq: 1
 experiment: dtw_adaptive_no_truncation
 full_specs: 20200508_190735-dtw_adaptive_no_truncation
-results_dir: ./results/dtw_adaptive_no_truncation/20200508_190735-dtw_adaptive_no_truncation
+results_dir: ./example_weights/results
 output_predictions: false
-log_dir: ./results/dtw_adaptive_no_truncation/20200508_190735-dtw_adaptive_no_truncation
+log_dir: ./example_weights/logs
 coordconv_opts: !!python/object/new:easydict.EasyDict
   state:
     zero_center: false
@@ -167,4 +167,4 @@ n_test_points: 256450
 global_counter: 531030
 starting_epoch: 135
 current_epoch: 135
-main_model_path: ./results/dtw_adaptive_no_truncation/20200508_190735-dtw_adaptive_no_truncation/dtw_adaptive_no_truncation_model.pt
+main_model_path: ./example_weights/example_weights.pt

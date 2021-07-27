@@ -21,6 +21,12 @@ import os
 from tqdm import tqdm
 from subprocess import Popen
 
+# Define root eval_img_path_override where the offline_data is and where the GT's are
+PROJ_ROOT = os.path.dirname(os.path.realpath(__file__))
+eval_img_path_override = PROJ_ROOT / Path("data/prepare_IAM_Lines/lines/")
+eval_gt_path_override = PROJ_ROOT / Path("data/prepare_IAM_Lines/gts/lines/txt")
+config_path = "/media/data/GitHub/simple_hwr/example_weights/config.yaml"
+model_load_path_override = ""
 
 pid = os.getpid()
 
@@ -29,11 +35,12 @@ def main(config_path):
     global epoch, device, trainer, batch_size, output, loss_obj, x_relative_positions, config, LOGGER
     torch.cuda.empty_cache()
 
-    PROJ_ROOT= os.path.dirname(os.path.realpath(__file__))
-    config_path = "/media/data/GitHub/simple_hwr/example_weights/config.yaml"
-
     config = utils.load_config(config_path, hwr=False)
-    load_path_override = config.load_path; _load_path_override=Path(load_path_override)
+    if model_load_path_override:
+        load_path_override = model_load_path_override
+    else:
+        load_path_override = config.load_path
+    _load_path_override=Path(load_path_override)
     OUTPUT =Path(config.results_dir)
 
     _t = utils.increment_path(name="eval", base_path=OUTPUT / "imgs/current")
@@ -59,21 +66,17 @@ def main(config_path):
     output = utils.increment_path(name="Run", base_path=Path(load_path_override).parent)
     #output = Path(config.results_dir)
     output.mkdir(parents=True, exist_ok=True)
-    folder = Path(config.dataset_folder)
 
-    # OVERLOAD
-    if True:
-        folder = PROJ_ROOT / Path("data/prepare_IAM_Lines/lines/")
-        gt_path = PROJ_ROOT / Path("data/prepare_IAM_Lines/gts/lines/txt")
-    else:
-        folder = Path("/media/data/GitHub/simple_hwr/data/prepare_IAM_Lines/words")
-        gt_path = PROJ_ROOT / Path("data/prepare_IAM_Lines/gts/words")
+    # Image data path overrides
+    folder = Path(config.dataset_folder) if not eval_img_path_override else eval_img_path_override
+    gt_path = Path(config.dataset_folder) if not eval_gt_path_override else eval_gt_path_override
+
 
     #model = StrokeRecoveryModel(vocab_size=vocab_size, device=device, cnn_type=config.cnn_type, first_conv_op=config.coordconv, first_conv_opts=config.coordconv_opts).to(device)
     model = StrokeRecoveryModel(**config.model_definition).to(device)
     ## Loader
     logger.info(("Current dataset: ", folder))
-    # Dataset - just expecting a folder
+    # Dataset - just expecting a eval_img_path_override
     eval_dataset=BasicDataset(root=folder, cnn=model.cnn, )
     next(iter(eval_dataset))
     eval_loader=DataLoader(eval_dataset,
@@ -135,10 +138,7 @@ NO_KD = True
 def eval_only(dataloader, model):
     distances = []
     final_out = []
-    if Path(KDTREE_PATH).exists() and LOAD_KDTREE:
-        kd_trees = np.load(KDTREE_PATH, allow_pickle=True).item()
-    else:
-        kd_trees = {}
+    kd_trees = {}
     for i, item in enumerate(tqdm(dataloader)):
         preds = TrainerStrokeRecovery.eval(item["line_imgs"],
                                            model,
@@ -257,7 +257,4 @@ def load_all_gts(gt_path):
     return GT_DATA
 
 if __name__=="__main__":
-    opts = parse_args()
-    main(config_path=opts.config)
-    # gt_path = Path("./data/prepare_IAM_Lines/gts/lines/txt")
-    # load_all_gts(gt_path)
+    main(config_path=config_path)

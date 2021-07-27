@@ -138,7 +138,7 @@ def fake_gt():
 
 class BasicDataset(Dataset):
     """ The kind of dataset used for e.g. offline data. Just looks at images, and calculates the output size etc.
-
+        By default, it finds all "PNG" files in the root directory (recursively)
     """
     def __init__(self, root, extension=".png", cnn=None, pickle_file=None, adapted_gt_path=None, rebuild=False,
                  crop=False, render_image=False,

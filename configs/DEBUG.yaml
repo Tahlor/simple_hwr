@@ -1,15 +1,5 @@
-## TO DO IMMEDIATELY:
-# DEBUG TEST/TRAIN LOSS
-# RELATIVE COORDS CONFIG
-
 # Load model
-load_path: /fslhome/tarch/fsl_groups/fslg_hwr/compute/taylor_simple_hwr/RESULTS/20200301-PRETRAIN/normal_preload_model.pt
-load_path: /media/data/GitHub/simple_hwr/RESULTS/pretrained/dtw_train_2.9/normal_preload_model.pt
-load_path: /fslhome/tarch/fsl_groups/fslg_hwr/compute/taylor_simple_hwr/RESULTS/20200301-PRETRAIN/normal_preload_model.pt
-load_path: "/home/taylor/github/simple_hwr/RESULTS/ver5/March 10/normal_v4_model.part"
-load_path: /home/taylor/github/simple_hwr/RESULTS/pretrained/normal_SOS_EOS_ORDERED_brodie_model.pt
 TESTING: true # this is for debugging, do it on a small dataset
-load_path: ./RESULTS/pretrained/adapted_v2/dtw_adaptive_new2_restartLR_model.pt
 load_path: ./renderer/stroke_models/RESUME_model.pt
 
 load_optimizer: true # load LR and per-parameter LR's from saved state
@@ -157,9 +147,3 @@ coordconv_0_center: false
 
 # Visdom
 visdom_port: 9001
-
-## Default
-# L1, DTW, SSL etc.
-## Try Barron loss
-## Try SoftDTW
-## Need to compare NN loss probably
