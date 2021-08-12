@@ -12,7 +12,6 @@ import argparse
 from hwr_utils.hwr_logger import logger
 from loss_module import losses
 from models import start_points, stroke_model
-from models.AlexGraves import AlexGravesCombined
 from hwr_utils.stroke_plotting import *
 from hwr_utils.utils import update_LR, reset_LR
 from hwr_utils.stroke_plotting import draw_from_gt
@@ -378,6 +377,9 @@ def main(config_path, testing=False, eval_only=False, eval_dataset=None, load_pa
                     "first_conv_opts":config.coordconv_opts,
                     "alphabet_dim": alphabet_size,
                     **config.model_definition}
+
+    if config.model_name == "AlexGravesCombined":
+        from models.AlexGraves import AlexGravesCombined
 
     model_dict = {"start_point_lstm": start_points.StartPointModel,
               "start_point_lstm2": start_points.StartPointModel2,

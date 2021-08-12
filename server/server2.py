@@ -23,24 +23,14 @@ from subprocess import Popen
 
 pid = os.getpid()
 
-PROJ_ROOT = Path(os.path.dirname(os.path.realpath(__file__))).parent
-CONFIG_PATH = PROJ_ROOT / "example_weights/config.yaml"
-MODEL_PATH = PROJ_ROOT / "example_weights/example_weights.pt"
-OUTPUT_PATH = "./server/results"
-INPUT_PATH = "./server/input"
-
-OUTPUT_PATH = r"/home/mason/Desktop/redis_stroke_recovery/results"
-INPUT_PATH = r"/home/mason/Desktop/redis_stroke_recovery/raw"
-
-Path(INPUT_PATH).mkdir(exist_ok=True, parents=True)
-
 #@debugger
 def main(config_path):
     global epoch, device, trainer, batch_size, output, loss_obj, x_relative_positions, config, LOGGER
     torch.cuda.empty_cache()
 
-    config_path = CONFIG_PATH
-    load_path_override = MODEL_PATH
+    PROJ_ROOT= Path(os.path.dirname(os.path.realpath(__file__)))
+    config_path = PROJ_ROOT / "server/RESUME.yaml"
+    load_path_override = PROJ_ROOT /  "server/RESUME_model.pt"
 
     for load_path_override in [load_path_override]:
         _load_path_override = Path(load_path_override)
@@ -55,8 +45,7 @@ def main(config_path):
 
         batch_size = config.batch_size
 
-        vocab_size = config.feature_map_dim
-        # vocab_size = config.vocab_size
+        vocab_size = config.vocab_size
 
         device=torch.device(config.device)
         #device=torch.device("cpu")
@@ -87,11 +76,13 @@ def main(config_path):
         model.eval()
         wait(model)
 
+
+OUTPUT_PATH = "/home/mason/Desktop/redis_stroke_recovery/results"
+INPUT_PATH = "/home/mason/Desktop/redis_stroke_recovery/raw"
 failed = defaultdict(int)
 give_up = []
-
 def wait(model):
-    #     output_image_path = "/home/mason/Desktop/redis_stroke_recovery/data/a01-000u-00.png"
+    #     img_path = "/home/mason/Desktop/redis_stroke_recovery/data/a01-000u-00.png"
     while True:
         try:
             completed_files = [x.stem for x in Path(OUTPUT_PATH).rglob("*.png")]
@@ -108,7 +99,7 @@ def wait(model):
                 shutil.copy("./server/Well-that-didn-t-work.png", Path(OUTPUT_PATH) / f"0_{item.stem}.png")
                 shutil.copy("./server/Well-that-didn-t-work.png", Path(OUTPUT_PATH) / f"overlay_0_{item.stem}.png")
                 give_up.append(item)
-        time.sleep(3)
+        time.sleep(1)
 
 def do_one(model, img_path):
     # Prep image
