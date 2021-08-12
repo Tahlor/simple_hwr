@@ -992,6 +992,7 @@ def test_padding(pad_list, func):
     return x #[0,0]
 
 TYPE = np.float32 #np.float16
+
 def collate_stroke(batch, device="cpu", ignore_alphabet=False, gt_opts=None, post_length_buffer=20, alphabet_size=0):
     """ Pad ground truths with 0's
         Report lengths to get accurate average loss
