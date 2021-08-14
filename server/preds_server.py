@@ -2,24 +2,12 @@ from collections import defaultdict
 import shutil
 import traceback
 import time
-from models.basic import CNN, BidirectionalRNN
-from torch import nn
-from models.CoordConv import CoordConv
-from hwr_utils import visualize
-from torch.utils.data import DataLoader
 from trainers import TrainerStrokeRecovery
-from hwr_utils.stroke_dataset import BasicDataset
 from hwr_utils.stroke_recovery import *
 from hwr_utils import utils
-from torch.optim import lr_scheduler
 from models.stroke_model import StrokeRecoveryModel
 from train_stroke_recovery import parse_args, graph
-from hwr_utils.hwr_logger import logger
-from pathlib import Path
-import os
 from hwr_utils.stroke_dataset import *
-from tqdm import tqdm
-from subprocess import Popen
 
 pid = os.getpid()
 
@@ -61,9 +49,8 @@ def main(config_path):
         device=torch.device(config.device)
         #device=torch.device("cpu")
 
-        output = utils.increment_path(name="Run", base_path=Path(load_path_override).parent)
-        #output = Path(config.results_dir)
-        output.mkdir(parents=True, exist_ok=True)
+        #output = utils.increment_path(name="Run", base_path=Path(load_path_override).parent)
+        #output.mkdir(parents=True, exist_ok=True)
         folder = Path(config.dataset_folder)
 
         # OVERLOAD
@@ -92,6 +79,8 @@ give_up = []
 
 def wait(model):
     #     output_image_path = "/home/mason/Desktop/redis_stroke_recovery/data/a01-000u-00.png"
+    test_image = "/home/mason/Desktop/redis_stroke_recovery/TRACE.jpg"
+    do_one(model, test_image)
     while True:
         try:
             completed_files = [x.stem for x in Path(OUTPUT_PATH).rglob("*.png")]
@@ -105,17 +94,23 @@ def wait(model):
             failed[item.stem] += 1
             traceback.print_exc()
             if not f"0_{item.stem}" in completed_files and failed[item.stem] > 5:
-                shutil.copy("./server/Well-that-didn-t-work.png", Path(OUTPUT_PATH) / f"0_{item.stem}.png")
-                shutil.copy("./server/Well-that-didn-t-work.png", Path(OUTPUT_PATH) / f"overlay_0_{item.stem}.png")
+                shutil.copy(PROJ_ROOT / "./server/Well-that-didn-t-work.png", Path(OUTPUT_PATH) / f"0_{item.stem}.png")
+                shutil.copy(PROJ_ROOT / "./server/Well-that-didn-t-work.png", Path(OUTPUT_PATH) / f"overlay_0_{item.stem}.png")
                 give_up.append(item)
-        time.sleep(3)
+        time.sleep(2)
 
 def do_one(model, img_path):
     # Prep image
     # token = "ABC"
     # output_path = f"{token}.png"
-    item = BasicDataset.get_item_from_path(image_path=img_path, output_path=img_path)
-    item['line_imgs'] = Tensor(item['line_img']).unsqueeze(0).permute(0,3,1,2)
+    if not Path(img_path).exists():
+        print("File doesn't exist")
+        return False
+    #item = BasicDataset.get_item_from_path(image_path=img_path, output_path=img_path, crop=True, contrast=4, brightness=1.3, clean=True)
+    item = BasicDataset.get_item_from_path(image_path=img_path, output_path=img_path, crop=True, contrast=False, brightness=False, clean=True)
+    # crop / contrast
+    img = item['line_img']
+    item['line_imgs'] = Tensor(img).unsqueeze(0).permute(0,3,1,2)
     eval_only(item, model)
 
 def eval_only(item, model):

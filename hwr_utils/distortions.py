@@ -16,17 +16,30 @@ INTERPOLATION = {
 }
 cv2.setNumThreads(0)
 
-def change_contrast(img, min_contrast=.25, max_contrast=1.3, contrast=None):
+def preprocess_img(img):
     if isinstance(img, np.ndarray):
         if img.ndim > 2:
             assert img.shape[-1]==1
             img = img[:, :, 0]
         img = Image.fromarray(np.uint8(img), "L")
+    return img
+
+def change_contrast(img, min_contrast=.25, max_contrast=1.3, contrast=None):
+    img = preprocess_img(img)
     enhancer = ImageEnhance.Contrast(img)
     if contrast is None:
         contrast = np.random.rand()*(max_contrast-min_contrast)+min_contrast
     #Image.fromarray(np.array(enhancer.enhance(contrast))).show()
     return np.array(enhancer.enhance(contrast))
+
+def change_brightness(img, brightness=1, axes=2):
+    img = preprocess_img(img)
+    enhancer = ImageEnhance.Brightness(img)
+
+    output=np.array(enhancer.enhance(brightness))
+    if axes > output.ndim:
+        output = output[:,:, np.newaxis]
+    return output
 
 def occlude(img, occlusion_size=1, occlusion_freq=.5, occlusion_level=1, logger=None, noise_type=None):
     if occlusion_freq:
@@ -351,9 +364,8 @@ def elastic_transform(image, alpha=2.5, sigma=1.1, random_state=None):
 
     return map_coordinates(image, indices, order=1, cval=255).reshape(shape)
 
-def get_test_image():
-    input_image = "data/prepare_IAM_Lines/lines/m04/m04-061/m04-061-02.png"
-    input_image = "../data/sample_offline/a05-039-00.png"
+def get_test_image(input_image="../data/sample_offline/a05-039-00.png"):
+    #input_image = "data/prepare_IAM_Lines/lines/m04/m04-061/m04-061-02.png"
     #input_image = "data/sample_online/0_6cfd6616717146a687391b52621340c1.tif"
     img = cv2.imread(input_image, 0)
     plot(img, "Original image")
@@ -409,12 +421,21 @@ def test_gaussian(img):
 
 def test_contrast(img):
     for i in range(0,5):
-        contrast = change_contrast(img, contrast=(i+1)*.2)
+        #contrast = change_contrast(img, contrast=(i+1)*.2)
+        b = 1+(i+1)*.2
+        print(b)
+        contrast = change_brightness(img, brightness=b, axes=2)
         plot(contrast, "contrast")
 
+def test_bc(img):
+    contrast = change_contrast(img, contrast=2)
+    contrast = change_brightness(contrast, brightness=1.4, axes=2)
+    plot(contrast, "contrast")
+
+
 if __name__ == "__main__":
-    img = get_test_image()
-    test_contrast(img)
+    img = get_test_image(input_image="/home/mason/Desktop/redis_stroke_recovery/TRACE.jpg")
+    test_bc(img)
 
     #test_wavy_distortion(img)
     # img = get_test_image()
