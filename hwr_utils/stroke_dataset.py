@@ -32,7 +32,8 @@ project_root = script_path.parent.parent
 def read_img(image_path, num_of_channels=1, target_height=61, resize=True,
              add_distortion=False,
              vertical_pad=False,
-             crop=False):
+             crop=False,
+             clean=False):
     """
 
     Args:
@@ -61,6 +62,10 @@ def read_img(image_path, num_of_channels=1, target_height=61, resize=True,
             raise Exception(f"{image_path} does not exist")
         logging.warning(f"Warning: image is None: {image_path}")
         return None
+
+    if clean:
+        img = distortions.change_contrast(img, contrast=3)
+        img = distortions.change_brightness(img, brightness=1.23, axes=2)
 
     if crop:
         img = distortions.cropy(distortions.crop(img, padding=0),padding=0)
@@ -135,6 +140,11 @@ def fake_gt():
     gt2[:, 3] = [0, 0, 0, 0, 0, 0, 0, 0, 1]
     return gt2
 
+def to_255(img):
+    return (img + 1) * 127.5
+
+def from_255(img):
+    return img / 127.5 - 1.0
 
 class BasicDataset(Dataset):
     """ The kind of dataset used for e.g. offline data. Just looks at images, and calculates the output size etc.
@@ -194,7 +204,7 @@ class BasicDataset(Dataset):
             self.data[i]["id"] = Path(item['image_path']).stem
 
     @staticmethod
-    def get_item_from_path(image_path, output_path, crop=False):
+    def get_item_from_path(image_path, output_path, crop=False, contrast=4, brightness=False, clean=False):
         """ This is used in the server right now?
 
         Args:
@@ -205,12 +215,15 @@ class BasicDataset(Dataset):
 
         """
 
-        img = read_img(image_path, num_of_channels=1, vertical_pad=True, crop=crop)
+        img = read_img(image_path, num_of_channels=1, vertical_pad=True, crop=crop, clean=clean)
         image_path = output_path
         # plt.imshow(img[:,:,0], cmap="gray")
         # plt.show()
+        if contrast:
+            img = (distortions.change_contrast((img+1)*127.5, contrast=contrast)/ 127.5 - 1.0)[:,:,np.newaxis]
+        if brightness:
+            img = from_255(distortions.change_brightness(img=to_255(img), brightness=brightness, axes=3))
 
-        img = (distortions.change_contrast((img+1)*127.5, contrast=2)/ 127.5 - 1.0)[:,:,np.newaxis]
         # plt.imshow(img, cmap="gray")
         # plt.show()
         # STPO

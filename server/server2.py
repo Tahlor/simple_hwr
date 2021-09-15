@@ -2,33 +2,35 @@ from collections import defaultdict
 import shutil
 import traceback
 import time
+from models.basic import CNN, BidirectionalRNN
+from torch import nn
+from models.CoordConv import CoordConv
+from hwr_utils import visualize
+from torch.utils.data import DataLoader
 from trainers import TrainerStrokeRecovery
+from hwr_utils.stroke_dataset import BasicDataset
 from hwr_utils.stroke_recovery import *
 from hwr_utils import utils
+from torch.optim import lr_scheduler
 from models.stroke_model import StrokeRecoveryModel
 from train_stroke_recovery import parse_args, graph
+from hwr_utils.hwr_logger import logger
+from pathlib import Path
+import os
 from hwr_utils.stroke_dataset import *
+from tqdm import tqdm
+from subprocess import Popen
 
 pid = os.getpid()
-
-PROJ_ROOT = Path(os.path.dirname(os.path.realpath(__file__))).parent
-CONFIG_PATH = PROJ_ROOT / "example_weights/config.yaml"
-MODEL_PATH = PROJ_ROOT / "example_weights/example_weights.pt"
-OUTPUT_PATH = "./server/results"
-INPUT_PATH = "./server/input"
-
-OUTPUT_PATH = r"/home/mason/Desktop/redis_stroke_recovery/results"
-INPUT_PATH = r"/home/mason/Desktop/redis_stroke_recovery/raw"
-
-Path(INPUT_PATH).mkdir(exist_ok=True, parents=True)
 
 #@debugger
 def main(config_path):
     global epoch, device, trainer, batch_size, output, loss_obj, x_relative_positions, config, LOGGER
     torch.cuda.empty_cache()
 
-    config_path = CONFIG_PATH
-    load_path_override = MODEL_PATH
+    PROJ_ROOT= Path(os.path.dirname(os.path.realpath(__file__)))
+    config_path = PROJ_ROOT / "server/RESUME.yaml"
+    load_path_override = PROJ_ROOT /  "server/RESUME_model.pt"
 
     for load_path_override in [load_path_override]:
         _load_path_override = Path(load_path_override)
@@ -43,14 +45,14 @@ def main(config_path):
 
         batch_size = config.batch_size
 
-        vocab_size = config.feature_map_dim
-        # vocab_size = config.vocab_size
+        vocab_size = config.vocab_size
 
         device=torch.device(config.device)
         #device=torch.device("cpu")
 
-        #output = utils.increment_path(name="Run", base_path=Path(load_path_override).parent)
-        #output.mkdir(parents=True, exist_ok=True)
+        output = utils.increment_path(name="Run", base_path=Path(load_path_override).parent)
+        #output = Path(config.results_dir)
+        output.mkdir(parents=True, exist_ok=True)
         folder = Path(config.dataset_folder)
 
         # OVERLOAD
@@ -74,13 +76,13 @@ def main(config_path):
         model.eval()
         wait(model)
 
+
+OUTPUT_PATH = "/home/mason/Desktop/redis_stroke_recovery/results"
+INPUT_PATH = "/home/mason/Desktop/redis_stroke_recovery/raw"
 failed = defaultdict(int)
 give_up = []
-
 def wait(model):
-    #     output_image_path = "/home/mason/Desktop/redis_stroke_recovery/data/a01-000u-00.png"
-    test_image = "/home/mason/Desktop/redis_stroke_recovery/TRACE.jpg"
-    do_one(model, test_image)
+    #     img_path = "/home/mason/Desktop/redis_stroke_recovery/data/a01-000u-00.png"
     while True:
         try:
             completed_files = [x.stem for x in Path(OUTPUT_PATH).rglob("*.png")]
@@ -94,23 +96,17 @@ def wait(model):
             failed[item.stem] += 1
             traceback.print_exc()
             if not f"0_{item.stem}" in completed_files and failed[item.stem] > 5:
-                shutil.copy(PROJ_ROOT / "./server/Well-that-didn-t-work.png", Path(OUTPUT_PATH) / f"0_{item.stem}.png")
-                shutil.copy(PROJ_ROOT / "./server/Well-that-didn-t-work.png", Path(OUTPUT_PATH) / f"overlay_0_{item.stem}.png")
+                shutil.copy("./server/Well-that-didn-t-work.png", Path(OUTPUT_PATH) / f"0_{item.stem}.png")
+                shutil.copy("./server/Well-that-didn-t-work.png", Path(OUTPUT_PATH) / f"overlay_0_{item.stem}.png")
                 give_up.append(item)
-        time.sleep(2)
+        time.sleep(1)
 
 def do_one(model, img_path):
     # Prep image
     # token = "ABC"
     # output_path = f"{token}.png"
-    if not Path(img_path).exists():
-        print("File doesn't exist")
-        return False
-    #item = BasicDataset.get_item_from_path(image_path=img_path, output_path=img_path, crop=True, contrast=4, brightness=1.3, clean=True)
-    item = BasicDataset.get_item_from_path(image_path=img_path, output_path=img_path, crop=True, contrast=False, brightness=False, clean=True)
-    # crop / contrast
-    img = item['line_img']
-    item['line_imgs'] = Tensor(img).unsqueeze(0).permute(0,3,1,2)
+    item = BasicDataset.get_item_from_path(image_path=img_path, output_path=img_path)
+    item['line_imgs'] = Tensor(item['line_img']).unsqueeze(0).permute(0,3,1,2)
     eval_only(item, model)
 
 def eval_only(item, model):

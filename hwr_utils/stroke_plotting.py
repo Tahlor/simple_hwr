@@ -12,9 +12,9 @@ from hwr_utils.stroke_recovery import *
 from hwr_utils import utils, stroke_recovery
 from torch import Tensor
 
-def plot_stroke_points(x,y, start_points, square=False):
-    x_middle_strokes = x[np.where(start_points == 0)]
-    y_middle_strokes = y[np.where(start_points == 0)]
+def plot_stroke_points(x,y, start_points, square=False, freq=1):
+    x_middle_strokes = x[np.where(start_points == 0)][::freq]
+    y_middle_strokes = y[np.where(start_points == 0)][::freq]
     x_start_strokes = x[np.where(start_points == 1)]
     y_start_strokes = y[np.where(start_points == 1)]
 
@@ -23,6 +23,7 @@ def plot_stroke_points(x,y, start_points, square=False):
     max_y = np.max(y)
     head_length = .01*max_y
     head_width = .02*max_y
+    x=x[::freq]; y=y[::freq]
     for i, ((x1, y1), (x2, y2)) in enumerate(zip(zip(x, y),zip(x[1:], y[1:]))):
         if start_points[1:][i]:
             continue
@@ -107,7 +108,7 @@ def render_points_on_image_pil(gts, img, save_path=None, img_shape=None, origin=
     img = np.asarray(img)
     if invert_y_image:
         img = img[::-1]
-    gts = np.array(gts)[:,::freq]
+    gts = np.array(gts)
     height = img.shape[0]
     x = gts[0] * height
     y = gts[1] * height
@@ -117,7 +118,7 @@ def render_points_on_image_pil(gts, img, save_path=None, img_shape=None, origin=
     plt.imshow(img, cmap="gray", origin=origin, interpolation="bicubic")
 
     start_points = gts[2] if gts.shape[0] > 2 else np.zeros(gts.shape[-1])
-    plot_stroke_points(x,y,start_points)
+    plot_stroke_points(x,y,start_points, freq=freq)
 
     if save_path:
         plt.savefig(save_path)

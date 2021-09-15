@@ -34,6 +34,9 @@ cd data
 
 For the first IAM prompt, use your username and password for IAM Handwriting DB, then for the second IAM prompt, use your username and password for IAM On-Line Handwriting DB. This script should download/extract/setup the IAM data.
 
+#### Prepping / Resampling Data
+Run `cd ./data_processing/online_coordinate_data && python create_dataset.py` to re-format data. The training scripts expect data to be in the format that is output by this script. ** TO DO: Steamline / simplify this step, or have it done by the dataloader.
+
 ## Trajectory Recovery
 
 #### Modifying/updating the config files
