@@ -36,6 +36,7 @@ dependencies:
     - wget
     - git+https://github.com/Tahlor/robust_loss_pytorch
     - git+https://github.com/tahlor/pydtw
+    - git+ssh://git@github.com/Tahlor/pytorch-mdn
     - forbiddenfruit
     - seaborn
 ### INSTALL TAYLOR_DTW

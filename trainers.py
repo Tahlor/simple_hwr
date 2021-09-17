@@ -603,3 +603,73 @@ class AlexGravesTrainer(Trainer):
             preds[:, :, 0:1] = np.cumsum(preds[:, :, 0:1], axis=1)
             preds = torch.from_numpy(preds)
         return loss, preds, y_hat
+
+
+class TrainerStrokeRecoverySampler(TrainerStrokeRecovery):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from hwr_utils import math
+
+    def sample_loop(self):
+        pass
+
+    @staticmethod
+    def eval(line_imgs, model, label_lengths=None, relative_indices=None, device="cuda",
+             gt=None, train=False, convolve=None, sigmoid_activations=None, relu_activations=None,
+             truncate=0, item=None):
+        """ For offline data, that doesn't have ground truths
+        """
+        line_imgs = line_imgs.to(device)
+        pred_logits = model(line_imgs, label_lengths, item=item).cpu()
+
+        # Sample
+
+
+        new_preds = pred_logits
+        preds = new_preds.permute(1, 0, 2) # Width,Batch,Vocab -> Batch, Width, Vocab
+
+        if relative_indices:
+            if not train or convolve is None:
+                preds = relativefy_batch_torch(preds, reverse=True, indices=relative_indices)  # assume they were in relative positions, convert to absolute
+            else:
+                preds = convolve(pred_rel=preds, indices=relative_indices, gt=gt)
+
+        ## Shorten - label lengths currently = width of image after CNN
+        truncate_window = 0 if truncate else 20
+        if not label_lengths is None: #and truncate_window >= 0:
+            # Convert square torch object to a list, removing predictions related to padding
+            # Add a buffer of 20, so that each pred goes 20 past the EOS
+            preds = TrainerStrokeRecovery._truncate(preds, label_lengths, window=truncate_window)
+
+        # THIS IS A "PRE" ACTIVATION, MUST NOT BE DONE DURING TRAINING!
+        if (sigmoid_activations or relu_activations) and not train:
+            # PREDS ARE A LIST
+            for i, p in enumerate(preds):
+                preds[i][:, sigmoid_activations] = SIGMOID(p[:, sigmoid_activations])
+                if relu_activations:
+                    preds[i][:, relu_activations] = RELU(p[:, relu_activations])
+
+
+        return preds
+
+"""
+# Output gradient clipping
+y_hat.register_hook(lambda grad: torch.clamp(grad, -100, 100))
+
+loss.backward()
+
+# LSTM params gradient clipping
+if model_type == "prediction":
+    nn.utils.clip_grad_value_(model.parameters(), 10)
+else:
+    nn.utils.clip_grad_value_(model.lstm_1.parameters(), 10)
+    nn.utils.clip_grad_value_(model.lstm_2.parameters(), 10)
+    nn.utils.clip_grad_value_(model.lstm_3.parameters(), 10)
+    nn.utils.clip_grad_value_(model.window_layer.parameters(), 10)
+"""
+
+
+
+if __name__ == '__main__':
+    pass

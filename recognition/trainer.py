@@ -6,18 +6,10 @@ from models.deprecated.deprecated_crnn import *
 from torch.autograd import Variable
 from hwr_utils import utils
 import logging
-from torch.distributions import bernoulli, uniform
 
 logger = logging.getLogger("root."+__name__)
 
 from hwr_utils import distortions, string_utils
-
-def stable_softmax(X, dim=2):
-    max_vec = torch.max(X, dim, keepdim=True)
-    exp_X = torch.exp(X - max_vec[0])
-    sum_exp_X = torch.sum(exp_X, dim, keepdim=True)
-    X_hat = exp_X / sum_exp_X
-    return X_hat
 
 class TrainerBaseline(json.JSONEncoder):
     def __init__(self, model, optimizer, config, loss_criterion):
@@ -239,54 +231,3 @@ class TrainerStrokes(TrainerBaseline):
             self.update_test_cer(validation, err, weight)
             loss = -1 # not calculating test loss here
             return loss, err, pred_strs
-
-class TrainerStrokesAG(TrainerStrokes):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    @staticmethod
-    def sample_batch_from_out_dist(y_hat, bias):
-        batch_size = y_hat.shape[0]
-        split_sizes = [1] + [20] * 6
-        y = torch.split(y_hat, split_sizes, dim=1)
-
-        eos_prob = torch.sigmoid(y[0])
-        mixture_weights = stable_softmax(y[1] * (1 + bias), dim=1)
-        mu_1 = y[2]
-        mu_2 = y[3]
-        std_1 = torch.exp(y[4] - bias)
-        std_2 = torch.exp(y[5] - bias)
-        correlations = torch.tanh(y[6])
-
-        bernoulli_dist = bernoulli.Bernoulli(probs=eos_prob)
-        eos_sample = bernoulli_dist.sample()
-
-        K = torch.multinomial(mixture_weights, 1).squeeze()
-
-        mu_k = y_hat.new_zeros((y_hat.shape[0], 2))
-
-        mu_k[:, 0] = mu_1[torch.arange(batch_size), K]
-        mu_k[:, 1] = mu_2[torch.arange(batch_size), K]
-        cov = y_hat.new_zeros(y_hat.shape[0], 2, 2)
-        cov[:, 0, 0] = std_1[torch.arange(batch_size), K].pow(2)
-        cov[:, 1, 1] = std_2[torch.arange(batch_size), K].pow(2)
-        cov[:, 0, 1], cov[:, 1, 0] = (
-            correlations[torch.arange(batch_size), K]
-            * std_1[torch.arange(batch_size), K]
-            * std_2[torch.arange(batch_size), K],
-            correlations[torch.arange(batch_size), K]
-            * std_1[torch.arange(batch_size), K]
-            * std_2[torch.arange(batch_size), K],
-        )
-
-        X = torch.normal(
-            mean=torch.zeros(batch_size, 2, 1), std=torch.ones(batch_size, 2, 1)
-        ).to(y_hat.device)
-        Z = mu_k + torch.matmul(cov, X).squeeze()
-
-        sample = y_hat.new_zeros(batch_size, 1, 3)
-        sample[:, 0, 0:1] = eos_sample
-        sample[:, 0, 1:] = Z.squeeze()
-        return sample
-
